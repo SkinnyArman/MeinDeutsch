@@ -170,3 +170,15 @@ Core categories:
 ---
 
 ## 5. Workflow Overview
+User submits text/voice
+↓
+AI Layer analyzes → returns JSON
+↓
+Backend parses metrics → updates DB → calculates state
+↓
+Adaptive Engine adjusts:
+• Workload
+• Drill difficulty
+• Lock/unlock mastered drills
+↓
+Optional: AI generates targeted next exercise
