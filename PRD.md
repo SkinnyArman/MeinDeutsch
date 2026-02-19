@@ -1,184 +1,116 @@
-# PRD: Arman’s German Performance Tracker & AI Coach
+# PRD: MeinDeutsch MVP (AI + Backend Focus)
 
 ## 1. Objective
 
-Build a **personal AI-powered German training system** that:
+Build a personal German learning MVP where:
+- You add learning topics.
+- AI generates questions tied to those topics.
+- You answer those questions.
+- The system stores: question, answer, mistakes, CEFR level, and tips.
+- The stored history becomes a learner knowledge base for future RAG.
 
-- Tracks and measures your writing and speaking performance.
-- Detects recurring mistakes and grammar weaknesses.
-- Adapts exercise difficulty automatically based on performance.
-- Provides AI-driven coaching, native rewrites, and vocabulary suggestions.
-- Increases workload if stagnation is detected.
-- Locks mastered drills to push complexity.
-- Maintains a structured history of mistakes, metrics, and progress.
-
-> **Key Principle:** AI analyzes, backend decides. Personal routine > generic flashcards.
+> Key Principle: Keep MVP narrow. Store clean learning data first, then use it for memory and retrieval.
 
 ---
 
-## 2. Key Features (Backend + AI)
+## 2. MVP Scope
 
-### 2.1 Submission Processing
+### In scope
+- Topic management (manual add/list).
+- AI question generation per topic.
+- Text answer submission.
+- AI analysis that returns:
+  - Mistakes
+  - CEFR level
+  - Tips
+- Persistence of:
+  - Topic
+  - Question
+  - Answer
+  - Mistakes
+  - CEFR level
+  - Tips
+- Basic knowledge base storage built from those records.
 
-1. User submits **text** or **voice**.
-2. Voice → text via **Whisper API** (optional future feature).
-3. Send to **AI analysis**.
-
-### 2.2 AI Layer
-
-**Responsibilities:**
-
-- Structured Analysis:
-
-  - Detect grammar errors: articles, cases, prepositions, word order.
-  - Detect sentence complexity: clause depth, subordinate clauses, sentence length.
-  - Vocabulary: overused words, weak words, CEFR level.
-  - Fluency (speaking): filler words, pauses, repetition.
-
-- Coaching:
-
-  - Corrected version.
-  - Native rewrite.
-  - Suggested new words (B2+ level, not previously mastered).
-  - Mini coaching tips.
-
-- Drill Generation (Phase 2):
-  - Generate targeted exercises based on top recurring mistakes and severity.
-  - Adjust difficulty according to mastery scores.
-
-**Output:** JSON with metrics, errors, suggested exercises.
+### Out of scope (post-MVP)
+- Any feature not required for this loop:
+  topics -> AI questions -> answers -> mistakes + CEFR + tips -> knowledge base.
 
 ---
 
-### 2.3 Backend Layer
+## 3. Core Data Objects (MVP)
 
-**Responsibilities:**
+### topics
+- id
+- name
+- description (optional)
+- created_at
 
-- **Parse AI JSON** → structured mistake types.
-- **Update DB**:
-  - `mistake_stats`: frequency, severity, mastery_score
-  - `performance_snapshots`: grammar accuracy, lexical diversity, sentence complexity
-  - `drill_history`: exercise type, difficulty, success rate
-- **Performance State Engine**:
-  - Growth / Plateau / Stagnation / Mastery
-  - Detect stagnation automatically.
-- **Adaptive Routine Engine**:
+### questions
+- id
+- topic_id
+- question_text
+- cefr_target (optional)
+- source (`ai` / `manual`)
+- created_at
 
-  - Increase workload if stagnating.
-  - Lock mastered drills; push complexity.
-  - Decide next exercise difficulty.
+### answer_logs
+- id
+- question_id (or question text for initial compatibility)
+- answer_text
+- error_types (JSON)
+- cefr_level
+- tips (JSON)
+- created_at
 
-- **Optional RAG / Vector Retrieval** (Phase 2):
-  - Store embeddings of past answers, feedback.
-  - Retrieve similar past answers to detect patterns.
-  - Provide contextual memory for coaching prompts.
+### mistake_stats
+- mistake_type
+- frequency
+- severity_score
+- last_seen
 
-**Key Principle:** Backend owns the “what happens next” logic.
-
----
-
-### 2.4 Metrics & Tracking
-
-- Grammar accuracy (article, case, word order)
-- Avg sentence length
-- Subordinate clause usage %
-- Lexical diversity
-- CEFR word distribution
-- Filler words (speaking)
-- Mistake severity & recurrence
-- Drill completion & mastery score
-- Weekly progress summary (optional dashboard later)
-
----
-
-## 3. Mistake Taxonomy
-
-Core categories:
-
-- `article_gender`
-- `article_case`
-- `dative_preposition`
-- `accusative_preposition`
-- `main_clause_word_order`
-- `subordinate_clause_word_order`
-- `weak_connector`
-- `connector_repetition`
-- `weak_adjective`
-- `limited_vocabulary_range`
-- `tense_shift_error`
-- `filler_word`
-- `overuse_simple_sentence`
-
-> Every detected mistake must map to one of these for tracking and adaptive drills.
+### knowledge_items (MVP foundation)
+- id
+- topic_id (optional)
+- question_id (optional)
+- answer_log_id (optional)
+- text_chunk
+- metadata (JSON)
+- created_at
 
 ---
 
-## 4. Tech Stack
+## 4. API Goals (MVP)
 
-### Backend
+- `POST /api/topics`
+- `GET /api/topics`
+- `POST /api/questions/generate`
+- `GET /api/questions?topicId=...`
+- `POST /api/submissions/text`
 
-- **Node.js + TypeScript**  
-  Framework: Fastify (lightweight, fast)
-- **AI integration:** OpenAI API (GPT-4o for analysis + coaching, embeddings for vector search)
-- **Optional Speech-to-Text:** OpenAI Whisper API
-- **Database:** Supabase (Postgres + pgvector)
-- **Deployment:** Vercel or Railway (personal scale)
-
-### Data Models
-
-**mistake_stats**
-
-| Field          | Type      | Description                |
-| -------------- | --------- | -------------------------- |
-| mistake_type   | string    | One of taxonomy items      |
-| frequency      | integer   | Total occurrences          |
-| last_seen      | timestamp | Last time mistake appeared |
-| severity_score | float     | Calculated severity        |
-| mastery_score  | float     | 0–100                      |
-
-**performance_snapshots**
-
-| Field               | Type      | Description                             |
-| ------------------- | --------- | --------------------------------------- |
-| date                | timestamp | Snapshot date                           |
-| grammar_accuracy    | float     | 0–1                                     |
-| lexical_diversity   | float     | 0–1                                     |
-| avg_sentence_length | float     | Words per sentence                      |
-| clause_depth        | float     | Average clauses per sentence            |
-| state               | enum      | Growth / Plateau / Stagnation / Mastery |
-
-**answer_logs**
-
-| Field          | Type      | Description          |
-| -------------- | --------- | -------------------- |
-| prompt         | text      | Original prompt      |
-| answer_text    | text      | User submission      |
-| corrected_text | text      | AI-corrected version |
-| error_types    | JSON      | Detected mistakes    |
-| metrics        | JSON      | Calculated metrics   |
-| timestamp      | timestamp | Submission time      |
-
-**drill_history**
-
-| Field        | Type      | Description                     |
-| ------------ | --------- | ------------------------------- |
-| drill_type   | string    | Grammar / Vocabulary / Speaking |
-| difficulty   | int       | 1–5                             |
-| success_rate | float     | 0–1                             |
-| timestamp    | timestamp | Completion time                 |
+All responses use the unified API envelope.
 
 ---
 
-## 5. Workflow Overview
-User submits text/voice
-↓
-AI Layer analyzes → returns JSON
-↓
-Backend parses metrics → updates DB → calculates state
-↓
-Adaptive Engine adjusts:
-• Workload
-• Drill difficulty
-• Lock/unlock mastered drills
-↓
-Optional: AI generates targeted next exercise
+## 5. AI Responsibilities (MVP)
+
+### Question generation
+Input: topic (+ optional CEFR target)
+Output: learner-facing German question.
+
+### Answer analysis
+Input: question + answer
+Output (strict JSON):
+- `errors[]`
+- `cefrLevel`
+- `tips[]`
+
+---
+
+## 6. Knowledge Base + RAG Direction
+
+MVP stores clean records first.
+Next step uses those records for retrieval:
+- Retrieve relevant past mistakes/questions/answers by topic and similarity.
+- Inject retrieved context into future prompts.
+- Make coaching increasingly familiar with your recurring patterns.

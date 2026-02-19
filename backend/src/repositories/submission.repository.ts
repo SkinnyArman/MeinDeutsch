@@ -1,17 +1,14 @@
 import { appDataSource } from "../db/pool.js";
-import { calculateMasteryDelta } from "../logic/mastery.logic.js";
 import { AnswerLog, type AnswerLogRecord } from "../models/answer-log.model.js";
 import { MistakeStat } from "../models/mistake-stat.model.js";
 import type { AnalysisResult, MistakeType, SubmissionInput } from "../types/submission.types.js";
 
 const toAnswerLogRecord = (entity: AnswerLog): AnswerLogRecord => ({
   id: Number(entity.id),
-  prompt: entity.prompt,
+  questionText: entity.questionText,
   answerText: entity.answerText,
-  correctedText: entity.correctedText,
-  nativeRewrite: entity.nativeRewrite,
+  cefrLevel: entity.cefrLevel,
   errorTypes: entity.errorTypes,
-  metrics: entity.metrics,
   tips: entity.tips,
   createdAt: entity.createdAt.toISOString()
 });
@@ -21,12 +18,10 @@ export const submissionRepository = {
     const repo = appDataSource.getRepository(AnswerLog);
 
     const created = repo.create({
-      prompt: input.prompt,
+      questionText: input.prompt,
       answerText: input.answerText,
-      correctedText: analysis.correctedText,
-      nativeRewrite: analysis.nativeRewrite,
+      cefrLevel: analysis.cefrLevel,
       errorTypes: analysis.errors,
-      metrics: analysis.metrics,
       tips: analysis.tips
     });
 
@@ -54,14 +49,12 @@ export const submissionRepository = {
       for (const [mistakeType, data] of Object.entries(grouped) as [MistakeType, { count: number; totalSeverity: number }][]) {
         const avgSeverity = data.totalSeverity / data.count;
         const existing = await repo.findOne({ where: { mistakeType } });
-        const masteryDelta = calculateMasteryDelta(analysis.errors, mistakeType);
 
         if (!existing) {
           const created = repo.create({
             mistakeType,
             frequency: data.count,
-            severityScore: avgSeverity,
-            masteryScore: Math.max(0, Math.min(100, 100 + masteryDelta))
+            severityScore: avgSeverity
           });
 
           await repo.save(created);
@@ -74,7 +67,6 @@ export const submissionRepository = {
 
         existing.frequency = nextFrequency;
         existing.severityScore = weightedSeverity;
-        existing.masteryScore = Math.max(0, Math.min(100, existing.masteryScore + masteryDelta));
         await repo.save(existing);
       }
     });

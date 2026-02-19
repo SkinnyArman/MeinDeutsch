@@ -1,28 +1,22 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
-import type { AnalysisError, AnalysisMetrics } from "../types/submission.types.js";
+import type { AnalysisError } from "../types/submission.types.js";
 
 @Entity({ name: "answer_logs" })
 export class AnswerLog {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ type: "text" })
-  prompt!: string;
+  @Column({ name: "prompt", type: "text" })
+  questionText!: string;
 
   @Column({ name: "answer_text", type: "text" })
   answerText!: string;
 
-  @Column({ name: "corrected_text", type: "text" })
-  correctedText!: string;
-
-  @Column({ name: "native_rewrite", type: "text" })
-  nativeRewrite!: string;
+  @Column({ name: "cefr_level", type: "text", default: "unknown" })
+  cefrLevel!: string;
 
   @Column({ name: "error_types", type: "jsonb" })
   errorTypes!: AnalysisError[];
-
-  @Column({ type: "jsonb" })
-  metrics!: AnalysisMetrics;
 
   @Column({ type: "jsonb" })
   tips!: string[];
@@ -33,12 +27,10 @@ export class AnswerLog {
 
 export interface AnswerLogRecord {
   id: number;
-  prompt: string;
+  questionText: string;
   answerText: string;
-  correctedText: string;
-  nativeRewrite: string;
+  cefrLevel: string;
   errorTypes: AnalysisError[];
-  metrics: AnalysisMetrics;
   tips: string[];
   createdAt: string;
 }

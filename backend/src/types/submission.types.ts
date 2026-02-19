@@ -27,17 +27,8 @@ export interface AnalysisError {
   severity: number;
 }
 
-export interface AnalysisMetrics {
-  grammarAccuracy: number;
-  lexicalDiversity: number;
-  avgSentenceLength: number;
-  clauseDepth: number;
-}
-
 export interface AnalysisResult {
-  correctedText: string;
-  nativeRewrite: string;
+  cefrLevel: string;
   tips: string[];
   errors: AnalysisError[];
-  metrics: AnalysisMetrics;
 }

@@ -7,9 +7,9 @@ Express + TypeScript backend with PostgreSQL, TypeORM, and OpenAI analysis suppo
 This project is not just grammar correction. The core objective is a personalized German coach that becomes better calibrated to one learner over time.
 
 Non-negotiable direction:
-- Build a learner knowledge base that stores recurring mistakes, corrections, rewrites, performance snapshots, and drill outcomes.
-- Add retrieval-augmented generation (RAG) so analysis/coaching prompts can pull relevant past context before generating feedback.
-- Use this memory to adapt difficulty, detect stagnation, and prioritize the next exercises.
+- Store a clean learner record for each cycle: topic -> question -> answer -> mistakes + CEFR + tips.
+- Build a learner knowledge base from those records.
+- Add retrieval-augmented generation (RAG) on top of that knowledge base so prompts can use relevant past context.
 
 ## Setup
 

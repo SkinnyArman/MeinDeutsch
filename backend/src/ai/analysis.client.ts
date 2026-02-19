@@ -9,35 +9,17 @@ const openai = env.OPENAI_API_KEY ? new OpenAI({ apiKey: env.OPENAI_API_KEY }) :
 
 const SYSTEM_PROMPT = `You are a German language coach. Return strict JSON only with this shape:
 {
-  "correctedText": "string",
-  "nativeRewrite": "string",
+  "cefrLevel": "A1|A2|B1|B2|C1|C2",
   "tips": ["string"],
-  "errors": [{ "type": "one of taxonomy", "message": "string", "severity": 0-1 }],
-  "metrics": {
-    "grammarAccuracy": 0-1,
-    "lexicalDiversity": 0-1,
-    "avgSentenceLength": number,
-    "clauseDepth": number
-  }
+  "errors": [{ "type": "one of taxonomy", "message": "string", "severity": 0-1 }]
 }
 Allowed error types: ${MISTAKE_TYPES.join(", ")}.`;
 
 const buildFallbackAnalysis = (input: SubmissionInput, reason: string): AnalysisResult => {
-  const words = input.answerText.trim().split(/\s+/).filter(Boolean);
-  const sentenceCount = Math.max(1, input.answerText.split(/[.!?]+/).filter((part) => part.trim().length > 0).length);
-  const avgSentenceLength = words.length / sentenceCount;
-
   return {
-    correctedText: input.answerText,
-    nativeRewrite: input.answerText,
+    cefrLevel: "A1",
     tips: [`AI fallback mode enabled: ${reason}`],
-    errors: [],
-    metrics: {
-      grammarAccuracy: 0.82,
-      lexicalDiversity: Number(Math.min(1, new Set(words.map((w) => w.toLowerCase())).size / Math.max(1, words.length)).toFixed(2)),
-      avgSentenceLength: Number(avgSentenceLength.toFixed(2)),
-      clauseDepth: 1
-    }
+    errors: []
   };
 };
 
@@ -66,10 +48,9 @@ export const analyzeSubmission = async (input: SubmissionInput): Promise<Analysi
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["correctedText", "nativeRewrite", "tips", "errors", "metrics"],
+            required: ["cefrLevel", "tips", "errors"],
             properties: {
-              correctedText: { type: "string" },
-              nativeRewrite: { type: "string" },
+              cefrLevel: { type: "string", enum: ["A1", "A2", "B1", "B2", "C1", "C2"] },
               tips: { type: "array", items: { type: "string" } },
               errors: {
                 type: "array",
@@ -82,17 +63,6 @@ export const analyzeSubmission = async (input: SubmissionInput): Promise<Analysi
                     message: { type: "string" },
                     severity: { type: "number", minimum: 0, maximum: 1 }
                   }
-                }
-              },
-              metrics: {
-                type: "object",
-                additionalProperties: false,
-                required: ["grammarAccuracy", "lexicalDiversity", "avgSentenceLength", "clauseDepth"],
-                properties: {
-                  grammarAccuracy: { type: "number", minimum: 0, maximum: 1 },
-                  lexicalDiversity: { type: "number", minimum: 0, maximum: 1 },
-                  avgSentenceLength: { type: "number", minimum: 0 },
-                  clauseDepth: { type: "number", minimum: 0 }
                 }
               }
             }
