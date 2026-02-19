@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import type { AnalysisError } from "../types/submission.types.js";
+import { Question } from "./question.model.js";
 
 @Entity({ name: "answer_logs" })
 export class AnswerLog {
@@ -8,6 +9,13 @@ export class AnswerLog {
 
   @Column({ name: "prompt", type: "text" })
   questionText!: string;
+
+  @Column({ name: "question_id", type: "bigint", nullable: true })
+  questionId!: string | null;
+
+  @ManyToOne(() => Question, (question) => question.answerLogs, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "question_id" })
+  question!: Question | null;
 
   @Column({ name: "answer_text", type: "text" })
   answerText!: string;
@@ -27,6 +35,7 @@ export class AnswerLog {
 
 export interface AnswerLogRecord {
   id: number;
+  questionId: number | null;
   questionText: string;
   answerText: string;
   cefrLevel: string;

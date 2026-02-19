@@ -9,20 +9,20 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Submission endpoint wired
 
 ## 1) Narrow MVP Data Model
-- [ ] Add `topics` entity/table
-- [ ] Add `questions` entity/table (linked to topic)
+- [x] Add `topics` entity/table
+- [x] Add `questions` entity/table (linked to topic)
 - [x] Keep `answer_logs` for question + answer + mistakes + CEFR + tips
 - [x] Keep `mistake_stats` aggregate (frequency + severity)
 - [ ] Add `knowledge_items` entity/table for KB entries
 
 ## 2) Topic + Question Flow
-- [ ] `POST /api/topics`
-- [ ] `GET /api/topics`
-- [ ] `POST /api/questions/generate` (AI-generated from topic)
-- [ ] `GET /api/questions` (filter by topic)
+- [x] `POST /api/topics`
+- [x] `GET /api/topics`
+- [x] `POST /api/questions/generate` (AI-generated from topic)
+- [x] `GET /api/questions` (filter by topic)
 
 ## 3) Submission + Analysis Flow
-- [ ] Accept `questionId` in submission payload (plus compatibility for text prompt)
+- [x] Accept `questionId` in submission payload (plus compatibility for text prompt)
 - [x] Store answer text
 - [x] Store mistakes
 - [x] Store CEFR level

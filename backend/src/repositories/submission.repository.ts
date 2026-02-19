@@ -1,10 +1,17 @@
 import { appDataSource } from "../db/pool.js";
 import { AnswerLog, type AnswerLogRecord } from "../models/answer-log.model.js";
 import { MistakeStat } from "../models/mistake-stat.model.js";
-import type { AnalysisResult, MistakeType, SubmissionInput } from "../types/submission.types.js";
+import type { AnalysisResult, AssessmentContext, MistakeType } from "../types/submission.types.js";
+
+interface PersistedSubmission {
+  questionId?: number;
+  questionText: string;
+  answerText: string;
+}
 
 const toAnswerLogRecord = (entity: AnswerLog): AnswerLogRecord => ({
   id: Number(entity.id),
+  questionId: entity.questionId ? Number(entity.questionId) : null,
   questionText: entity.questionText,
   answerText: entity.answerText,
   cefrLevel: entity.cefrLevel,
@@ -14,11 +21,12 @@ const toAnswerLogRecord = (entity: AnswerLog): AnswerLogRecord => ({
 });
 
 export const submissionRepository = {
-  async insertAnswerLog(input: SubmissionInput, analysis: AnalysisResult): Promise<AnswerLogRecord> {
+  async insertAnswerLog(input: PersistedSubmission, analysis: AnalysisResult): Promise<AnswerLogRecord> {
     const repo = appDataSource.getRepository(AnswerLog);
 
     const created = repo.create({
-      questionText: input.prompt,
+      questionId: input.questionId ? String(input.questionId) : null,
+      questionText: input.questionText,
       answerText: input.answerText,
       cefrLevel: analysis.cefrLevel,
       errorTypes: analysis.errors,
@@ -70,5 +78,37 @@ export const submissionRepository = {
         await repo.save(existing);
       }
     });
+  },
+
+  async getAssessmentContext(): Promise<AssessmentContext> {
+    const mistakeRepo = appDataSource.getRepository(MistakeStat);
+    const answerLogRepo = appDataSource.getRepository(AnswerLog);
+
+    const topMistakes = await mistakeRepo.find({
+      order: { frequency: "DESC", severityScore: "DESC" },
+      take: 8
+    });
+
+    const recentLogs = await answerLogRepo.find({
+      order: { createdAt: "DESC" },
+      take: 12,
+      select: {
+        tips: true
+      }
+    });
+
+    const recentTips = recentLogs
+      .flatMap((log) => log.tips)
+      .filter((tip, idx, arr) => arr.indexOf(tip) === idx)
+      .slice(0, 12);
+
+    return {
+      topMistakes: topMistakes.map((item) => ({
+        type: item.mistakeType,
+        frequency: item.frequency,
+        severityScore: item.severityScore
+      })),
+      recentTips
+    };
   }
 };

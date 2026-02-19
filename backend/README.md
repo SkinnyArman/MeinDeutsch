@@ -34,9 +34,17 @@ AI behavior:
 - `AI_FALLBACK_ENABLED=false` (default): OpenAI failures return an API error response.
 - `AI_FALLBACK_ENABLED=true`: API uses local fallback analysis when OpenAI fails.
 
+Question generation template:
+- Backend-owned template lives in `backend/src/constants/question-generation-template.ts`.
+- Client does not send generation prompt each time.
+
 ## Routes
 
 - `GET /api/health`
+- `POST /api/topics`
+- `GET /api/topics`
+- `POST /api/questions/generate`
+- `GET /api/questions`
 - `POST /api/submissions/text`
 
 ## Unified API Response Shape
@@ -77,10 +85,28 @@ Error responses use the same envelope:
 ### Example request
 
 ```bash
+curl -X POST http://localhost:4000/api/topics \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Nature",
+    "description": "Conversations about environment and forests"
+  }'
+```
+
+```bash
+curl -X POST http://localhost:4000/api/questions/generate \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "topicId": 1,
+    "cefrTarget": "B1"
+  }'
+```
+
+```bash
 curl -X POST http://localhost:4000/api/submissions/text \
   -H 'Content-Type: application/json' \
   -d '{
-    "prompt": "Describe your weekend in German",
-    "answerText": "Am Wochenende ich habe mit meine Freund gehen park."
+    "questionId": 1,
+    "answerText": "Ich denke, dass die Natur in meiner Stadt besser geschützt werden sollte."
   }'
 ```

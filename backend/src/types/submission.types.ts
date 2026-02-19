@@ -17,8 +17,23 @@ export const MISTAKE_TYPES = [
 export type MistakeType = (typeof MISTAKE_TYPES)[number];
 
 export interface SubmissionInput {
-  prompt: string;
+  questionId?: number;
+  prompt?: string;
   answerText: string;
+}
+
+export interface SubmissionAssessmentInput {
+  questionText: string;
+  answerText: string;
+}
+
+export interface AssessmentContext {
+  topMistakes: Array<{
+    type: MistakeType;
+    frequency: number;
+    severityScore: number;
+  }>;
+  recentTips: string[];
 }
 
 export interface AnalysisError {
