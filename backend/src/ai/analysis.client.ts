@@ -1,7 +1,9 @@
 import OpenAI from "openai";
 import { logger } from "../config/logger.js";
 import { env } from "../config/env.js";
+import { API_MESSAGES } from "../constants/api-messages.js";
 import { MISTAKE_TYPES, type AnalysisResult, type SubmissionInput } from "../types/submission.types.js";
+import { AppError } from "../utils/app-error.js";
 
 const openai = env.OPENAI_API_KEY ? new OpenAI({ apiKey: env.OPENAI_API_KEY }) : null;
 
@@ -25,31 +27,13 @@ const buildFallbackAnalysis = (input: SubmissionInput, reason: string): Analysis
   const sentenceCount = Math.max(1, input.answerText.split(/[.!?]+/).filter((part) => part.trim().length > 0).length);
   const avgSentenceLength = words.length / sentenceCount;
 
-  const errors: AnalysisResult["errors"] = [];
-
-  if (/\bmeine Freund\b/i.test(input.answerText)) {
-    errors.push({
-      type: "article_case",
-      message: "Check article/case agreement around possessive phrases (e.g. 'meinem Freund').",
-      severity: 0.6
-    });
-  }
-
-  if (/^.*\bich\b.*\bhabe\b.*$/i.test(input.answerText) && /\bAm Wochenende ich habe\b/i.test(input.answerText)) {
-    errors.push({
-      type: "main_clause_word_order",
-      message: "In main clauses, the conjugated verb should usually be in position two.",
-      severity: 0.7
-    });
-  }
-
   return {
     correctedText: input.answerText,
     nativeRewrite: input.answerText,
     tips: [`AI fallback mode enabled: ${reason}`],
-    errors,
+    errors: [],
     metrics: {
-      grammarAccuracy: errors.length > 0 ? 0.65 : 0.82,
+      grammarAccuracy: 0.82,
       lexicalDiversity: Number(Math.min(1, new Set(words.map((w) => w.toLowerCase())).size / Math.max(1, words.length)).toFixed(2)),
       avgSentenceLength: Number(avgSentenceLength.toFixed(2)),
       clauseDepth: 1
@@ -59,6 +43,13 @@ const buildFallbackAnalysis = (input: SubmissionInput, reason: string): Analysis
 
 export const analyzeSubmission = async (input: SubmissionInput): Promise<AnalysisResult> => {
   if (!openai) {
+    if (!env.AI_FALLBACK_ENABLED) {
+      throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+        provider: "openai",
+        reason: "OPENAI_API_KEY is missing"
+      });
+    }
+
     return buildFallbackAnalysis(input, "OPENAI_API_KEY is missing");
   }
 
@@ -113,7 +104,29 @@ export const analyzeSubmission = async (input: SubmissionInput): Promise<Analysi
     const raw = completion.output_text;
     return JSON.parse(raw) as AnalysisResult;
   } catch (error) {
-    logger.error("OpenAI analysis failed, switching to fallback analysis", error);
-    return buildFallbackAnalysis(input, "OpenAI request failed");
+    logger.error("OpenAI analysis failed", error);
+
+    if (env.AI_FALLBACK_ENABLED) {
+      return buildFallbackAnalysis(input, "OpenAI request failed");
+    }
+
+    const errorDetails =
+      error && typeof error === "object"
+        ? {
+            status: "status" in error ? (error as { status?: unknown }).status : undefined,
+            code: "code" in error ? (error as { code?: unknown }).code : undefined,
+            type: "type" in error ? (error as { type?: unknown }).type : undefined
+          }
+        : undefined;
+
+    const upstreamStatus =
+      typeof errorDetails?.status === "number" && errorDetails.status >= 400 && errorDetails.status <= 599
+        ? errorDetails.status
+        : 502;
+
+    throw new AppError(upstreamStatus, "AI_ANALYSIS_FAILED", API_MESSAGES.errors.aiAnalysisFailed, {
+      provider: "openai",
+      ...errorDetails
+    });
   }
 };

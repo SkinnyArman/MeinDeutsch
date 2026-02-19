@@ -8,6 +8,8 @@ export const API_MESSAGES = {
   errors: {
     validationFailed: "Validation failed",
     invalidJson: "Invalid JSON payload",
+    aiConfigurationMissing: "AI provider is not configured",
+    aiAnalysisFailed: "AI analysis failed",
     internalServerError: "Internal server error",
     routeNotFound: "Route not found"
   }
