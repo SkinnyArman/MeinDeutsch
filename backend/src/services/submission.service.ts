@@ -5,6 +5,7 @@ import { analyzeSubmission } from "../ai/analysis.client.js";
 import { knowledgeRepository } from "../repositories/knowledge.repository.js";
 import { questionRepository } from "../repositories/question.repository.js";
 import { submissionRepository } from "../repositories/submission.repository.js";
+import { streakService } from "./streak.service.js";
 import { AppError } from "../utils/app-error.js";
 
 export const submissionService = {
@@ -57,6 +58,7 @@ export const submissionService = {
     });
 
     await submissionRepository.upsertMistakeStats(analysis);
+    await streakService.recordDailyTalkCompletion();
     return answerLog;
   }
 };

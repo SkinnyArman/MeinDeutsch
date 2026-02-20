@@ -46,6 +46,7 @@ Question generation template:
 - `POST /api/questions/generate`
 - `GET /api/questions`
 - `GET /api/knowledge`
+- `GET /api/streaks/daily-talk`
 - `POST /api/submissions/text`
 
 ## Unified API Response Shape

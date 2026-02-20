@@ -17,6 +17,9 @@ export const API_MESSAGES = {
   knowledge: {
     listed: "Knowledge items fetched successfully"
   },
+  streak: {
+    fetched: "Streak fetched successfully"
+  },
   errors: {
     validationFailed: "Validation failed",
     invalidJson: "Invalid JSON payload",

@@ -97,6 +97,14 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     requestFields: []
   },
   {
+    id: "daily-talk-streak",
+    method: "GET",
+    path: "/api/streaks/daily-talk",
+    title: "Daily Talk Streak",
+    description: "Fetches current Daily Talk streak and remaining time window.",
+    requestFields: []
+  },
+  {
     id: "submit-text",
     method: "POST",
     path: "/api/submissions/text",
