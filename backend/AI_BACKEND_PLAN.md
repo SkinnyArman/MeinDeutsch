@@ -13,7 +13,7 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Add `questions` entity/table (linked to topic)
 - [x] Keep `answer_logs` for question + answer + mistakes + CEFR + tips
 - [x] Keep `mistake_stats` aggregate (frequency + severity)
-- [ ] Add `knowledge_items` entity/table for KB entries
+- [x] Add `knowledge_items` entity/table for KB entries
 
 ## 2) Topic + Question Flow
 - [x] `POST /api/topics`
@@ -33,9 +33,9 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Feed past Q&As + mistake/tip history into answer analysis context
 
 ## 4) Knowledge Base Build (MVP)
-- [ ] Create `knowledge_items` from topic/question/answer/mistake/tips records
-- [ ] Add simple retrieval query by topic + recency
-- [ ] Add API endpoint for KB inspection (`GET /api/knowledge`)
+- [x] Create `knowledge_items` from topic/question/answer/mistake/tips records
+- [x] Add simple retrieval query by topic + recency
+- [x] Add API endpoint for KB inspection (`GET /api/knowledge`)
 
 ## 5) RAG Foundation (Next after MVP data is stable)
 - [ ] Add embeddings for `knowledge_items`

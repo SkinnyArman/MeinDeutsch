@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import ApiTriggerView from "./components/ApiTriggerView.vue";
+import KnowledgeBaseView from "./components/KnowledgeBaseView.vue";
 import TopicsQuestionsView from "./components/TopicsQuestionsView.vue";
 import { THEME_MAP, THEMES, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
 
-type ViewKey = "api-trigger" | "topics-questions";
+type ViewKey = "api-trigger" | "topics-questions" | "knowledge-base";
 
 const activeView = ref<ViewKey>("api-trigger");
 const activeTheme = ref<ThemeKey>("default");
@@ -18,7 +19,12 @@ const navItems: Array<{ key: ViewKey; title: string; subtitle: string }> = [
   {
     key: "topics-questions",
     title: "Topics & Questions",
-    subtitle: "Dedicated workflow for topic/question APIs"
+    subtitle: "Create/delete topics and manage list"
+  },
+  {
+    key: "knowledge-base",
+    title: "Knowledge Base",
+    subtitle: "Browse stored learner memory entries"
   }
 ];
 
@@ -86,19 +92,28 @@ watch(
       <section class="surface-soft min-w-0 flex-1 p-4 md:p-6">
         <header class="mb-6">
           <h2 class="text-2xl font-semibold tracking-tight">
-            {{ activeView === "api-trigger" ? "API Trigger" : "Topics & Questions" }}
+            {{
+              activeView === "api-trigger"
+                ? "API Trigger"
+                : activeView === "topics-questions"
+                  ? "Topics & Questions"
+                  : "Knowledge Base"
+            }}
           </h2>
           <p class="mt-1 text-sm muted">
             {{
               activeView === "api-trigger"
                 ? "Run any backend endpoint from one page."
-                : "Use the focused flow: create topics and generate questions."
+                : activeView === "topics-questions"
+                  ? "Use the focused flow: create and maintain topics."
+                  : "Inspect knowledge entries generated from Daily Talk submissions."
             }}
           </p>
         </header>
 
         <ApiTriggerView v-if="activeView === 'api-trigger'" />
-        <TopicsQuestionsView v-else />
+        <TopicsQuestionsView v-else-if="activeView === 'topics-questions'" />
+        <KnowledgeBaseView v-else />
       </section>
     </div>
   </main>

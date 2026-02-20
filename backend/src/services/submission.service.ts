@@ -2,6 +2,7 @@ import { API_MESSAGES } from "../constants/api-messages.js";
 import type { AnswerLogRecord } from "../models/answer-log.model.js";
 import type { SubmissionInput } from "../types/submission.types.js";
 import { analyzeSubmission } from "../ai/analysis.client.js";
+import { knowledgeRepository } from "../repositories/knowledge.repository.js";
 import { questionRepository } from "../repositories/question.repository.js";
 import { submissionRepository } from "../repositories/submission.repository.js";
 import { AppError } from "../utils/app-error.js";
@@ -10,6 +11,8 @@ export const submissionService = {
   async processTextSubmission(input: SubmissionInput): Promise<AnswerLogRecord> {
     let questionText = input.prompt?.trim();
     const questionId = input.questionId;
+    let topicId: number | undefined;
+    let topicName: string | undefined;
 
     if (questionId) {
       const question = await questionRepository.findById(questionId);
@@ -17,6 +20,8 @@ export const submissionService = {
         throw new AppError(404, "QUESTION_NOT_FOUND", API_MESSAGES.errors.questionNotFound);
       }
       questionText = question.questionText;
+      topicId = question.topicId;
+      topicName = question.topicName;
     }
 
     if (!questionText) {
@@ -40,6 +45,17 @@ export const submissionService = {
       },
       analysis
     );
+
+    await knowledgeRepository.createFromSubmission({
+      topicId,
+      topicName,
+      questionId,
+      questionText,
+      answerLogId: answerLog.id,
+      answerText: input.answerText,
+      analysis
+    });
+
     await submissionRepository.upsertMistakeStats(analysis);
     return answerLog;
   }

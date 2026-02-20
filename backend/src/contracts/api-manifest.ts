@@ -89,6 +89,14 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     requestFields: []
   },
   {
+    id: "list-knowledge",
+    method: "GET",
+    path: "/api/knowledge",
+    title: "List Knowledge",
+    description: "Lists knowledge base entries built from Daily Talk submissions.",
+    requestFields: []
+  },
+  {
     id: "submit-text",
     method: "POST",
     path: "/api/submissions/text",

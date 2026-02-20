@@ -14,6 +14,9 @@ export const API_MESSAGES = {
     generated: "Question generated successfully",
     listed: "Questions fetched successfully"
   },
+  knowledge: {
+    listed: "Knowledge items fetched successfully"
+  },
   errors: {
     validationFailed: "Validation failed",
     invalidJson: "Invalid JSON payload",
