@@ -30,5 +30,11 @@ export const topicRepository = {
     const repo = appDataSource.getRepository(Topic);
     const row = await repo.findOne({ where: { id: String(topicId) } });
     return row ? toTopicRecord(row) : null;
+  },
+
+  async deleteById(topicId: number): Promise<boolean> {
+    const repo = appDataSource.getRepository(Topic);
+    const result = await repo.delete({ id: String(topicId) });
+    return Boolean(result.affected && result.affected > 0);
   }
 };

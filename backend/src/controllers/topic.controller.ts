@@ -9,6 +9,10 @@ const createTopicSchema = z.object({
   description: z.string().trim().optional()
 });
 
+const topicParamSchema = z.object({
+  topicId: z.coerce.number().int().positive()
+});
+
 export const createTopicController = async (req: Request, res: Response): Promise<void> => {
   const payload = createTopicSchema.parse(req.body);
   const topic = await topicService.createTopic(payload);
@@ -18,4 +22,10 @@ export const createTopicController = async (req: Request, res: Response): Promis
 export const listTopicsController = async (_req: Request, res: Response): Promise<void> => {
   const topics = await topicService.listTopics();
   sendSuccess(res, 200, API_MESSAGES.topic.listed, topics);
+};
+
+export const deleteTopicController = async (req: Request, res: Response): Promise<void> => {
+  const { topicId } = topicParamSchema.parse(req.params);
+  await topicService.deleteTopic(topicId);
+  sendSuccess(res, 200, API_MESSAGES.topic.deleted, null);
 };

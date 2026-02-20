@@ -7,7 +7,8 @@ export const API_MESSAGES = {
   },
   topic: {
     created: "Topic created successfully",
-    listed: "Topics fetched successfully"
+    listed: "Topics fetched successfully",
+    deleted: "Topic deleted successfully"
   },
   question: {
     generated: "Question generated successfully",
