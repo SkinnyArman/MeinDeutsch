@@ -54,32 +54,24 @@ const runEndpoint = async (endpoint: ApiEndpointDefinition): Promise<void> => {
 </script>
 
 <template>
-  <section class="mb-8 rounded-xl border border-line bg-panel p-4">
-    <label class="mb-2 block text-sm text-slate-300">API Base URL</label>
-    <input
-      v-model="baseUrl"
-      class="w-full rounded-md border border-line bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
-      type="text"
-    />
+  <section class="surface mb-8 p-4">
+    <label class="mb-2 block text-sm muted">API Base URL</label>
+    <input v-model="baseUrl" class="input-field" type="text" />
   </section>
 
   <section class="grid gap-4 xl:grid-cols-2">
-    <article
-      v-for="endpoint in API_ENDPOINTS"
-      :key="endpoint.id"
-      class="rounded-xl border border-line bg-panel p-4"
-    >
+    <article v-for="endpoint in API_ENDPOINTS" :key="endpoint.id" class="surface p-4">
       <div class="mb-3 flex items-center justify-between gap-3">
         <h2 class="text-lg font-medium">{{ endpoint.title }}</h2>
-        <span class="rounded bg-slate-800 px-2 py-1 text-xs text-cyan-300">{{ endpoint.method }}</span>
+        <span class="method-badge">{{ endpoint.method }}</span>
       </div>
 
-      <p class="mb-3 text-sm text-slate-400">{{ endpoint.path }}</p>
-      <p class="mb-4 text-sm text-slate-300">{{ endpoint.description }}</p>
+      <p class="mb-3 text-sm muted">{{ endpoint.path }}</p>
+      <p class="mb-4 text-sm muted">{{ endpoint.description }}</p>
 
       <div v-if="endpoint.requestFields.length" class="space-y-3">
         <div v-for="field in endpoint.requestFields" :key="`${endpoint.id}-${field.name}`" class="space-y-1">
-          <label class="block text-sm text-slate-300">
+          <label class="block text-sm muted">
             {{ field.label }}
             <span v-if="field.required" class="text-rose-400">*</span>
           </label>
@@ -89,7 +81,7 @@ const runEndpoint = async (endpoint: ApiEndpointDefinition): Promise<void> => {
             v-model="forms[endpoint.id][field.name]"
             rows="4"
             :placeholder="field.placeholder"
-            class="w-full rounded-md border border-line bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
+            class="input-field"
           />
 
           <input
@@ -97,24 +89,20 @@ const runEndpoint = async (endpoint: ApiEndpointDefinition): Promise<void> => {
             v-model="forms[endpoint.id][field.name]"
             :type="field.type"
             :placeholder="field.placeholder"
-            class="w-full rounded-md border border-line bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
+            class="input-field"
           />
         </div>
       </div>
 
-      <button
-        class="mt-4 w-full rounded-md bg-cyan-500 px-3 py-2 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="loadingId === endpoint.id"
-        @click="runEndpoint(endpoint)"
-      >
+      <button class="btn-primary mt-4" :disabled="loadingId === endpoint.id" @click="runEndpoint(endpoint)">
         {{ loadingId === endpoint.id ? "Running..." : `Trigger ${endpoint.method}` }}
       </button>
     </article>
   </section>
 
-  <section class="mt-8 rounded-xl border border-line bg-panel p-4">
+  <section class="surface mt-8 p-4">
     <h3 class="mb-2 text-lg font-medium">Response</h3>
-    <p class="mb-3 text-sm text-slate-400">Status: {{ statusLine }}</p>
-    <pre class="max-h-[420px] overflow-auto rounded-md bg-slate-900 p-3 text-xs text-cyan-100">{{ responseText }}</pre>
+    <p class="mb-3 text-sm muted">Status: {{ statusLine }}</p>
+    <pre class="response-pre">{{ responseText }}</pre>
   </section>
 </template>

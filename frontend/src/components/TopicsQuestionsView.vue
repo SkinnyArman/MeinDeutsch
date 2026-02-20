@@ -72,84 +72,49 @@ const listQuestions = async (): Promise<void> => {
 </script>
 
 <template>
-  <section class="mb-8 rounded-xl border border-line bg-panel p-4">
-    <label class="mb-2 block text-sm text-slate-300">API Base URL</label>
-    <input
-      v-model="baseUrl"
-      class="w-full rounded-md border border-line bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
-      type="text"
-    />
+  <section class="surface mb-8 p-4">
+    <label class="mb-2 block text-sm muted">API Base URL</label>
+    <input v-model="baseUrl" class="input-field" type="text" />
   </section>
 
   <section class="grid gap-4 xl:grid-cols-2">
-    <article class="rounded-xl border border-line bg-panel p-4">
+    <article class="surface p-4">
       <h2 class="mb-3 text-lg font-medium">Create Topic</h2>
       <div class="space-y-3">
-        <input
-          v-model="form.topicName"
-          type="text"
-          placeholder="Nature"
-          class="w-full rounded-md border border-line bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
-        />
+        <input v-model="form.topicName" type="text" placeholder="Nature" class="input-field" />
         <textarea
           v-model="form.topicDescription"
           rows="4"
           placeholder="German conversations about nature and climate"
-          class="w-full rounded-md border border-line bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
+          class="input-field"
         />
       </div>
-      <button
-        class="mt-4 w-full rounded-md bg-cyan-500 px-3 py-2 text-sm font-medium text-slate-900 disabled:opacity-50"
-        :disabled="loadingKey === 'create-topic'"
-        @click="createTopic"
-      >
+      <button class="btn-primary mt-4" :disabled="loadingKey === 'create-topic'" @click="createTopic">
         {{ loadingKey === "create-topic" ? "Running..." : "POST /api/topics" }}
       </button>
-      <button
-        class="mt-2 w-full rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 disabled:opacity-50"
-        :disabled="loadingKey === 'list-topics'"
-        @click="listTopics"
-      >
+      <button class="btn-secondary mt-2" :disabled="loadingKey === 'list-topics'" @click="listTopics">
         {{ loadingKey === "list-topics" ? "Running..." : "GET /api/topics" }}
       </button>
     </article>
 
-    <article class="rounded-xl border border-line bg-panel p-4">
+    <article class="surface p-4">
       <h2 class="mb-3 text-lg font-medium">Generate Question</h2>
       <div class="space-y-3">
-        <input
-          v-model="form.topicId"
-          type="number"
-          placeholder="Topic ID"
-          class="w-full rounded-md border border-line bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
-        />
-        <input
-          v-model="form.cefrTarget"
-          type="text"
-          placeholder="Optional CEFR target (B1)"
-          class="w-full rounded-md border border-line bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-400"
-        />
+        <input v-model="form.topicId" type="number" placeholder="Topic ID" class="input-field" />
+        <input v-model="form.cefrTarget" type="text" placeholder="Optional CEFR target (B1)" class="input-field" />
       </div>
-      <button
-        class="mt-4 w-full rounded-md bg-cyan-500 px-3 py-2 text-sm font-medium text-slate-900 disabled:opacity-50"
-        :disabled="loadingKey === 'generate-question'"
-        @click="generateQuestion"
-      >
+      <button class="btn-primary mt-4" :disabled="loadingKey === 'generate-question'" @click="generateQuestion">
         {{ loadingKey === "generate-question" ? "Running..." : "POST /api/questions/generate" }}
       </button>
-      <button
-        class="mt-2 w-full rounded-md bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 disabled:opacity-50"
-        :disabled="loadingKey === 'list-questions'"
-        @click="listQuestions"
-      >
+      <button class="btn-secondary mt-2" :disabled="loadingKey === 'list-questions'" @click="listQuestions">
         {{ loadingKey === "list-questions" ? "Running..." : "GET /api/questions" }}
       </button>
     </article>
   </section>
 
-  <section class="mt-8 rounded-xl border border-line bg-panel p-4">
+  <section class="surface mt-8 p-4">
     <h3 class="mb-2 text-lg font-medium">Response</h3>
-    <p class="mb-3 text-sm text-slate-400">Status: {{ statusLine }}</p>
-    <pre class="max-h-[420px] overflow-auto rounded-md bg-slate-900 p-3 text-xs text-cyan-100">{{ responseText }}</pre>
+    <p class="mb-3 text-sm muted">Status: {{ statusLine }}</p>
+    <pre class="response-pre">{{ responseText }}</pre>
   </section>
 </template>

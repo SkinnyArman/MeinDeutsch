@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import ApiTriggerView from "./components/ApiTriggerView.vue";
 import TopicsQuestionsView from "./components/TopicsQuestionsView.vue";
+import { THEME_MAP, THEMES, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
 
 type ViewKey = "api-trigger" | "topics-questions";
 
 const activeView = ref<ViewKey>("api-trigger");
+const activeTheme = ref<ThemeKey>("default");
 
 const navItems: Array<{ key: ViewKey; title: string; subtitle: string }> = [
   {
@@ -19,23 +21,60 @@ const navItems: Array<{ key: ViewKey; title: string; subtitle: string }> = [
     subtitle: "Dedicated workflow for topic/question APIs"
   }
 ];
+
+const getInitialTheme = (): ThemeKey => {
+  if (typeof window === "undefined") {
+    return "default";
+  }
+
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY) as ThemeKey | null;
+  if (stored && THEME_MAP[stored]) {
+    return stored;
+  }
+
+  return "default";
+};
+
+activeTheme.value = getInitialTheme();
+
+watch(
+  activeTheme,
+  (themeKey) => {
+    applyThemeTokens(THEME_MAP[themeKey]);
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeKey);
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
   <main class="min-h-screen p-4 md:p-6">
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 md:flex-row">
-      <aside class="w-full rounded-xl border border-line bg-panel p-3 md:w-72 md:self-start">
+      <aside class="surface w-full p-3 md:w-72 md:self-start">
         <h1 class="mb-3 px-2 text-lg font-semibold">MeinDeutsch</h1>
+
+        <p class="mb-2 px-2 text-xs font-medium uppercase tracking-wide muted">Theme</p>
+        <div class="mb-4 flex flex-wrap gap-2 px-2">
+          <button
+            v-for="theme in THEMES"
+            :key="theme.key"
+            :title="theme.label"
+            class="theme-chip"
+            :class="activeTheme === theme.key ? 'theme-chip-active' : ''"
+            @click="activeTheme = theme.key"
+          >
+            <span class="theme-dot" :style="{ backgroundColor: theme.swatch[0] }" />
+            <span class="theme-dot -ml-1" :style="{ backgroundColor: theme.swatch[1] }" />
+            <span class="theme-dot -ml-1" :style="{ backgroundColor: theme.swatch[2] }" />
+          </button>
+        </div>
+
         <nav class="space-y-2">
           <button
             v-for="item in navItems"
             :key="item.key"
-            class="w-full rounded-lg border px-3 py-2 text-left transition"
-            :class="
-              activeView === item.key
-                ? 'border-cyan-500 bg-cyan-500/10 text-cyan-200'
-                : 'border-transparent bg-slate-900 text-slate-300 hover:border-line hover:text-slate-100'
-            "
+            class="nav-btn"
+            :class="activeView === item.key ? 'nav-btn-active' : ''"
             @click="activeView = item.key"
           >
             <p class="text-sm font-medium">{{ item.title }}</p>
@@ -44,12 +83,12 @@ const navItems: Array<{ key: ViewKey; title: string; subtitle: string }> = [
         </nav>
       </aside>
 
-      <section class="min-w-0 flex-1 rounded-xl border border-line bg-slate-950/60 p-4 md:p-6">
+      <section class="surface-soft min-w-0 flex-1 p-4 md:p-6">
         <header class="mb-6">
           <h2 class="text-2xl font-semibold tracking-tight">
             {{ activeView === "api-trigger" ? "API Trigger" : "Topics & Questions" }}
           </h2>
-          <p class="mt-1 text-sm text-slate-400">
+          <p class="mt-1 text-sm muted">
             {{
               activeView === "api-trigger"
                 ? "Run any backend endpoint from one page."

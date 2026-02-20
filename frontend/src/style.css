@@ -2,7 +2,129 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg: #020617;
+  --panel: #111319;
+  --panel-soft: #1a1f28;
+  --line: #323b4a;
+  --text: #e7edf7;
+  --muted: #9aa6ba;
+  --accent: #22d3ee;
+  --accent-strong: #06b6d4;
+  --accent-contrast: #0e2933;
+  --surface-shadow: none;
+  --bg-gradient-a: color-mix(in srgb, var(--accent) 22%, transparent);
+  --bg-gradient-b: color-mix(in srgb, var(--accent) 12%, transparent);
+  --bg-gradient-base: var(--bg);
+}
+
 body {
-  @apply min-h-screen bg-slate-950 text-slate-100;
+  min-height: 100vh;
+  background: radial-gradient(circle at 15% -10%, var(--bg-gradient-a), transparent 40%),
+    radial-gradient(circle at 90% 0%, var(--bg-gradient-b), transparent 35%),
+    var(--bg-gradient-base);
+  color: var(--text);
   font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+@layer components {
+  .surface {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: var(--surface-shadow);
+    @apply rounded-xl;
+  }
+
+  .surface-soft {
+    background: color-mix(in srgb, var(--panel-soft) 82%, transparent);
+    border: 1px solid var(--line);
+    box-shadow: var(--surface-shadow);
+    @apply rounded-xl;
+  }
+
+  .muted {
+    color: var(--muted);
+  }
+
+  .input-field {
+    background: var(--panel-soft);
+    border: 1px solid var(--line);
+    color: var(--text);
+    @apply w-full rounded-md px-3 py-2 text-sm outline-none;
+  }
+
+  .input-field:focus {
+    border-color: var(--accent);
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    @apply w-full rounded-md px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-strong);
+  }
+
+  .btn-secondary {
+    background: var(--panel-soft);
+    border: 1px solid var(--line);
+    color: var(--text);
+    @apply w-full rounded-md px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  .nav-btn {
+    background: var(--panel-soft);
+    color: var(--muted);
+    border: 1px solid transparent;
+    @apply w-full rounded-lg px-3 py-2 text-left transition;
+  }
+
+  .nav-btn:hover {
+    border-color: var(--line);
+    color: var(--text);
+  }
+
+  .nav-btn-active {
+    border-color: var(--accent);
+    color: var(--text);
+    background: color-mix(in srgb, var(--accent) 14%, var(--panel-soft));
+  }
+
+  .method-badge {
+    background: color-mix(in srgb, var(--accent) 16%, var(--panel-soft));
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    @apply rounded px-2 py-1 text-xs;
+  }
+
+  .response-pre {
+    background: var(--panel-soft);
+    color: color-mix(in srgb, var(--text) 88%, var(--accent));
+    @apply max-h-[420px] overflow-auto rounded-md p-3 text-xs;
+  }
+
+  .theme-chip {
+    border: 1px solid var(--line);
+    background: var(--panel-soft);
+    @apply relative flex h-10 w-10 items-center justify-center rounded-full transition;
+  }
+
+  .theme-chip:hover {
+    transform: translateY(-1px);
+  }
+
+  .theme-chip-active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  .theme-dot {
+    @apply h-3 w-3 rounded-full;
+  }
 }
