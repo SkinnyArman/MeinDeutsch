@@ -19,6 +19,13 @@ interface KnowledgeItemRecord {
   createdAt: string;
 }
 
+interface TopicRecord {
+  id: number;
+  name: string;
+  description: string | null;
+  createdAt: string;
+}
+
 type FilterState = {
   topicId: string;
   limit: string;
@@ -26,8 +33,10 @@ type FilterState = {
 
 const baseUrl = ref("http://localhost:4000");
 const loading = ref(false);
+const loadingTopics = ref(false);
 const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
 const items = ref<KnowledgeItemRecord[]>([]);
+const topics = ref<TopicRecord[]>([]);
 
 const filters = reactive<FilterState>({
   topicId: "",
@@ -74,7 +83,26 @@ const loadKnowledge = async (): Promise<void> => {
   }
 };
 
+const loadTopics = async (): Promise<void> => {
+  loadingTopics.value = true;
+  try {
+    const res = await fetch(`${baseUrl.value}/api/topics`);
+    const payload = (await res.json()) as ApiResponse<TopicRecord[]>;
+
+    if (!res.ok || !payload.success) {
+      throw new Error(payload.message || "Failed to load topics");
+    }
+
+    topics.value = payload.data;
+  } catch (error) {
+    setError(error instanceof Error ? error.message : "Could not load topics");
+  } finally {
+    loadingTopics.value = false;
+  }
+};
+
 onMounted(() => {
+  void loadTopics();
   void loadKnowledge();
 });
 </script>
@@ -83,9 +111,14 @@ onMounted(() => {
   <section class="surface mb-6 p-4">
     <div class="mb-2 flex items-center justify-between gap-3">
       <label class="block text-sm muted">API Base URL</label>
-      <button class="btn-secondary !w-auto px-3 py-1" :disabled="loading" @click="loadKnowledge">
-        {{ loading ? "Loading..." : "Refresh" }}
-      </button>
+      <div class="flex gap-2">
+        <button class="btn-secondary !w-auto px-3 py-1" :disabled="loadingTopics" @click="loadTopics">
+          {{ loadingTopics ? "Loading Topics..." : "Refresh Topics" }}
+        </button>
+        <button class="btn-secondary !w-auto px-3 py-1" :disabled="loading" @click="loadKnowledge">
+          {{ loading ? "Loading KB..." : "Refresh KB" }}
+        </button>
+      </div>
     </div>
     <input v-model="baseUrl" class="input-field" type="text" />
   </section>
@@ -93,7 +126,12 @@ onMounted(() => {
   <section class="surface mb-6 p-4">
     <h2 class="mb-3 text-lg font-medium">Filters</h2>
     <div class="grid gap-3 md:grid-cols-2">
-      <input v-model="filters.topicId" class="input-field" type="number" placeholder="Topic ID (optional)" />
+      <select v-model="filters.topicId" class="input-field">
+        <option value="">All topics</option>
+        <option v-for="topic in topics" :key="topic.id" :value="String(topic.id)">
+          {{ topic.name }} (ID {{ topic.id }})
+        </option>
+      </select>
       <input v-model="filters.limit" class="input-field" type="number" placeholder="Limit (default 30)" />
     </div>
     <button class="btn-primary mt-4" :disabled="loading" @click="loadKnowledge">
