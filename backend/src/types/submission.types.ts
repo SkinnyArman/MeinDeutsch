@@ -34,6 +34,13 @@ export interface AssessmentContext {
     severityScore: number;
   }>;
   recentTips: string[];
+  recentQAs: Array<{
+    questionText: string;
+    answerText: string;
+    correctedText: string;
+    cefrLevel: string;
+    tips: string[];
+  }>;
 }
 
 export interface AnalysisError {
@@ -44,6 +51,8 @@ export interface AnalysisError {
 
 export interface AnalysisResult {
   cefrLevel: string;
+  correctedText: string;
+  contextualWordSuggestions: string[];
   tips: string[];
   errors: AnalysisError[];
 }

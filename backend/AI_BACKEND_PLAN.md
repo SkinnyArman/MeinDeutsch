@@ -1,4 +1,4 @@
-# MeinDeutsch MVP Plan (AI + Backend)
+# MeinDeutsch MVP Plan (Daily Talk)
 
 Use this checklist and mark done items as `- [x]`.
 
@@ -27,7 +27,10 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Store mistakes
 - [x] Store CEFR level
 - [x] Store tips
+- [x] Store corrected text
+- [x] Store contextual word suggestions
 - [x] Update mistake aggregates
+- [x] Feed past Q&As + mistake/tip history into answer analysis context
 
 ## 4) Knowledge Base Build (MVP)
 - [ ] Create `knowledge_items` from topic/question/answer/mistake/tips records
@@ -41,12 +44,13 @@ Use this checklist and mark done items as `- [x]`.
 
 ## 6) Reliability
 - [ ] Add integration tests for topic -> question -> submission pipeline
-- [ ] Add contract tests for AI JSON schema (`errors`, `cefrLevel`, `tips`)
+- [ ] Add contract tests for AI JSON schema (`errors`, `cefrLevel`, `correctedText`, `contextualWordSuggestions`, `tips`)
 - [ ] Add retry/backoff for transient AI failures
 
 ## Current MVP Definition of Done
 - [ ] I can create topics.
 - [ ] AI can generate questions tied to a topic.
 - [ ] I can submit answers for those questions.
-- [ ] System persists question, answer, mistakes, CEFR, tips.
+- [ ] System persists question, answer, mistakes, CEFR, corrected text, contextual word suggestions, tips.
+- [ ] AI assessment uses current answer + past Q&A history for personalization.
 - [ ] KB entries are generated from stored learning records.

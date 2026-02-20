@@ -93,7 +93,7 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     method: "POST",
     path: "/api/submissions/text",
     title: "Submit Text",
-    description: "Submits German text for analysis and persistence.",
+    description: "Submits a Daily Talk response for analysis and persistence (frontend can keep it concise).",
     requestFields: [
       {
         name: "questionId",

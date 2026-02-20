@@ -1,12 +1,12 @@
-# PRD: MeinDeutsch MVP (AI + Backend Focus)
+# PRD: MeinDeutsch MVP - Daily Talk
 
 ## 1. Objective
 
 Build a personal German learning MVP where:
 - You add learning topics.
 - AI generates questions tied to those topics.
-- You answer those questions.
-- The system stores: question, answer, mistakes, CEFR level, and tips.
+- You answer those questions (Daily Talk response; frontend can hint to keep it short).
+- The system stores: question, answer, mistakes, CEFR level, tips, corrected text, and contextual word suggestions.
 - The stored history becomes a learner knowledge base for future RAG.
 
 > Key Principle: Keep MVP narrow. Store clean learning data first, then use it for memory and retrieval.
@@ -22,6 +22,8 @@ Build a personal German learning MVP where:
 - AI analysis that returns:
   - Mistakes
   - CEFR level
+  - Fully corrected text
+  - Contextual word suggestions (words that could be used in this context)
   - Tips
 - Persistence of:
   - Topic
@@ -29,6 +31,8 @@ Build a personal German learning MVP where:
   - Answer
   - Mistakes
   - CEFR level
+  - Corrected text
+  - Contextual word suggestions
   - Tips
 - Basic knowledge base storage built from those records.
 
@@ -58,8 +62,10 @@ Build a personal German learning MVP where:
 - id
 - question_id (or question text for initial compatibility)
 - answer_text
+- corrected_text
 - error_types (JSON)
 - cefr_level
+- contextual_word_suggestions (JSON)
 - tips (JSON)
 - created_at
 
@@ -103,6 +109,8 @@ Input: question + answer
 Output (strict JSON):
 - `errors[]`
 - `cefrLevel`
+- `correctedText`
+- `contextualWordSuggestions[]`
 - `tips[]`
 
 ---
@@ -114,3 +122,4 @@ Next step uses those records for retrieval:
 - Retrieve relevant past mistakes/questions/answers by topic and similarity.
 - Inject retrieved context into future prompts.
 - Make coaching increasingly familiar with your recurring patterns.
+- Daily Talk assessments should use current answer + past Q&As to detect repeated patterns.

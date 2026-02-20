@@ -14,9 +14,11 @@ const toAnswerLogRecord = (entity: AnswerLog): AnswerLogRecord => ({
   questionId: entity.questionId ? Number(entity.questionId) : null,
   questionText: entity.questionText,
   answerText: entity.answerText,
+  correctedText: entity.correctedText,
   cefrLevel: entity.cefrLevel,
   errorTypes: entity.errorTypes,
   tips: entity.tips,
+  contextualWordSuggestions: entity.contextualWordSuggestions,
   createdAt: entity.createdAt.toISOString()
 });
 
@@ -28,9 +30,11 @@ export const submissionRepository = {
       questionId: input.questionId ? String(input.questionId) : null,
       questionText: input.questionText,
       answerText: input.answerText,
+      correctedText: analysis.correctedText,
       cefrLevel: analysis.cefrLevel,
       errorTypes: analysis.errors,
-      tips: analysis.tips
+      tips: analysis.tips,
+      contextualWordSuggestions: analysis.contextualWordSuggestions
     });
 
     const saved = await repo.save(created);
@@ -93,6 +97,10 @@ export const submissionRepository = {
       order: { createdAt: "DESC" },
       take: 12,
       select: {
+        questionText: true,
+        answerText: true,
+        correctedText: true,
+        cefrLevel: true,
         tips: true
       }
     });
@@ -108,7 +116,14 @@ export const submissionRepository = {
         frequency: item.frequency,
         severityScore: item.severityScore
       })),
-      recentTips
+      recentTips,
+      recentQAs: recentLogs.slice(0, 6).map((log) => ({
+        questionText: log.questionText,
+        answerText: log.answerText,
+        correctedText: log.correctedText,
+        cefrLevel: log.cefrLevel,
+        tips: log.tips
+      }))
     };
   }
 };

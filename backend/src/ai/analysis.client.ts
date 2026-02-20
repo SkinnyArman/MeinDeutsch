@@ -10,6 +10,8 @@ const openai = env.OPENAI_API_KEY ? new OpenAI({ apiKey: env.OPENAI_API_KEY }) :
 const SYSTEM_PROMPT = `You are a German language coach. Return strict JSON only with this shape:
 {
   "cefrLevel": "A1|A2|B1|B2|C1|C2",
+  "correctedText": "string",
+  "contextualWordSuggestions": ["string"],
   "tips": ["string"],
   "errors": [{ "type": "one of taxonomy", "message": "string", "severity": 0-1 }]
 }
@@ -25,6 +27,8 @@ Rules:
 const buildFallbackAnalysis = (reason: string): AnalysisResult => {
   return {
     cefrLevel: "A1",
+    correctedText: "",
+    contextualWordSuggestions: [],
     tips: [`AI fallback mode enabled: ${reason}`],
     errors: []
   };
@@ -106,7 +110,7 @@ export const analyzeSubmission = async (
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
       instructions: SYSTEM_PROMPT,
-      input: `Question: ${input.questionText}\n\nSubmission: ${input.answerText}\n\nLearner history context (mistakes + tips): ${contextBlock}`,
+      input: `Question: ${input.questionText}\n\nSubmission: ${input.answerText}\n\nLearner history context (mistakes + tips + past QAs): ${contextBlock}`,
       text: {
         format: {
           type: "json_schema",
@@ -115,9 +119,11 @@ export const analyzeSubmission = async (
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["cefrLevel", "tips", "errors"],
+            required: ["cefrLevel", "correctedText", "contextualWordSuggestions", "tips", "errors"],
             properties: {
               cefrLevel: { type: "string", enum: ["A1", "A2", "B1", "B2", "C1", "C2"] },
+              correctedText: { type: "string" },
+              contextualWordSuggestions: { type: "array", items: { type: "string" } },
               tips: { type: "array", items: { type: "string" } },
               errors: {
                 type: "array",
