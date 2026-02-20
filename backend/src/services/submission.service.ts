@@ -10,24 +10,13 @@ import { AppError } from "../utils/app-error.js";
 
 export const submissionService = {
   async processTextSubmission(input: SubmissionInput): Promise<AnswerLogRecord> {
-    let questionText = input.prompt?.trim();
-    const questionId = input.questionId;
-    let topicId: number | undefined;
-    let topicName: string | undefined;
-
-    if (questionId) {
-      const question = await questionRepository.findById(questionId);
-      if (!question) {
-        throw new AppError(404, "QUESTION_NOT_FOUND", API_MESSAGES.errors.questionNotFound);
-      }
-      questionText = question.questionText;
-      topicId = question.topicId;
-      topicName = question.topicName;
+    const question = await questionRepository.findById(input.questionId);
+    if (!question) {
+      throw new AppError(404, "QUESTION_NOT_FOUND", API_MESSAGES.errors.questionNotFound);
     }
-
-    if (!questionText) {
-      throw new AppError(400, "QUESTION_TEXT_REQUIRED", API_MESSAGES.errors.questionTextRequired);
-    }
+    const questionText = question.questionText;
+    const topicId = question.topicId;
+    const topicName = question.topicName;
 
     const context = await submissionRepository.getAssessmentContext();
     const analysis = await analyzeSubmission(
@@ -40,7 +29,7 @@ export const submissionService = {
 
     const answerLog = await submissionRepository.insertAnswerLog(
       {
-        questionId,
+        questionId: input.questionId,
         questionText,
         answerText: input.answerText
       },
@@ -50,7 +39,7 @@ export const submissionService = {
     await knowledgeRepository.createFromSubmission({
       topicId,
       topicName,
-      questionId,
+      questionId: input.questionId,
       questionText,
       answerLogId: answerLog.id,
       answerText: input.answerText,

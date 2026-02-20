@@ -109,21 +109,14 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     method: "POST",
     path: "/api/submissions/text",
     title: "Submit Text",
-    description: "Submits a Daily Talk response for analysis and persistence (frontend can keep it concise).",
+    description: "Submits a Daily Talk response for analysis and persistence using a generated question ID.",
     requestFields: [
       {
         name: "questionId",
-        label: "Question ID",
+        label: "Generated Question ID",
         type: "number",
-        required: false,
+        required: true,
         placeholder: "3"
-      },
-      {
-        name: "prompt",
-        label: "Question Text (Fallback)",
-        type: "text",
-        required: false,
-        placeholder: "Describe your weekend in German"
       },
       {
         name: "answerText",

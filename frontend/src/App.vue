@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import ApiTriggerView from "./components/ApiTriggerView.vue";
+import DailyTalkView from "./components/DailyTalkView.vue";
 import KnowledgeBaseView from "./components/KnowledgeBaseView.vue";
 import TopicsQuestionsView from "./components/TopicsQuestionsView.vue";
 import { THEME_MAP, THEMES, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
 
-type ViewKey = "api-trigger" | "topics-questions" | "knowledge-base";
+type ViewKey = "daily-talk" | "api-trigger" | "topics-questions" | "knowledge-base";
 
-const activeView = ref<ViewKey>("api-trigger");
+const activeView = ref<ViewKey>("daily-talk");
 const activeTheme = ref<ThemeKey>("default");
 const baseUrl = ref("http://localhost:4000");
 const nowMs = ref(Date.now());
@@ -21,19 +22,24 @@ let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 const navItems: Array<{ key: ViewKey; title: string; subtitle: string }> = [
   {
-    key: "api-trigger",
-    title: "API Trigger",
-    subtitle: "Current full endpoint playground"
+    key: "daily-talk",
+    title: "Daily Talk",
+    subtitle: "Generate, answer, and get corrections"
   },
   {
     key: "topics-questions",
-    title: "Topics & Questions",
-    subtitle: "Create/delete topics and manage list"
+    title: "Topics",
+    subtitle: "Add or delete question topics"
   },
   {
     key: "knowledge-base",
-    title: "Knowledge Base",
-    subtitle: "Browse stored learner memory entries"
+    title: "Knowledge",
+    subtitle: "Review stored learner memory"
+  },
+  {
+    key: "api-trigger",
+    title: "API Trigger",
+    subtitle: "Backend endpoint playground"
   }
 ];
 
@@ -201,25 +207,30 @@ onUnmounted(() => {
         <header class="mb-6">
           <h2 class="text-2xl font-semibold tracking-tight">
             {{
-              activeView === "api-trigger"
-                ? "API Trigger"
-                : activeView === "topics-questions"
-                  ? "Topics & Questions"
-                  : "Knowledge Base"
+              activeView === "daily-talk"
+                ? "Daily Talk"
+                : activeView === "api-trigger"
+                  ? "API Trigger"
+                  : activeView === "topics-questions"
+                    ? "Topics"
+                    : "Knowledge Base"
             }}
           </h2>
           <p class="mt-1 text-sm muted">
             {{
-              activeView === "api-trigger"
-                ? "Run any backend endpoint from one page."
-                : activeView === "topics-questions"
-                  ? "Use the focused flow: create and maintain topics."
-                  : "Inspect knowledge entries generated from Daily Talk submissions."
+              activeView === "daily-talk"
+                ? "Question generation + answer correction in one focused flow."
+                : activeView === "api-trigger"
+                  ? "Run any backend endpoint from one page."
+                  : activeView === "topics-questions"
+                    ? "Create and maintain the topic list used for question generation."
+                    : "Inspect knowledge entries generated from Daily Talk submissions."
             }}
           </p>
         </header>
 
-        <ApiTriggerView v-if="activeView === 'api-trigger'" />
+        <DailyTalkView v-if="activeView === 'daily-talk'" />
+        <ApiTriggerView v-else-if="activeView === 'api-trigger'" />
         <TopicsQuestionsView v-else-if="activeView === 'topics-questions'" />
         <KnowledgeBaseView v-else />
       </section>

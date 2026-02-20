@@ -17,8 +17,7 @@ export const MISTAKE_TYPES = [
 export type MistakeType = (typeof MISTAKE_TYPES)[number];
 
 export interface SubmissionInput {
-  questionId?: number;
-  prompt?: string;
+  questionId: number;
   answerText: string;
 }
 

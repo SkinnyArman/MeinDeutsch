@@ -16,6 +16,8 @@
   --bg-gradient-a: color-mix(in srgb, var(--accent) 22%, transparent);
   --bg-gradient-b: color-mix(in srgb, var(--accent) 12%, transparent);
   --bg-gradient-base: var(--bg);
+  --status-good: #10b981;
+  --status-bad: #ef4444;
 }
 
 body {
@@ -154,5 +156,50 @@ body {
 
   .streak-count {
     @apply text-[10px] leading-none;
+  }
+
+  .daily-layout {
+    @apply space-y-4;
+  }
+
+  .daily-badge {
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    background: color-mix(in srgb, var(--accent) 12%, var(--panel-soft));
+    @apply inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .daily-results-grid {
+    @apply grid gap-4 md:grid-cols-2;
+  }
+
+  .daily-result-title {
+    color: var(--muted);
+    @apply text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .daily-list-item {
+    border: 1px solid var(--line);
+    background: var(--panel-soft);
+    @apply rounded-lg px-3 py-2;
+  }
+
+  .daily-word-chip {
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    background: color-mix(in srgb, var(--accent) 10%, var(--panel-soft));
+    color: var(--text);
+    @apply rounded-full px-3 py-1 text-xs;
+  }
+
+  .notice-success {
+    border-color: color-mix(in srgb, var(--status-good) 50%, var(--line));
+    background: color-mix(in srgb, var(--status-good) 14%, var(--panel));
+    color: var(--text);
+  }
+
+  .notice-error {
+    border-color: color-mix(in srgb, var(--status-bad) 50%, var(--line));
+    background: color-mix(in srgb, var(--status-bad) 14%, var(--panel));
+    color: var(--text);
   }
 }

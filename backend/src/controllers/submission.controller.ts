@@ -5,8 +5,7 @@ import { submissionService } from "../services/submission.service.js";
 import { sendSuccess } from "../utils/http-response.js";
 
 const schema = z.object({
-  questionId: z.coerce.number().int().positive().optional(),
-  prompt: z.string().min(1).optional(),
+  questionId: z.coerce.number().int().positive(),
   answerText: z.string().min(1)
 });
 

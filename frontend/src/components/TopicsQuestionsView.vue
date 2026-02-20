@@ -152,7 +152,7 @@ onMounted(() => {
         <span class="method-badge">{{ topics.length }} total</span>
       </div>
 
-      <p v-if="notice" class="mb-3 text-sm" :class="notice.type === 'error' ? 'text-rose-400' : 'text-emerald-400'">
+      <p v-if="notice" class="mb-3 rounded-lg border px-3 py-2 text-sm" :class="notice.type === 'error' ? 'notice-error' : 'notice-success'">
         {{ notice.text }}
       </p>
 
