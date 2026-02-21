@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import DailyTalkView from "./components/DailyTalkView.vue";
+import DailyTalkNewView from "./components/DailyTalkNewView.vue";
 import DailyTalkDetailView from "./components/DailyTalkDetailView.vue";
 import SettingsHomeView from "./components/SettingsHomeView.vue";
 import SettingsThemeView from "./components/SettingsThemeView.vue";
@@ -12,6 +13,7 @@ export const router = createRouter({
   routes: [
     { path: "/", redirect: "/daily-talk" },
     { path: "/daily-talk", component: DailyTalkView },
+    { path: "/daily-talk/new", component: DailyTalkNewView },
     { path: "/daily-talk/:id", component: DailyTalkDetailView, props: true },
     { path: "/settings", component: SettingsHomeView },
     { path: "/settings/theme", component: SettingsThemeView },

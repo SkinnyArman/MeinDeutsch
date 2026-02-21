@@ -9,6 +9,7 @@ interface PersistedSubmission {
   questionId?: number;
   questionText: string;
   answerText: string;
+  modelUsed: string;
 }
 
 const toAnswerLogRecord = (entity: AnswerLog): AnswerLogRecord => ({
@@ -21,6 +22,7 @@ const toAnswerLogRecord = (entity: AnswerLog): AnswerLogRecord => ({
   errorTypes: entity.errorTypes,
   tips: entity.tips,
   contextualWordSuggestions: entity.contextualWordSuggestions,
+  modelUsed: entity.modelUsed,
   createdAt: entity.createdAt.toISOString()
 });
 
@@ -40,6 +42,7 @@ const toAnswerLogRecordWithTopic = (row: {
   errorTypes: row.answerLog.errorTypes,
   tips: row.answerLog.tips,
   contextualWordSuggestions: row.answerLog.contextualWordSuggestions,
+  modelUsed: row.answerLog.modelUsed,
   createdAt: row.answerLog.createdAt.toISOString()
 });
 
@@ -55,7 +58,8 @@ export const submissionRepository = {
       cefrLevel: analysis.cefrLevel,
       errorTypes: analysis.errors,
       tips: analysis.tips,
-      contextualWordSuggestions: analysis.contextualWordSuggestions
+      contextualWordSuggestions: analysis.contextualWordSuggestions,
+      modelUsed: input.modelUsed
     });
 
     const saved = await repo.save(created);

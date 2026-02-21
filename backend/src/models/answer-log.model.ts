@@ -35,6 +35,9 @@ export class AnswerLog {
   @Column({ name: "contextual_word_suggestions", type: "jsonb", default: [] })
   contextualWordSuggestions!: ContextualWordSuggestion[];
 
+  @Column({ name: "model_used", type: "text", default: "unknown" })
+  modelUsed!: string;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }
@@ -51,5 +54,6 @@ export interface AnswerLogRecord {
   errorTypes: AnalysisError[];
   tips: string[];
   contextualWordSuggestions: ContextualWordSuggestion[];
+  modelUsed: string;
   createdAt: string;
 }

@@ -43,6 +43,7 @@ interface AnswerLogRecord {
   errorTypes: AnalysisError[];
   tips: string[];
   contextualWordSuggestions: ContextualWordSuggestion[];
+  modelUsed: string;
   createdAt: string;
 }
 
@@ -129,6 +130,22 @@ const buildDiffRanges = (answerText: string, correctedText: string): Array<{ sta
     .map((token) => ({ start: token.start, end: token.end }));
 };
 
+const mergeRanges = (
+  baseRanges: Array<{ start: number; end: number }>,
+  extraRanges: Array<{ start: number; end: number }>
+): Array<{ start: number; end: number }> => {
+  const merged = [...baseRanges];
+  for (const extra of extraRanges) {
+    const overlaps = merged.some(
+      (range) => !(extra.end <= range.start || extra.start >= range.end)
+    );
+    if (!overlaps) {
+      merged.push(extra);
+    }
+  }
+  return merged.sort((a, b) => a.start - b.start);
+};
+
 const buildHighlightedSegments = (text: string, errors: AnalysisError[]): HighlightSegment[] => {
   if (!text) {
     return [];
@@ -168,20 +185,17 @@ const buildHighlightedSegments = (text: string, errors: AnalysisError[]): Highli
 };
 
 const buildBestSegments = (answerText: string, correctedText: string, errors: AnalysisError[]): HighlightSegment[] => {
-  const errorSegments = buildHighlightedSegments(answerText, errors);
-  const hasHighlights = errorSegments.some((segment) => segment.highlight);
-  if (hasHighlights) {
-    return errorSegments;
-  }
+  const errorRanges = errors
+    .filter((error) => typeof error.start === "number" && typeof error.end === "number")
+    .map((error) => ({ start: error.start as number, end: error.end as number }))
+    .filter((range) => range.start >= 0 && range.end > range.start && range.end <= answerText.length);
 
   const diffRanges = buildDiffRanges(answerText, correctedText);
-  if (!diffRanges.length) {
-    return errorSegments;
-  }
+  const mergedRanges = mergeRanges(errorRanges, diffRanges);
 
   const segments: HighlightSegment[] = [];
   let cursor = 0;
-  for (const range of diffRanges) {
+  for (const range of mergedRanges) {
     if (range.start < cursor) {
       continue;
     }
@@ -300,16 +314,10 @@ watch(
       </article>
 
       <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">CEFR</p>
-        <p class="mt-2 text-2xl font-semibold">{{ log.cefrLevel }}</p>
-      </article>
-
-      <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
         <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Mistakes</p>
         <ul v-if="log.errorTypes.length" class="mt-3 space-y-2">
           <li v-for="(error, idx) in log.errorTypes" :key="`detail-error-${idx}`" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2">
-            <p class="text-sm font-medium">{{ error.type }}</p>
-            <p class="text-sm text-[var(--muted)]">{{ error.message }}</p>
+            <p class="text-sm font-medium">{{ error.message }}</p>
             <p v-if="error.description" class="text-xs text-[var(--muted)]">Explanation: {{ error.description }}</p>
             <p v-if="error.evidence" class="mt-1 text-xs">From your text: "{{ error.evidence }}"</p>
           </li>
@@ -340,6 +348,17 @@ watch(
         </div>
         <p v-else class="mt-2 text-sm text-[var(--muted)]">No extra suggestions returned.</p>
       </article>
+
+      <div class="grid gap-3 md:grid-cols-2">
+        <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+          <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">CEFR</p>
+          <p class="mt-2 text-2xl font-semibold">{{ log.cefrLevel }}</p>
+        </article>
+        <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+          <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Model Used</p>
+          <p class="mt-2 text-lg font-semibold">{{ log.modelUsed }}</p>
+        </article>
+      </div>
     </div>
   </section>
 </template>

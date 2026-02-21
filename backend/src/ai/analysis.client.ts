@@ -24,6 +24,13 @@ const SYSTEM_PROMPT = `You are a German language coach. Return strict JSON only 
   ${ANALYSIS_FIELD_ERRORS}
 }
 Rules:
+- CEFR rubric (summarized):
+  - A2: very simple SVO clauses, basic connectors (und/aber/weil), mostly present, limited everyday vocab, repetitive short sentences (~5-8 words), many basic errors.
+  - B1: some subordinate clauses (dass/weil/wenn), modal verbs, some past (Perfekt or Präteritum haben/sein), broader everyday vocab (work/travel/opinions), errors remain but meaning clear, ~8-12 words.
+  - B2: varied structures, subordinate/relative clauses, occasional passive, Konjunktiv II (würde/hätte/wäre), abstract vocab, fewer basic errors, discuss pros/cons, ~12-18 words.
+  - B2+: confident complex structures, nominalizations, differentiated vocab, idioms, minimal errors, nuanced opinions, varied connectors.
+  - C1: highly complex structures, stylistic variety, sophisticated vocab, implied meaning, almost error-free, long sentences (18-25+).
+  - Error guide: A2=many basic errors, B1=some errors in complex parts, B2=few subtle errors, C1=virtually error-free.
 - correctedText must be the user's answer fully corrected.
 - correctedText must be complete (no truncation) and must not include stray tokens; keep sentence boundaries.
 - Do not add new content (no abbreviations, explanations, or parentheticals). Only correct what's already there.
@@ -43,12 +50,13 @@ Rules:
 - For each error, provide character indices (start/end) into the original user answerText for highlighting. start/end must match the evidence substring. If not applicable, return null for start/end.
  - Only include an error if correctedText changes that evidence.
 - Every change made in correctedText must have a corresponding error entry with evidence/correction.
+- If the answer does not address the question directly, include at least one error with type "relevance" explaining which part of the question was not answered and cite the missing aspect in the message/description.
 Allowed error types: ${MISTAKE_TYPES.join(", ")}.`;
 
 const QUESTION_GENERATION_SYSTEM_PROMPT = `You generate exactly one German practice question.
 Rules:
 - Output strict JSON only.
-- Question must be answerable in 4-8 sentences.
+- Question must be answerable in 3-7 sentences.
 - Keep it tied only to the provided topic.
 - Respect custom prompt constraints exactly.`;
 

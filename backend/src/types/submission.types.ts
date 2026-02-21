@@ -11,7 +11,15 @@ export const MISTAKE_TYPES = [
   "limited_vocabulary_range",
   "tense_shift_error",
   "filler_word",
-  "overuse_simple_sentence"
+  "overuse_simple_sentence",
+  "verb_conjugation_error",
+  "separable_verb_error",
+  "reflexive_verb_error",
+  "two_way_preposition_case_error",
+  "collocation_error",
+  "false_friend",
+  "idiomatic_usage_error",
+  "register_mismatch",
 ] as const;
 
 export type MistakeType = (typeof MISTAKE_TYPES)[number];

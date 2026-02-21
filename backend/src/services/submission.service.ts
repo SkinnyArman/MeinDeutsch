@@ -2,6 +2,7 @@ import { API_MESSAGES } from "../constants/api-messages.js";
 import type { AnswerLogRecord } from "../models/answer-log.model.js";
 import type { AnalysisError, SubmissionInput } from "../types/submission.types.js";
 import { analyzeSubmission } from "../ai/analysis.client.js";
+import { env } from "../config/env.js";
 import { knowledgeRepository } from "../repositories/knowledge.repository.js";
 import { questionRepository } from "../repositories/question.repository.js";
 import { submissionRepository } from "../repositories/submission.repository.js";
@@ -26,6 +27,7 @@ export const submissionService = {
       },
       context
     );
+    const modelUsed = detectModelUsed(analysis.tips);
     analysis.correctedText = sanitizeCorrectedText(input.answerText, analysis.correctedText);
     analysis.errors = alignErrorRanges(input.answerText, analysis.correctedText, analysis.errors);
     analysis.errors = filterInvalidErrors(input.answerText, analysis.correctedText, analysis.errors);
@@ -34,7 +36,8 @@ export const submissionService = {
       {
         questionId: input.questionId,
         questionText,
-        answerText: input.answerText
+        answerText: input.answerText,
+        modelUsed
       },
       analysis
     );
@@ -53,6 +56,13 @@ export const submissionService = {
     await streakService.recordDailyTalkCompletion();
     return answerLog;
   }
+};
+
+const detectModelUsed = (tips: string[]): string => {
+  if (tips.some((tip) => tip.toLowerCase().includes("fallback mode"))) {
+    return "fallback";
+  }
+  return env.OPENAI_MODEL;
 };
 
 const sanitizeCorrectedText = (original: string, corrected: string): string => {
