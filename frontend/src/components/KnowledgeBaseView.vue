@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { inject, onMounted, reactive, ref } from "vue";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -32,8 +32,11 @@ type FilterState = {
 };
 
 const props = defineProps<{
-  baseUrl: string;
+  baseUrl?: string;
 }>();
+
+const injectedBaseUrl = inject<import("vue").Ref<string>>("baseUrl");
+const resolvedBaseUrl = props.baseUrl ?? injectedBaseUrl?.value ?? "http://localhost:4000";
 
 const loading = ref(false);
 const loadingTopics = ref(false);
@@ -70,7 +73,7 @@ const buildQuery = (): string => {
 const loadKnowledge = async (): Promise<void> => {
   loading.value = true;
   try {
-    const res = await fetch(`${props.baseUrl}/api/knowledge${buildQuery()}`);
+    const res = await fetch(`${resolvedBaseUrl}/api/knowledge${buildQuery()}`);
     const payload = (await res.json()) as ApiResponse<KnowledgeItemRecord[]>;
 
     if (!res.ok || !payload.success) {
@@ -89,7 +92,7 @@ const loadKnowledge = async (): Promise<void> => {
 const loadTopics = async (): Promise<void> => {
   loadingTopics.value = true;
   try {
-    const res = await fetch(`${props.baseUrl}/api/topics`);
+    const res = await fetch(`${resolvedBaseUrl}/api/topics`);
     const payload = (await res.json()) as ApiResponse<TopicRecord[]>;
 
     if (!res.ok || !payload.success) {

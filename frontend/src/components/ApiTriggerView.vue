@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { inject, reactive, ref } from "vue";
 import { API_ENDPOINTS, type ApiEndpointDefinition } from "@backend/contracts/api-manifest";
 
 type FormState = Record<string, string>;
 
 const props = defineProps<{
-  baseUrl: string;
+  baseUrl?: string;
 }>();
+
+const injectedBaseUrl = inject<import("vue").Ref<string>>("baseUrl");
+const resolvedBaseUrl = props.baseUrl ?? injectedBaseUrl?.value ?? "http://localhost:4000";
 
 const loadingId = ref<string | null>(null);
 const responseText = ref("No request yet.");
@@ -26,7 +29,7 @@ const runEndpoint = async (endpoint: ApiEndpointDefinition): Promise<void> => {
   loadingId.value = endpoint.id;
 
   try {
-    const url = `${props.baseUrl}${endpoint.path}`;
+    const url = `${resolvedBaseUrl}${endpoint.path}`;
     const init: RequestInit = { method: endpoint.method };
 
     if (endpoint.method === "POST") {

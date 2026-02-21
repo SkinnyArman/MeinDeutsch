@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import { inject, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
 interface ApiErrorBody {
   code: string;
@@ -43,13 +44,12 @@ interface AnswerLogRecord {
 }
 
 const props = defineProps<{
-  baseUrl: string;
-  submissionId: number | null;
+  id?: string;
 }>();
 
-const emit = defineEmits<{
-  (e: "back"): void;
-}>();
+const baseUrl = inject<import("vue").Ref<string>>("baseUrl")?.value ?? "http://localhost:4000";
+const route = useRoute();
+const router = useRouter();
 
 const loading = ref(false);
 const log = ref<AnswerLogRecord | null>(null);
@@ -59,15 +59,24 @@ const notifyError = (text: string): void => {
   notice.value = { type: "error", text };
 };
 
+const getSubmissionId = (): string | null => {
+  if (props.id) {
+    return props.id;
+  }
+  const param = route.params.id;
+  return typeof param === "string" ? param : null;
+};
+
 const loadDetail = async (): Promise<void> => {
-  if (!props.submissionId) {
+  const submissionId = getSubmissionId();
+  if (!submissionId) {
     notifyError("No submission selected.");
     return;
   }
 
   loading.value = true;
   try {
-    const res = await fetch(`${props.baseUrl}/api/submissions/${props.submissionId}`);
+    const res = await fetch(`${baseUrl}/api/submissions/${submissionId}`);
     const payload = (await res.json()) as ApiResponse<AnswerLogRecord>;
     if (!res.ok || !payload.success || !payload.data) {
       throw new Error(payload.message || "Failed to load submission");
@@ -87,7 +96,7 @@ onMounted(() => {
 });
 
 watch(
-  () => props.submissionId,
+  () => route.params.id,
   () => {
     void loadDetail();
   }
@@ -99,7 +108,7 @@ watch(
     <div class="flex flex-wrap items-center justify-between gap-3">
       <button
         class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
-        @click="emit('back')"
+        @click="router.push('/daily-talk')"
       >
         Back to Daily Talk
       </button>
@@ -112,7 +121,12 @@ watch(
       </button>
     </div>
 
-    <p v-if="notice" class="rounded-lg border px-3 py-2 text-sm" :class="notice.type === 'error' ? 'border-[color-mix(in srgb, var(--status-bad) 50%, var(--line))] bg-[color-mix(in srgb, var(--status-bad) 14%, var(--panel))]' : 'border-[color-mix(in srgb, var(--status-good) 50%, var(--line))] bg-[color-mix(in srgb, var(--status-good) 14%, var(--panel))]'">
+    <p v-if="notice" class="rounded-lg border px-3 py-2 text-sm"
+      :class="notice.type === 'error'
+        ? 'border-[color-mix(in srgb, var(--status-bad) 50%, var(--line))] bg-[color-mix(in srgb, var(--status-bad) 14%, var(--panel))]'
+        : 'border-[color-mix(in srgb, var(--status-good) 50%, var(--line))] bg-[color-mix(in srgb, var(--status-good) 14%, var(--panel))]'
+      "
+    >
       {{ notice.text }}
     </p>
 

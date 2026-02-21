@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, inject, onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 
 interface ApiErrorBody {
   code: string;
@@ -60,13 +61,8 @@ type Notice = {
   text: string;
 };
 
-const props = defineProps<{
-  baseUrl: string;
-}>();
-
-const emit = defineEmits<{
-  (e: "select-submission", id: number): void;
-}>();
+const baseUrl = inject<import("vue").Ref<string>>("baseUrl")?.value ?? "http://localhost:4000";
+const router = useRouter();
 
 const topics = ref<TopicRecord[]>([]);
 const selectedTopicId = ref<string>("");
@@ -120,7 +116,7 @@ const parseApiResponse = async <T>(res: Response): Promise<ApiResponse<T>> => {
 const loadTopics = async (): Promise<void> => {
   loadingTopics.value = true;
   try {
-    const res = await fetch(`${props.baseUrl}/api/topics`);
+    const res = await fetch(`${baseUrl}/api/topics`);
     const payload = await parseApiResponse<TopicRecord[]>(res);
     topics.value = payload.data;
 
@@ -137,7 +133,7 @@ const loadTopics = async (): Promise<void> => {
 const loadHistory = async (): Promise<void> => {
   loadingHistory.value = true;
   try {
-    const res = await fetch(`${props.baseUrl}/api/submissions?limit=50`);
+    const res = await fetch(`${baseUrl}/api/submissions?limit=50`);
     const payload = await parseApiResponse<AnswerLogRecord[]>(res);
     history.value = payload.data;
     setHistoryNotice("success", `Loaded ${payload.data.length} submissions.`);
@@ -169,7 +165,7 @@ const generateQuestion = async (): Promise<void> => {
       return;
     }
 
-    const res = await fetch(`${props.baseUrl}/api/questions/generate`, {
+    const res = await fetch(`${baseUrl}/api/questions/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -205,7 +201,7 @@ const submitAnswer = async (): Promise<void> => {
   notice.value = null;
 
   try {
-    const res = await fetch(`${props.baseUrl}/api/submissions/text`, {
+    const res = await fetch(`${baseUrl}/api/submissions/text`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -235,6 +231,11 @@ onMounted(() => {
 
 <template>
   <section class="space-y-4">
+    <header class="mb-2">
+      <h2 class="text-2xl font-semibold tracking-tight">Daily Talk</h2>
+      <p class="mt-1 text-sm text-[var(--muted)]">Generate a question, answer it, and review your progress.</p>
+    </header>
+
     <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h3 class="text-lg font-semibold">Daily Talk Setup</h3>
@@ -409,7 +410,7 @@ onMounted(() => {
           v-for="item in history"
           :key="item.id"
           class="cursor-pointer rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-3 transition hover:border-[var(--accent)]"
-          @click="emit('select-submission', item.id)"
+          @click="router.push(`/daily-talk/${item.id}`)"
         >
           <div class="flex items-start justify-between gap-3">
             <div>

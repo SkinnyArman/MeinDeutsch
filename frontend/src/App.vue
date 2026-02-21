@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import DailyTalkView from "./components/DailyTalkView.vue";
-import DailyTalkDetailView from "./components/DailyTalkDetailView.vue";
-import SettingsView from "./components/SettingsView.vue";
-import { THEME_MAP, THEMES, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
+import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+import { THEME_MAP, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
 
-type ViewKey = "daily-talk" | "daily-detail" | "settings";
+type ViewKey = "daily-talk" | "settings";
 
-const activeView = ref<ViewKey>("daily-talk");
+const route = useRoute();
 const activeTheme = ref<ThemeKey>("default");
 const baseUrl = ref("http://localhost:4000");
 const nowMs = ref(Date.now());
@@ -15,21 +13,22 @@ const streakLoading = ref(false);
 const streakValue = ref(0);
 const streakWindowStartAt = ref<string | null>(null);
 const streakWindowEndAt = ref<string | null>(null);
-const selectedSubmissionId = ref<number | null>(null);
 
 let tickTimer: ReturnType<typeof setInterval> | undefined;
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 
-const navItems: Array<{ key: ViewKey; title: string; subtitle: string }> = [
+const navItems: Array<{ key: ViewKey; title: string; subtitle: string; path: string }> = [
   {
     key: "daily-talk",
     title: "Daily Talk",
-    subtitle: "Generate, answer, and review"
+    subtitle: "Generate, answer, and review",
+    path: "/daily-talk"
   },
   {
     key: "settings",
     title: "Settings",
-    subtitle: "Topics, API tools, configuration"
+    subtitle: "Themes, topics, tools",
+    path: "/settings"
   }
 ];
 
@@ -58,6 +57,12 @@ const getInitialBaseUrl = (): string => {
 };
 
 baseUrl.value = getInitialBaseUrl();
+
+provide("baseUrl", baseUrl);
+provide("activeTheme", activeTheme);
+provide("setActiveTheme", (value: ThemeKey) => {
+  activeTheme.value = value;
+});
 
 const formatRemaining = (ms: number): string => {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -149,14 +154,12 @@ onUnmounted(() => {
   }
 });
 
-const openDetail = (id: number): void => {
-  selectedSubmissionId.value = id;
-  activeView.value = "daily-detail";
-};
-
-const goBackToDaily = (): void => {
-  activeView.value = "daily-talk";
-};
+const activeNavKey = computed(() => {
+  if (route.path.startsWith("/settings")) {
+    return "settings";
+  }
+  return "daily-talk";
+});
 </script>
 
 <template>
@@ -192,45 +195,21 @@ const goBackToDaily = (): void => {
         </div>
 
         <nav class="space-y-2">
-          <button
+          <RouterLink
             v-for="item in navItems"
             :key="item.key"
-            class="w-full rounded-lg border border-transparent bg-[var(--panel-soft)] px-3 py-2 text-left text-[var(--muted)] transition"
-            :class="activeView === item.key ? 'border-[var(--accent)] bg-[color-mix(in srgb, var(--accent) 14%, var(--panel-soft))] text-[var(--text)]' : ''"
-            @click="activeView = item.key"
+            :to="item.path"
+            class="block w-full rounded-lg border border-transparent bg-[var(--panel-soft)] px-3 py-2 text-left text-[var(--muted)] transition"
+            :class="activeNavKey === item.key ? 'border-[var(--accent)] bg-[color-mix(in srgb, var(--accent) 14%, var(--panel-soft))] text-[var(--text)]' : ''"
           >
             <p class="text-sm font-medium">{{ item.title }}</p>
             <p class="text-xs opacity-80">{{ item.subtitle }}</p>
-          </button>
+          </RouterLink>
         </nav>
       </aside>
 
       <section class="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-[color-mix(in srgb, var(--panel-soft) 82%, transparent)] p-4 shadow-[var(--surface-shadow)] md:p-6">
-        <header class="mb-6">
-          <h2 class="text-2xl font-semibold tracking-tight">
-            {{ activeView === "daily-talk" ? "Daily Talk" : activeView === "daily-detail" ? "Daily Talk Detail" : "Settings" }}
-          </h2>
-          <p class="mt-1 text-sm text-[var(--muted)]">
-            {{
-              activeView === "daily-talk"
-                ? "Question generation + answer correction and your history in one place."
-                : activeView === "daily-detail"
-                  ? "Full breakdown of a previous Daily Talk submission."
-                  : "Configure settings, topics, and tools."
-            }}
-          </p>
-        </header>
-
-        <DailyTalkView v-if="activeView === 'daily-talk'" :base-url="baseUrl" @select-submission="openDetail" />
-        <DailyTalkDetailView v-else-if="activeView === 'daily-detail'" :base-url="baseUrl" :submission-id="selectedSubmissionId" @back="goBackToDaily" />
-        <SettingsView
-          v-else
-          :base-url="baseUrl"
-          :themes="THEMES"
-          :active-theme="activeTheme"
-          @update:base-url="baseUrl = $event"
-          @update:active-theme="activeTheme = $event"
-        />
+        <RouterView />
       </section>
     </div>
   </main>

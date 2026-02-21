@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { inject, onMounted, reactive, ref } from "vue";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -20,8 +20,11 @@ type FormState = {
 };
 
 const props = defineProps<{
-  baseUrl: string;
+  baseUrl?: string;
 }>();
+
+const injectedBaseUrl = inject<import("vue").Ref<string>>("baseUrl");
+const resolvedBaseUrl = props.baseUrl ?? injectedBaseUrl?.value ?? "http://localhost:4000";
 
 const isLoading = ref(false);
 const creating = ref(false);
@@ -45,7 +48,7 @@ const showError = (text: string): void => {
 const loadTopics = async (): Promise<void> => {
   isLoading.value = true;
   try {
-    const res = await fetch(`${props.baseUrl}/api/topics`);
+    const res = await fetch(`${resolvedBaseUrl}/api/topics`);
     const payload = (await res.json()) as ApiResponse<TopicRecord[]>;
 
     if (!res.ok || !payload.success) {
@@ -68,7 +71,7 @@ const createTopic = async (): Promise<void> => {
 
   creating.value = true;
   try {
-    const res = await fetch(`${props.baseUrl}/api/topics`, {
+    const res = await fetch(`${resolvedBaseUrl}/api/topics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -96,7 +99,7 @@ const createTopic = async (): Promise<void> => {
 const deleteTopic = async (topicId: number): Promise<void> => {
   deletingTopicId.value = topicId;
   try {
-    const res = await fetch(`${props.baseUrl}/api/topics/${topicId}`, {
+    const res = await fetch(`${resolvedBaseUrl}/api/topics/${topicId}`, {
       method: "DELETE"
     });
 
