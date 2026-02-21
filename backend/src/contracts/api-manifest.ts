@@ -97,6 +97,59 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     requestFields: []
   },
   {
+    id: "save-vocabulary",
+    method: "POST",
+    path: "/api/vocabulary",
+    title: "Save Vocabulary",
+    description: "Stores a suggested vocabulary word with description, examples, and category.",
+    requestFields: [
+      {
+        name: "word",
+        label: "Word",
+        type: "text",
+        required: true,
+        placeholder: "die Veränderung"
+      },
+      {
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        required: true,
+        placeholder: "A change or transformation."
+      },
+      {
+        name: "examples",
+        label: "Examples (JSON array)",
+        type: "textarea",
+        required: true,
+        placeholder: "[\"Diese Veränderung ist wichtig.\"]"
+      },
+      {
+        name: "category",
+        label: "Category",
+        type: "text",
+        required: false,
+        placeholder: "Umwelt"
+      }
+    ]
+  },
+  {
+    id: "list-vocabulary-categories",
+    method: "GET",
+    path: "/api/vocabulary/categories",
+    title: "List Vocabulary Categories",
+    description: "Lists vocabulary categories.",
+    requestFields: []
+  },
+  {
+    id: "list-vocabulary",
+    method: "GET",
+    path: "/api/vocabulary?category=...",
+    title: "List Vocabulary",
+    description: "Lists vocabulary items, optionally filtered by category.",
+    requestFields: []
+  },
+  {
     id: "daily-talk-streak",
     method: "GET",
     path: "/api/streaks/daily-talk",

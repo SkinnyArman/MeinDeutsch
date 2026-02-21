@@ -22,6 +22,11 @@ export const API_MESSAGES = {
   streak: {
     fetched: "Streak fetched successfully"
   },
+  vocabulary: {
+    saved: "Vocabulary item saved successfully",
+    listed: "Vocabulary items fetched successfully",
+    categoriesListed: "Vocabulary categories fetched successfully"
+  },
   errors: {
     validationFailed: "Validation failed",
     invalidJson: "Invalid JSON payload",

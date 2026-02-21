@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { THEME_MAP, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
 
-type ViewKey = "daily-talk" | "settings";
+type ViewKey = "daily-talk" | "vocabulary" | "settings";
 
 const route = useRoute();
 const activeTheme = ref<ThemeKey>("default");
@@ -23,6 +23,12 @@ const navItems: Array<{ key: ViewKey; title: string; subtitle: string; path: str
     title: "Daily Talk",
     subtitle: "Generate, answer, and review",
     path: "/daily-talk"
+  },
+  {
+    key: "vocabulary",
+    title: "Vocabulary",
+    subtitle: "Saved words by category",
+    path: "/vocabulary"
   },
   {
     key: "settings",
@@ -157,6 +163,9 @@ onUnmounted(() => {
 const activeNavKey = computed(() => {
   if (route.path.startsWith("/settings")) {
     return "settings";
+  }
+  if (route.path.startsWith("/vocabulary")) {
+    return "vocabulary";
   }
   return "daily-talk";
 });

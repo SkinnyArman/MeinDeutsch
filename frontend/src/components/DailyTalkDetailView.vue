@@ -47,6 +47,14 @@ interface AnswerLogRecord {
   createdAt: string;
 }
 
+interface SavedVocabularyPayload {
+  entry: {
+    id: number;
+    category: string;
+  };
+  created: boolean;
+}
+
 const props = defineProps<{
   id?: string;
 }>();
@@ -58,9 +66,15 @@ const router = useRouter();
 const loading = ref(false);
 const log = ref<AnswerLogRecord | null>(null);
 const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
+const savingWordKey = ref<string | null>(null);
+const savedWordKeys = ref<Set<string>>(new Set());
 
 const notifyError = (text: string): void => {
   notice.value = { type: "error", text };
+};
+
+const notifySuccess = (text: string): void => {
+  notice.value = { type: "success", text };
 };
 
 type HighlightSegment = {
@@ -233,10 +247,62 @@ const loadDetail = async (): Promise<void> => {
       throw new Error(payload.message || "Failed to load submission");
     }
     log.value = payload.data;
+    savedWordKeys.value = new Set();
   } catch (error) {
     notifyError(error instanceof Error ? error.message : "Could not load submission");
   } finally {
     loading.value = false;
+  }
+};
+
+const buildWordKey = (item: ContextualWordSuggestion): string => `${item.word}|${item.description}`;
+
+const inferVocabularyCategory = (word: string, topicName?: string): string => {
+  if (/\(perfekt:/i.test(word)) {
+    return "General";
+  }
+  return topicName?.trim() || "General";
+};
+
+const saveWordToVocabulary = async (item: ContextualWordSuggestion): Promise<void> => {
+  if (!log.value) {
+    return;
+  }
+
+  const key = buildWordKey(item);
+  if (savedWordKeys.value.has(key)) {
+    return;
+  }
+
+  savingWordKey.value = key;
+  try {
+    const res = await fetch(`${baseUrl}/api/vocabulary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        word: item.word,
+        description: item.description,
+        examples: item.examples,
+        category: inferVocabularyCategory(item.word, log.value.topicName),
+        sourceAnswerLogId: log.value.id,
+        sourceQuestionId: log.value.questionId ?? undefined
+      })
+    });
+    const payload = (await res.json()) as ApiResponse<SavedVocabularyPayload>;
+    if (!res.ok || !payload.success || !payload.data) {
+      throw new Error(payload.message || "Could not save vocabulary");
+    }
+
+    savedWordKeys.value = new Set([...savedWordKeys.value, key]);
+    notifySuccess(
+      payload.data.created
+        ? `Saved "${item.word}" to ${payload.data.entry.category}.`
+        : `"${item.word}" already exists in ${payload.data.entry.category}.`
+    );
+  } catch (error) {
+    notifyError(error instanceof Error ? error.message : "Could not save word");
+  } finally {
+    savingWordKey.value = null;
   }
 };
 
@@ -339,7 +405,22 @@ watch(
         <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Contextual Word Suggestions</p>
         <div v-if="log.contextualWordSuggestions.length" class="mt-3 grid gap-3 md:grid-cols-2">
           <div v-for="(item, idx) in log.contextualWordSuggestions" :key="`detail-word-${idx}`" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2">
-            <p class="text-sm font-semibold">{{ item.word }}</p>
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-sm font-semibold">{{ item.word }}</p>
+              <button
+                class="rounded-md border border-[color-mix(in_srgb,var(--accent)_48%,var(--line))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent)_34%,var(--panel-soft))_0%,color-mix(in_srgb,var(--accent-strong)_30%,var(--panel-soft))_100%)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] shadow-[0_4px_18px_color-mix(in_srgb,var(--accent)_20%,transparent)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_color-mix(in_srgb,var(--accent)_30%,transparent)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="savingWordKey === buildWordKey(item) || savedWordKeys.has(buildWordKey(item))"
+                @click="saveWordToVocabulary(item)"
+              >
+                {{
+                  savedWordKeys.has(buildWordKey(item))
+                    ? "Saved"
+                    : savingWordKey === buildWordKey(item)
+                      ? "Saving..."
+                      : "New?"
+                }}
+              </button>
+            </div>
             <p class="text-sm text-[var(--muted)]">{{ item.description }}</p>
             <div class="text-xs text-[var(--muted)]" v-if="item.examples.length">
               <p v-for="(example, exIdx) in item.examples" :key="`detail-example-${idx}-${exIdx}`">Example: {{ example }}</p>

@@ -35,6 +35,10 @@ Build a personal German learning MVP where:
   - Contextual word suggestions
   - Tips
 - Basic knowledge base storage built from those records.
+- Vocabulary capture from AI suggestions:
+  - One-click save from contextual suggestions.
+  - Store word, description, examples, and category/context.
+  - Vocabulary page with category-based browsing.
 
 ### Out of scope (post-MVP)
 - Any feature not required for this loop:
@@ -84,6 +88,17 @@ Build a personal German learning MVP where:
 - metadata (JSON)
 - created_at
 
+### vocabulary_items
+- id
+- word
+- normalized_word
+- description
+- examples (JSON)
+- category (e.g. `Umwelt`, `General`)
+- source_answer_log_id (optional)
+- source_question_id (optional)
+- created_at
+
 ---
 
 ## 4. API Goals (MVP)
@@ -93,6 +108,9 @@ Build a personal German learning MVP where:
 - `POST /api/questions/generate`
 - `GET /api/questions?topicId=...`
 - `POST /api/submissions/text`
+- `POST /api/vocabulary`
+- `GET /api/vocabulary/categories`
+- `GET /api/vocabulary?category=...`
 
 All responses use the unified API envelope.
 

@@ -7,11 +7,12 @@ import { MistakeStat } from "../models/mistake-stat.model.js";
 import { Question } from "../models/question.model.js";
 import { StreakStatus } from "../models/streak-status.model.js";
 import { Topic } from "../models/topic.model.js";
+import { VocabularyItem } from "../models/vocabulary-item.model.js";
 
 export const appDataSource = new DataSource({
   type: "postgres",
   url: env.DATABASE_URL,
-  entities: [AnswerLog, MistakeStat, Topic, Question, KnowledgeItem, StreakStatus],
+  entities: [AnswerLog, MistakeStat, Topic, Question, KnowledgeItem, StreakStatus, VocabularyItem],
   synchronize: env.NODE_ENV !== "production",
   logging: false
 });
