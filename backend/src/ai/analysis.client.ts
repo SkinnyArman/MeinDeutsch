@@ -141,12 +141,10 @@ export const analyzeSubmission = async (
   }
 
   try {
-    const contextBlock = JSON.stringify(context);
-
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
       instructions: SYSTEM_PROMPT,
-      input: `Question: ${input.questionText}\n\nSubmission: ${input.answerText}\n\nLearner history context (mistakes + tips + past QAs): ${contextBlock}`,
+      input: `Question: ${input.questionText}\n\nSubmission: ${input.answerText}`,
       text: {
         format: {
           type: "json_schema",
