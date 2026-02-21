@@ -31,7 +31,10 @@ type FilterState = {
   limit: string;
 };
 
-const baseUrl = ref("http://localhost:4000");
+const props = defineProps<{
+  baseUrl: string;
+}>();
+
 const loading = ref(false);
 const loadingTopics = ref(false);
 const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
@@ -67,7 +70,7 @@ const buildQuery = (): string => {
 const loadKnowledge = async (): Promise<void> => {
   loading.value = true;
   try {
-    const res = await fetch(`${baseUrl.value}/api/knowledge${buildQuery()}`);
+    const res = await fetch(`${props.baseUrl}/api/knowledge${buildQuery()}`);
     const payload = (await res.json()) as ApiResponse<KnowledgeItemRecord[]>;
 
     if (!res.ok || !payload.success) {
@@ -86,7 +89,7 @@ const loadKnowledge = async (): Promise<void> => {
 const loadTopics = async (): Promise<void> => {
   loadingTopics.value = true;
   try {
-    const res = await fetch(`${baseUrl.value}/api/topics`);
+    const res = await fetch(`${props.baseUrl}/api/topics`);
     const payload = (await res.json()) as ApiResponse<TopicRecord[]>;
 
     if (!res.ok || !payload.success) {
@@ -108,48 +111,72 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="surface mb-6 p-4">
-    <div class="mb-2 flex items-center justify-between gap-3">
-      <label class="block text-sm muted">API Base URL</label>
+  <section class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <h2 class="text-lg font-medium">Filters</h2>
       <div class="flex gap-2">
-        <button class="btn-secondary !w-auto px-3 py-1" :disabled="loadingTopics" @click="loadTopics">
+        <button
+          class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-1 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
+          :disabled="loadingTopics"
+          @click="loadTopics"
+        >
           {{ loadingTopics ? "Loading Topics..." : "Refresh Topics" }}
         </button>
-        <button class="btn-secondary !w-auto px-3 py-1" :disabled="loading" @click="loadKnowledge">
+        <button
+          class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-1 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
+          :disabled="loading"
+          @click="loadKnowledge"
+        >
           {{ loading ? "Loading KB..." : "Refresh KB" }}
         </button>
       </div>
     </div>
-    <input v-model="baseUrl" class="input-field" type="text" />
-  </section>
-
-  <section class="surface mb-6 p-4">
-    <h2 class="mb-3 text-lg font-medium">Filters</h2>
     <div class="grid gap-3 md:grid-cols-2">
-      <select v-model="filters.topicId" class="input-field">
+      <select
+        v-model="filters.topicId"
+        class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+      >
         <option value="">All topics</option>
         <option v-for="topic in topics" :key="topic.id" :value="String(topic.id)">
           {{ topic.name }} (ID {{ topic.id }})
         </option>
       </select>
-      <input v-model="filters.limit" class="input-field" type="number" placeholder="Limit (default 30)" />
+      <input
+        v-model="filters.limit"
+        class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+        type="number"
+        placeholder="Limit (default 30)"
+      />
     </div>
-    <button class="btn-primary mt-4" :disabled="loading" @click="loadKnowledge">
+    <button
+      class="mt-4 w-full rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-[var(--accent-contrast)] transition disabled:cursor-not-allowed disabled:opacity-50"
+      :disabled="loading"
+      @click="loadKnowledge"
+    >
       {{ loading ? "Loading..." : "Apply Filters" }}
     </button>
   </section>
 
-  <section class="surface p-4">
+  <section class="mt-6 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
     <div class="mb-3 flex items-center justify-between gap-3">
       <h2 class="text-lg font-medium">Knowledge Items</h2>
-      <span class="method-badge">{{ items.length }} loaded</span>
+      <span class="rounded px-2 py-1 text-xs text-[var(--accent)] bg-[color-mix(in srgb, var(--accent) 16%, var(--panel-soft))] border border-[color-mix(in srgb, var(--accent) 35%, var(--line))]">
+        {{ items.length }} loaded
+      </span>
     </div>
 
-    <p v-if="notice" class="mb-3 rounded-lg border px-3 py-2 text-sm" :class="notice.type === 'error' ? 'notice-error' : 'notice-success'">
+    <p
+      v-if="notice"
+      class="mb-3 rounded-lg border px-3 py-2 text-sm"
+      :class="notice.type === 'error'
+        ? 'border-[color-mix(in srgb, var(--status-bad) 50%, var(--line))] bg-[color-mix(in srgb, var(--status-bad) 14%, var(--panel))]'
+        : 'border-[color-mix(in srgb, var(--status-good) 50%, var(--line))] bg-[color-mix(in srgb, var(--status-good) 14%, var(--panel))]'
+      "
+    >
       {{ notice.text }}
     </p>
 
-    <div v-if="!items.length && !loading" class="rounded-md border border-dashed border-[var(--line)] p-4 text-sm muted">
+    <div v-if="!items.length && !loading" class="rounded-md border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]">
       No knowledge entries found.
     </div>
 
@@ -157,17 +184,18 @@ onMounted(() => {
       <li v-for="item in items" :key="item.id" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3">
         <div class="mb-2 flex items-center justify-between gap-3">
           <p class="text-sm font-semibold">KB #{{ item.id }} · {{ item.itemType }}</p>
-          <p class="text-xs muted">{{ new Date(item.createdAt).toLocaleString() }}</p>
+          <p class="text-xs text-[var(--muted)]">{{ new Date(item.createdAt).toLocaleString() }}</p>
         </div>
 
-        <p class="mb-2 text-xs muted">
+        <p class="mb-2 text-xs text-[var(--muted)]">
           Topic: {{ item.topicName ?? "General" }}
           <span v-if="item.topicId">(ID {{ item.topicId }})</span>
           · Question ID: {{ item.questionId ?? "-" }}
           · Answer Log ID: {{ item.answerLogId ?? "-" }}
         </p>
 
-        <pre class="response-pre whitespace-pre-wrap">{{ item.textChunk }}</pre>
+        <pre class="max-h-[420px] whitespace-pre-wrap rounded-md bg-[var(--panel)] p-3 text-xs text-[color-mix(in_srgb,var(--text)_88%,var(--accent))]">
+{{ item.textChunk }}</pre>
       </li>
     </ul>
   </section>

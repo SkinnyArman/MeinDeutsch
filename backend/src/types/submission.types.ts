@@ -45,13 +45,21 @@ export interface AssessmentContext {
 export interface AnalysisError {
   type: MistakeType;
   message: string;
+  description: string;
+  evidence: string;
   severity: number;
+}
+
+export interface ContextualWordSuggestion {
+  word: string;
+  description: string;
+  examples: string[];
 }
 
 export interface AnalysisResult {
   cefrLevel: string;
   correctedText: string;
-  contextualWordSuggestions: string[];
+  contextualWordSuggestions: ContextualWordSuggestion[];
   tips: string[];
   errors: AnalysisError[];
 }

@@ -19,7 +19,10 @@ type FormState = {
   topicDescription: string;
 };
 
-const baseUrl = ref("http://localhost:4000");
+const props = defineProps<{
+  baseUrl: string;
+}>();
+
 const isLoading = ref(false);
 const creating = ref(false);
 const deletingTopicId = ref<number | null>(null);
@@ -42,7 +45,7 @@ const showError = (text: string): void => {
 const loadTopics = async (): Promise<void> => {
   isLoading.value = true;
   try {
-    const res = await fetch(`${baseUrl.value}/api/topics`);
+    const res = await fetch(`${props.baseUrl}/api/topics`);
     const payload = (await res.json()) as ApiResponse<TopicRecord[]>;
 
     if (!res.ok || !payload.success) {
@@ -65,7 +68,7 @@ const createTopic = async (): Promise<void> => {
 
   creating.value = true;
   try {
-    const res = await fetch(`${baseUrl.value}/api/topics`, {
+    const res = await fetch(`${props.baseUrl}/api/topics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -93,7 +96,7 @@ const createTopic = async (): Promise<void> => {
 const deleteTopic = async (topicId: number): Promise<void> => {
   deletingTopicId.value = topicId;
   try {
-    const res = await fetch(`${baseUrl.value}/api/topics/${topicId}`, {
+    const res = await fetch(`${props.baseUrl}/api/topics/${topicId}`, {
       method: "DELETE"
     });
 
@@ -117,46 +120,63 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="surface mb-6 p-4">
-    <div class="mb-2 flex items-center justify-between gap-3">
-      <label class="block text-sm muted">API Base URL</label>
-      <button class="btn-secondary !w-auto px-3 py-1" :disabled="isLoading" @click="loadTopics">
-        {{ isLoading ? "Refreshing..." : "Refresh Topics" }}
-      </button>
-    </div>
-    <input v-model="baseUrl" class="input-field" type="text" />
-  </section>
-
   <section class="grid gap-4 xl:grid-cols-[360px_1fr]">
-    <article class="surface p-4">
+    <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
       <h2 class="mb-3 text-lg font-medium">Create Topic</h2>
       <div class="space-y-3">
-        <input v-model="form.topicName" type="text" placeholder="Nature" class="input-field" />
+        <input
+          v-model="form.topicName"
+          type="text"
+          placeholder="Nature"
+          class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+        />
         <textarea
           v-model="form.topicDescription"
           rows="4"
           placeholder="German conversations about nature and climate"
-          class="input-field"
+          class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
         />
       </div>
-      <button class="btn-primary mt-4" :disabled="creating" @click="createTopic">
+      <button
+        class="mt-4 w-full rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-[var(--accent-contrast)] transition disabled:cursor-not-allowed disabled:opacity-50"
+        :disabled="creating"
+        @click="createTopic"
+      >
         {{ creating ? "Creating..." : "Add Topic" }}
       </button>
 
-      <p class="mt-3 text-xs muted">Topics are the only source for AI question generation.</p>
+      <p class="mt-3 text-xs text-[var(--muted)]">Topics are the only source for AI question generation.</p>
     </article>
 
-    <article class="surface p-4">
+    <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
       <div class="mb-3 flex items-center justify-between gap-3">
         <h2 class="text-lg font-medium">Topics</h2>
-        <span class="method-badge">{{ topics.length }} total</span>
+        <div class="flex items-center gap-2">
+          <span class="rounded px-2 py-1 text-xs text-[var(--accent)] bg-[color-mix(in srgb, var(--accent) 16%, var(--panel-soft))] border border-[color-mix(in srgb, var(--accent) 35%, var(--line))]">
+            {{ topics.length }} total
+          </span>
+          <button
+            class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-1 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
+            :disabled="isLoading"
+            @click="loadTopics"
+          >
+            {{ isLoading ? "Refreshing..." : "Refresh" }}
+          </button>
+        </div>
       </div>
 
-      <p v-if="notice" class="mb-3 rounded-lg border px-3 py-2 text-sm" :class="notice.type === 'error' ? 'notice-error' : 'notice-success'">
+      <p
+        v-if="notice"
+        class="mb-3 rounded-lg border px-3 py-2 text-sm"
+        :class="notice.type === 'error'
+          ? 'border-[color-mix(in srgb, var(--status-bad) 50%, var(--line))] bg-[color-mix(in srgb, var(--status-bad) 14%, var(--panel))]'
+          : 'border-[color-mix(in srgb, var(--status-good) 50%, var(--line))] bg-[color-mix(in srgb, var(--status-good) 14%, var(--panel))]'
+        "
+      >
         {{ notice.text }}
       </p>
 
-      <div v-if="!topics.length && !isLoading" class="rounded-md border border-dashed border-[var(--line)] p-4 text-sm muted">
+      <div v-if="!topics.length && !isLoading" class="rounded-md border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]">
         No topics yet.
       </div>
 
@@ -165,12 +185,12 @@ onMounted(() => {
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="font-medium">{{ topic.name }}</p>
-              <p v-if="topic.description" class="mt-1 text-sm muted">{{ topic.description }}</p>
-              <p class="mt-2 text-xs muted">ID: {{ topic.id }}</p>
+              <p v-if="topic.description" class="mt-1 text-sm text-[var(--muted)]">{{ topic.description }}</p>
+              <p class="mt-2 text-xs text-[var(--muted)]">ID: {{ topic.id }}</p>
             </div>
 
             <button
-              class="btn-secondary !w-auto px-3 py-1 text-xs"
+              class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-1 text-xs font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
               :disabled="deletingTopicId === topic.id"
               @click="deleteTopic(topic.id)"
             >

@@ -126,5 +126,21 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
         placeholder: "Am Wochenende ich habe mit meine Freund gehen park."
       }
     ]
+  },
+  {
+    id: "list-submissions",
+    method: "GET",
+    path: "/api/submissions",
+    title: "List Submissions",
+    description: "Lists Daily Talk submissions with analysis details.",
+    requestFields: []
+  },
+  {
+    id: "get-submission",
+    method: "GET",
+    path: "/api/submissions/:id",
+    title: "Get Submission",
+    description: "Fetches one Daily Talk submission by ID.",
+    requestFields: []
   }
 ];

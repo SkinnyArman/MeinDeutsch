@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import type { AnalysisError } from "../types/submission.types.js";
+import type { AnalysisError, ContextualWordSuggestion } from "../types/submission.types.js";
 import { Question } from "./question.model.js";
 
 @Entity({ name: "answer_logs" })
@@ -33,7 +33,7 @@ export class AnswerLog {
   tips!: string[];
 
   @Column({ name: "contextual_word_suggestions", type: "jsonb", default: [] })
-  contextualWordSuggestions!: string[];
+  contextualWordSuggestions!: ContextualWordSuggestion[];
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
@@ -42,12 +42,14 @@ export class AnswerLog {
 export interface AnswerLogRecord {
   id: number;
   questionId: number | null;
+  topicId?: number | null;
+  topicName?: string;
   questionText: string;
   answerText: string;
   correctedText: string;
   cefrLevel: string;
   errorTypes: AnalysisError[];
   tips: string[];
-  contextualWordSuggestions: string[];
+  contextualWordSuggestions: ContextualWordSuggestion[];
   createdAt: string;
 }

@@ -25,8 +25,15 @@ const toKnowledgeRecord = (entity: KnowledgeItem): KnowledgeItemRecord => ({
 });
 
 const buildTextChunk = (input: CreateKnowledgeInput): string => {
-  const mistakes = input.analysis.errors.map((error) => `${error.type}: ${error.message}`).join("; ");
-  const words = input.analysis.contextualWordSuggestions.join(", ");
+  const mistakes = input.analysis.errors
+    .map((error) => {
+      const details = [error.message, error.description, error.evidence ? `Excerpt: ${error.evidence}` : ""]
+        .filter(Boolean)
+        .join(" ");
+      return `${error.type}: ${details}`;
+    })
+    .join("; ");
+  const words = input.analysis.contextualWordSuggestions.map((item) => item.word).join(", ");
   const tips = input.analysis.tips.join(" | ");
 
   return [

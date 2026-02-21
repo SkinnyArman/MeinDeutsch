@@ -1,5 +1,7 @@
 import { appDataSource } from "../db/pool.js";
 import { AnswerLog, type AnswerLogRecord } from "../models/answer-log.model.js";
+import { Question } from "../models/question.model.js";
+import { Topic } from "../models/topic.model.js";
 import { MistakeStat } from "../models/mistake-stat.model.js";
 import type { AnalysisResult, AssessmentContext, MistakeType } from "../types/submission.types.js";
 
@@ -20,6 +22,25 @@ const toAnswerLogRecord = (entity: AnswerLog): AnswerLogRecord => ({
   tips: entity.tips,
   contextualWordSuggestions: entity.contextualWordSuggestions,
   createdAt: entity.createdAt.toISOString()
+});
+
+const toAnswerLogRecordWithTopic = (row: {
+  answerLog: AnswerLog;
+  topicId: string | null;
+  topicName: string | null;
+}): AnswerLogRecord => ({
+  id: Number(row.answerLog.id),
+  questionId: row.answerLog.questionId ? Number(row.answerLog.questionId) : null,
+  topicId: row.topicId ? Number(row.topicId) : null,
+  topicName: row.topicName ?? undefined,
+  questionText: row.answerLog.questionText,
+  answerText: row.answerLog.answerText,
+  correctedText: row.answerLog.correctedText,
+  cefrLevel: row.answerLog.cefrLevel,
+  errorTypes: row.answerLog.errorTypes,
+  tips: row.answerLog.tips,
+  contextualWordSuggestions: row.answerLog.contextualWordSuggestions,
+  createdAt: row.answerLog.createdAt.toISOString()
 });
 
 export const submissionRepository = {
@@ -125,5 +146,53 @@ export const submissionRepository = {
         tips: log.tips
       }))
     };
+  }
+  ,
+
+  async listAnswerLogs(input: { limit: number; offset: number }): Promise<AnswerLogRecord[]> {
+    const repo = appDataSource.getRepository(AnswerLog);
+    const rows = await repo
+      .createQueryBuilder("answerLog")
+      .leftJoin(Question, "question", "question.id = answerLog.question_id")
+      .leftJoin(Topic, "topic", "topic.id = question.topic_id")
+      .orderBy("answerLog.created_at", "DESC")
+      .limit(input.limit)
+      .offset(input.offset)
+      .select([
+        "answerLog",
+        "question.id",
+        "topic.id",
+        "topic.name"
+      ])
+      .getRawAndEntities();
+
+    return rows.entities.map((entity, idx) =>
+      toAnswerLogRecordWithTopic({
+        answerLog: entity,
+        topicId: rows.raw[idx]?.topic_id ?? null,
+        topicName: rows.raw[idx]?.topic_name ?? null
+      })
+    );
+  },
+
+  async findAnswerLogById(id: number): Promise<AnswerLogRecord | null> {
+    const repo = appDataSource.getRepository(AnswerLog);
+    const rows = await repo
+      .createQueryBuilder("answerLog")
+      .leftJoin(Question, "question", "question.id = answerLog.question_id")
+      .leftJoin(Topic, "topic", "topic.id = question.topic_id")
+      .where("answerLog.id = :id", { id: String(id) })
+      .select(["answerLog", "question.id", "topic.id", "topic.name"])
+      .getRawAndEntities();
+
+    if (!rows.entities.length) {
+      return null;
+    }
+
+    return toAnswerLogRecordWithTopic({
+      answerLog: rows.entities[0],
+      topicId: rows.raw[0]?.topic_id ?? null,
+      topicName: rows.raw[0]?.topic_name ?? null
+    });
   }
 };

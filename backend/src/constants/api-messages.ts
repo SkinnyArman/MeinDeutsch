@@ -3,7 +3,9 @@ export const API_MESSAGES = {
     ok: "Health check passed"
   },
   submission: {
-    created: "Submission processed successfully"
+    created: "Submission processed successfully",
+    listed: "Submissions fetched successfully",
+    fetched: "Submission fetched successfully"
   },
   topic: {
     created: "Topic created successfully",
@@ -29,6 +31,7 @@ export const API_MESSAGES = {
     topicNotFound: "Topic not found",
     questionNotFound: "Question not found",
     questionTextRequired: "Either questionId or prompt is required",
+    submissionNotFound: "Submission not found",
     internalServerError: "Internal server error",
     routeNotFound: "Route not found"
   }
