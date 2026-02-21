@@ -47,6 +47,9 @@ export interface AnalysisError {
   message: string;
   description: string;
   evidence: string;
+  correction: string;
+  start: number | null;
+  end: number | null;
   severity: number;
 }
 

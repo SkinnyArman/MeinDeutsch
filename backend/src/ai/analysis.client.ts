@@ -13,7 +13,7 @@ const ANALYSIS_FIELD_CONTEXTUAL_WORDS =
   `"contextualWordSuggestions": [{ "word": "string", "description": "string", "examples": ["string"] }]`;
 const ANALYSIS_FIELD_TIPS = `"tips": ["string"]`;
 const ANALYSIS_FIELD_ERRORS =
-  `"errors": [{ "type": "one of taxonomy", "message": "string", "description": "string", "evidence": "string", "severity": 0-1 }]`;
+  `"errors": [{ "type": "one of taxonomy", "message": "string", "description": "string", "evidence": "string", "correction": "string", "start": 0, "end": 0, "severity": 0-1 }]`;
 
 const SYSTEM_PROMPT = `You are a German language coach. Return strict JSON only with this shape:
 {
@@ -25,12 +25,24 @@ const SYSTEM_PROMPT = `You are a German language coach. Return strict JSON only 
 }
 Rules:
 - correctedText must be the user's answer fully corrected.
+- correctedText must be complete (no truncation) and must not include stray tokens; keep sentence boundaries.
+- Do not add new content (no abbreviations, explanations, or parentheticals). Only correct what's already there.
+- If unsure about a correction, leave that span unchanged rather than guessing.
 - contextualWordSuggestions must include words NOT used by the user, each with a concise meaning/usage description and examples tied to the main subject.
 - For nouns, include the article in the word field (e.g. "die Veränderung").
 - For verbs, include Perfekt in the word field (e.g. "verändern (Perfekt: hat verändert)") and provide two examples: present and past.
 - tips can be grammar, vocabulary, or expression advice; make them actionable.
-- If a tip suggests synonyms or alternatives, include at least 2 concrete options.
+- If a tip is about the user's text, include the exact excerpt it refers to (quote it).
+- Avoid vague tips; every tip must be tied to a concrete example or suggestion.
+- If tips mention specific words/phrases, include those words in contextualWordSuggestions.
+- Do not mention specific words in tips unless they appear in contextualWordSuggestions.
 - errors must be specific: name the wrong word/phrase and the correction, plus a short explanation and the exact excerpt from the user's text.
+- evidence must be the incorrect substring exactly as written by the user in answerText (no paraphrase, no corrected form).
+- evidence should be a short phrase (3-8 words) that includes the incorrect token(s), not just the single word.
+- correction must be the corrected form for the evidence (must differ from evidence).
+- For each error, provide character indices (start/end) into the original user answerText for highlighting. start/end must match the evidence substring. If not applicable, return null for start/end.
+ - Only include an error if correctedText changes that evidence.
+- Every change made in correctedText must have a corresponding error entry with evidence/correction.
 Allowed error types: ${MISTAKE_TYPES.join(", ")}.`;
 
 const QUESTION_GENERATION_SYSTEM_PROMPT = `You generate exactly one German practice question.
@@ -158,17 +170,20 @@ export const analyzeSubmission = async (
                 items: {
                   type: "object",
                   additionalProperties: false,
-                  required: ["type", "message", "description", "evidence", "severity"],
+                  required: ["type", "message", "description", "evidence", "correction", "start", "end", "severity"],
                   properties: {
                     type: { type: "string", enum: [...MISTAKE_TYPES] },
                     message: { type: "string" },
                     description: { type: "string" },
                     evidence: { type: "string" },
+                    correction: { type: "string" },
+                    start: { type: ["number", "null"], minimum: 0 },
+                    end: { type: ["number", "null"], minimum: 0 },
                     severity: { type: "number", minimum: 0, maximum: 1 }
                   }
                 }
               }
-              }
+            }
           }
         }
       }

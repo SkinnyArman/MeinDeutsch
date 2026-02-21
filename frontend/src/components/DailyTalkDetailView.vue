@@ -19,6 +19,9 @@ interface AnalysisError {
   message: string;
   description: string;
   evidence: string;
+  correction: string;
+  start: number | null;
+  end: number | null;
   severity: number;
 }
 
@@ -59,6 +62,140 @@ const notifyError = (text: string): void => {
   notice.value = { type: "error", text };
 };
 
+type HighlightSegment = {
+  text: string;
+  highlight: boolean;
+  type?: string;
+};
+
+type TokenSpan = {
+  token: string;
+  start: number;
+  end: number;
+};
+
+const tokenizeWithSpans = (text: string): TokenSpan[] => {
+  return Array.from(text.matchAll(/\S+/g)).map((match) => ({
+    token: match[0],
+    start: match.index ?? 0,
+    end: (match.index ?? 0) + match[0].length
+  }));
+};
+
+const lcsIndices = (a: string[], b: string[]): Set<number> => {
+  const dp = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      if (a[i - 1] === b[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+
+  const indices = new Set<number>();
+  let i = a.length;
+  let j = b.length;
+  while (i > 0 && j > 0) {
+    if (a[i - 1] === b[j - 1]) {
+      indices.add(i - 1);
+      i -= 1;
+      j -= 1;
+    } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+      i -= 1;
+    } else {
+      j -= 1;
+    }
+  }
+
+  return indices;
+};
+
+const buildDiffRanges = (answerText: string, correctedText: string): Array<{ start: number; end: number }> => {
+  if (!answerText || !correctedText) {
+    return [];
+  }
+
+  const answerTokens = tokenizeWithSpans(answerText);
+  const correctedTokens = correctedText.split(/\s+/);
+  const keep = lcsIndices(
+    answerTokens.map((t) => t.token),
+    correctedTokens
+  );
+
+  return answerTokens
+    .filter((_, idx) => !keep.has(idx))
+    .map((token) => ({ start: token.start, end: token.end }));
+};
+
+const buildHighlightedSegments = (text: string, errors: AnalysisError[]): HighlightSegment[] => {
+  if (!text) {
+    return [];
+  }
+
+  const ranges = errors
+    .filter((error) => typeof error.start === "number" && typeof error.end === "number")
+    .map((error) => ({
+      start: error.start as number,
+      end: error.end as number,
+      type: error.type
+    }))
+    .filter((range) => range.start >= 0 && range.end > range.start && range.end <= text.length)
+    .sort((a, b) => a.start - b.start);
+
+  const segments: HighlightSegment[] = [];
+  let cursor = 0;
+
+  for (const range of ranges) {
+    if (range.start < cursor) {
+      continue;
+    }
+
+    if (range.start > cursor) {
+      segments.push({ text: text.slice(cursor, range.start), highlight: false });
+    }
+
+    segments.push({ text: text.slice(range.start, range.end), highlight: true, type: range.type });
+    cursor = range.end;
+  }
+
+  if (cursor < text.length) {
+    segments.push({ text: text.slice(cursor), highlight: false });
+  }
+
+  return segments;
+};
+
+const buildBestSegments = (answerText: string, correctedText: string, errors: AnalysisError[]): HighlightSegment[] => {
+  const errorSegments = buildHighlightedSegments(answerText, errors);
+  const hasHighlights = errorSegments.some((segment) => segment.highlight);
+  if (hasHighlights) {
+    return errorSegments;
+  }
+
+  const diffRanges = buildDiffRanges(answerText, correctedText);
+  if (!diffRanges.length) {
+    return errorSegments;
+  }
+
+  const segments: HighlightSegment[] = [];
+  let cursor = 0;
+  for (const range of diffRanges) {
+    if (range.start < cursor) {
+      continue;
+    }
+    if (range.start > cursor) {
+      segments.push({ text: answerText.slice(cursor, range.start), highlight: false });
+    }
+    segments.push({ text: answerText.slice(range.start, range.end), highlight: true });
+    cursor = range.end;
+  }
+  if (cursor < answerText.length) {
+    segments.push({ text: answerText.slice(cursor), highlight: false });
+  }
+  return segments;
+};
 const getSubmissionId = (): string | null => {
   if (props.id) {
     return props.id;
@@ -143,7 +280,18 @@ watch(
 
       <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
         <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Your Answer</p>
-        <p class="mt-2 whitespace-pre-wrap text-sm">{{ log.answerText }}</p>
+        <p class="mt-2 whitespace-pre-wrap text-sm">
+          <template v-for="(segment, idx) in buildBestSegments(log.answerText, log.correctedText, log.errorTypes)" :key="`seg-${idx}`">
+            <span
+              v-if="segment.highlight"
+              class="rounded bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] px-0.5"
+              :title="segment.type ? `Error: ${segment.type}` : 'Error'"
+            >
+              {{ segment.text }}
+            </span>
+            <span v-else>{{ segment.text }}</span>
+          </template>
+        </p>
       </article>
 
       <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
