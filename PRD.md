@@ -43,6 +43,9 @@ Build a personal German learning MVP where:
   - One-click save from contextual suggestions.
   - Store word, description, examples, and category/context.
   - Vocabulary page with category-based browsing.
+  - Basic SRS scoring:
+    - User gives memory points per word (1 Again, 2 Hard, 3 Good, 4 Easy).
+    - System stores next due date and interval using lightweight SM-2 style scheduling.
 
 ### Out of scope (post-MVP)
 - Any feature not required for this loop:
@@ -107,6 +110,13 @@ Build a personal German learning MVP where:
 - category (e.g. `Umwelt`, `General`)
 - source_answer_log_id (optional)
 - source_question_id (optional)
+- srs_interval_days
+- srs_ease_factor
+- srs_due_at
+- srs_last_rating
+- srs_review_count
+- srs_lapse_count
+- srs_last_reviewed_at
 - created_at
 
 ---
@@ -123,6 +133,7 @@ Build a personal German learning MVP where:
 - `POST /api/vocabulary`
 - `GET /api/vocabulary/categories`
 - `GET /api/vocabulary?category=...`
+- `POST /api/vocabulary/:id/review`
 
 All responses use the unified API envelope.
 

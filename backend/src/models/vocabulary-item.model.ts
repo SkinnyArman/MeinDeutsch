@@ -32,6 +32,27 @@ export class VocabularyItem {
   @Column({ name: "source_question_id", type: "bigint", nullable: true })
   sourceQuestionId!: string | null;
 
+  @Column({ name: "srs_interval_days", type: "integer", default: 0 })
+  srsIntervalDays!: number;
+
+  @Column({ name: "srs_ease_factor", type: "double precision", default: 2.5 })
+  srsEaseFactor!: number;
+
+  @Column({ name: "srs_due_at", type: "timestamptz", nullable: true })
+  srsDueAt!: Date | null;
+
+  @Column({ name: "srs_last_rating", type: "integer", nullable: true })
+  srsLastRating!: number | null;
+
+  @Column({ name: "srs_review_count", type: "integer", default: 0 })
+  srsReviewCount!: number;
+
+  @Column({ name: "srs_lapse_count", type: "integer", default: 0 })
+  srsLapseCount!: number;
+
+  @Column({ name: "srs_last_reviewed_at", type: "timestamptz", nullable: true })
+  srsLastReviewedAt!: Date | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }
@@ -44,5 +65,12 @@ export interface VocabularyItemRecord {
   category: string;
   sourceAnswerLogId: number | null;
   sourceQuestionId: number | null;
+  srsIntervalDays: number;
+  srsEaseFactor: number;
+  srsDueAt: string | null;
+  srsLastRating: number | null;
+  srsReviewCount: number;
+  srsLapseCount: number;
+  srsLastReviewedAt: string | null;
   createdAt: string;
 }

@@ -17,6 +17,14 @@ const listVocabularyQuerySchema = z.object({
   category: z.string().trim().optional()
 });
 
+const reviewVocabularyParamSchema = z.object({
+  id: z.coerce.number().int().positive()
+});
+
+const reviewVocabularySchema = z.object({
+  rating: z.coerce.number().int().min(1).max(4)
+});
+
 export const saveVocabularyController = async (req: Request, res: Response): Promise<void> => {
   const payload = saveVocabularySchema.parse(req.body);
   const result = await vocabularyService.saveWord({ ...payload, userId: req.auth.userId });
@@ -32,4 +40,15 @@ export const listVocabularyController = async (req: Request, res: Response): Pro
 export const listVocabularyCategoriesController = async (req: Request, res: Response): Promise<void> => {
   const categories = await vocabularyService.listCategories(req.auth.userId);
   sendSuccess(res, 200, API_MESSAGES.vocabulary.categoriesListed, categories);
+};
+
+export const reviewVocabularyController = async (req: Request, res: Response): Promise<void> => {
+  const { id } = reviewVocabularyParamSchema.parse(req.params);
+  const payload = reviewVocabularySchema.parse(req.body);
+  const entry = await vocabularyService.reviewWord({
+    userId: req.auth.userId,
+    vocabularyId: id,
+    rating: payload.rating
+  });
+  sendSuccess(res, 200, API_MESSAGES.vocabulary.reviewed, entry);
 };

@@ -173,6 +173,22 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     requestFields: []
   },
   {
+    id: "review-vocabulary",
+    method: "POST",
+    path: "/api/vocabulary/:id/review",
+    title: "Review Vocabulary",
+    description: "Submits SRS memory rating points (1=Again, 2=Hard, 3=Good, 4=Easy).",
+    requestFields: [
+      {
+        name: "rating",
+        label: "Rating",
+        type: "number",
+        required: true,
+        placeholder: "3"
+      }
+    ]
+  },
+  {
     id: "daily-talk-streak",
     method: "GET",
     path: "/api/streaks/daily-talk",

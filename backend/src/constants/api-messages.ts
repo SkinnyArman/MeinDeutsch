@@ -29,7 +29,8 @@ export const API_MESSAGES = {
   vocabulary: {
     saved: "Vocabulary item saved successfully",
     listed: "Vocabulary items fetched successfully",
-    categoriesListed: "Vocabulary categories fetched successfully"
+    categoriesListed: "Vocabulary categories fetched successfully",
+    reviewed: "Vocabulary review saved successfully"
   },
   errors: {
     validationFailed: "Validation failed",
@@ -45,6 +46,7 @@ export const API_MESSAGES = {
     questionNotFound: "Question not found",
     questionTextRequired: "Either questionId or prompt is required",
     submissionNotFound: "Submission not found",
+    vocabularyNotFound: "Vocabulary item not found",
     internalServerError: "Internal server error",
     routeNotFound: "Route not found"
   }

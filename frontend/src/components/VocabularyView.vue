@@ -22,6 +22,13 @@ interface VocabularyItemRecord {
   category: string;
   sourceAnswerLogId: number | null;
   sourceQuestionId: number | null;
+  srsIntervalDays: number;
+  srsEaseFactor: number;
+  srsDueAt: string | null;
+  srsLastRating: number | null;
+  srsReviewCount: number;
+  srsLapseCount: number;
+  srsLastReviewedAt: string | null;
   createdAt: string;
 }
 
@@ -31,6 +38,7 @@ const loadingWords = ref(false);
 const categories = ref<string[]>([]);
 const selectedCategory = ref<string>("");
 const words = ref<VocabularyItemRecord[]>([]);
+const reviewingWordId = ref<number | null>(null);
 const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
 
 const setError = (text: string): void => {
@@ -85,6 +93,50 @@ const loadWords = async (): Promise<void> => {
 const refreshAll = async (): Promise<void> => {
   await loadCategories();
   await loadWords();
+};
+
+const formatDueLabel = (item: VocabularyItemRecord): string => {
+  if (!item.srsDueAt) {
+    return "Due now";
+  }
+  const dueMs = new Date(item.srsDueAt).getTime();
+  const nowMs = Date.now();
+  if (dueMs <= nowMs) {
+    return "Due now";
+  }
+  const diffDays = Math.ceil((dueMs - nowMs) / (24 * 60 * 60 * 1000));
+  return `Due in ${diffDays} day${diffDays === 1 ? "" : "s"}`;
+};
+
+const ratingLabel = (rating: number): string => {
+  if (rating === 1) {
+    return "Again";
+  }
+  if (rating === 2) {
+    return "Hard";
+  }
+  if (rating === 3) {
+    return "Good";
+  }
+  return "Easy";
+};
+
+const submitSrsRating = async (item: VocabularyItemRecord, rating: 1 | 2 | 3 | 4): Promise<void> => {
+  reviewingWordId.value = item.id;
+  try {
+    const res = await authFetch(`${baseUrl}/api/vocabulary/${item.id}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating })
+    });
+    const payload = await parseApiResponse<VocabularyItemRecord>(res);
+    words.value = words.value.map((word) => (word.id === item.id ? payload.data : word));
+    setSuccess(`Review saved: ${item.word} -> ${ratingLabel(rating)}`);
+  } catch (error) {
+    setError(error instanceof Error ? error.message : "Could not submit review");
+  } finally {
+    reviewingWordId.value = null;
+  }
 };
 
 watch(
@@ -170,6 +222,45 @@ onMounted(() => {
             <p class="text-sm text-[var(--muted)]">{{ item.description }}</p>
             <div v-if="item.examples.length" class="mt-2 space-y-1 text-xs text-[var(--muted)]">
               <p v-for="(example, idx) in item.examples" :key="`ex-${item.id}-${idx}`">Example: {{ example }}</p>
+            </div>
+
+            <div class="mt-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-xs text-[var(--muted)]">
+                  {{ formatDueLabel(item) }}
+                </p>
+                <p class="text-xs text-[var(--muted)]">Reviews {{ item.srsReviewCount }} · Lapses {{ item.srsLapseCount }}</p>
+              </div>
+              <div class="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <button
+                  class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 text-xs font-medium transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="reviewingWordId === item.id"
+                  @click="submitSrsRating(item, 1)"
+                >
+                  Again (1)
+                </button>
+                <button
+                  class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 text-xs font-medium transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="reviewingWordId === item.id"
+                  @click="submitSrsRating(item, 2)"
+                >
+                  Hard (2)
+                </button>
+                <button
+                  class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 text-xs font-medium transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="reviewingWordId === item.id"
+                  @click="submitSrsRating(item, 3)"
+                >
+                  Good (3)
+                </button>
+                <button
+                  class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 text-xs font-medium transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="reviewingWordId === item.id"
+                  @click="submitSrsRating(item, 4)"
+                >
+                  Easy (4)
+                </button>
+              </div>
             </div>
           </li>
         </ul>

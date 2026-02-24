@@ -19,6 +19,13 @@ const toVocabularyRecord = (entity: VocabularyItem): VocabularyItemRecord => ({
   category: entity.category,
   sourceAnswerLogId: entity.sourceAnswerLogId ? Number(entity.sourceAnswerLogId) : null,
   sourceQuestionId: entity.sourceQuestionId ? Number(entity.sourceQuestionId) : null,
+  srsIntervalDays: entity.srsIntervalDays,
+  srsEaseFactor: entity.srsEaseFactor,
+  srsDueAt: entity.srsDueAt ? entity.srsDueAt.toISOString() : null,
+  srsLastRating: entity.srsLastRating,
+  srsReviewCount: entity.srsReviewCount,
+  srsLapseCount: entity.srsLapseCount,
+  srsLastReviewedAt: entity.srsLastReviewedAt ? entity.srsLastReviewedAt.toISOString() : null,
   createdAt: entity.createdAt.toISOString()
 });
 
@@ -58,7 +65,7 @@ export const vocabularyRepository = {
       .orderBy("vocab.created_at", "DESC");
 
     if (input.category) {
-      qb.where("vocab.category = :category", { category: input.category });
+      qb.andWhere("vocab.category = :category", { category: input.category });
     }
 
     const rows = await qb.getMany();
@@ -75,5 +82,52 @@ export const vocabularyRepository = {
       .getRawMany<{ category: string }>();
 
     return rows.map((row) => row.category);
+  },
+
+  async findById(input: { userId: number; vocabularyId: number }): Promise<VocabularyItemRecord | null> {
+    const repo = appDataSource.getRepository(VocabularyItem);
+    const row = await repo.findOne({
+      where: {
+        id: String(input.vocabularyId),
+        userId: String(input.userId)
+      }
+    });
+    return row ? toVocabularyRecord(row) : null;
+  },
+
+  async saveSrsState(input: {
+    userId: number;
+    vocabularyId: number;
+    nextIntervalDays: number;
+    nextEaseFactor: number;
+    nextDueAt: Date;
+    rating: number;
+    incrementLapse: boolean;
+    reviewedAt: Date;
+  }): Promise<VocabularyItemRecord | null> {
+    const repo = appDataSource.getRepository(VocabularyItem);
+    const row = await repo.findOne({
+      where: {
+        id: String(input.vocabularyId),
+        userId: String(input.userId)
+      }
+    });
+
+    if (!row) {
+      return null;
+    }
+
+    row.srsIntervalDays = input.nextIntervalDays;
+    row.srsEaseFactor = input.nextEaseFactor;
+    row.srsDueAt = input.nextDueAt;
+    row.srsLastRating = input.rating;
+    row.srsReviewCount += 1;
+    row.srsLastReviewedAt = input.reviewedAt;
+    if (input.incrementLapse) {
+      row.srsLapseCount += 1;
+    }
+
+    const saved = await repo.save(row);
+    return toVocabularyRecord(saved);
   }
 };
