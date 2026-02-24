@@ -46,6 +46,12 @@ Build a personal German learning MVP where:
   - Basic SRS scoring:
     - User gives memory points per word (1 Again, 2 Hard, 3 Good, 4 Easy).
     - System stores next due date and interval using lightweight SM-2 style scheduling.
+- New feature: `Alltagssprache`
+  - AI generates one common English everyday sentence/expression.
+  - User writes the German equivalent.
+  - AI evaluates correctness and naturalness.
+  - AI returns how a native German speaker would say it.
+  - No CEFR target selector for this feature.
 
 ### Out of scope (post-MVP)
 - Any feature not required for this loop:
@@ -119,6 +125,25 @@ Build a personal German learning MVP where:
 - srs_last_reviewed_at
 - created_at
 
+### expression_prompts
+- user_id
+- id
+- english_text
+- generated_context (optional)
+- created_at
+
+### expression_attempts
+- user_id
+- id
+- prompt_id
+- user_answer_text
+- is_semantically_correct
+- is_natural_german
+- correction_notes (JSON)
+- native_like_version
+- alternatives (JSON, optional)
+- created_at
+
 ---
 
 ## 4. API Goals (MVP)
@@ -134,6 +159,9 @@ Build a personal German learning MVP where:
 - `GET /api/vocabulary/categories`
 - `GET /api/vocabulary?category=...`
 - `POST /api/vocabulary/:id/review`
+- `POST /api/expressions/generate`
+- `POST /api/expressions/attempt`
+- `GET /api/expressions/history`
 
 All responses use the unified API envelope.
 
@@ -153,6 +181,20 @@ Output (strict JSON):
 - `correctedText`
 - `contextualWordSuggestions[]`
 - `tips[]`
+
+### Alltagssprache generation
+Input: none (or optional domain hint)
+Output:
+- `englishText` (common everyday sentence/expression)
+
+### Alltagssprache assessment
+Input: `englishText` + user German answer
+Output (strict JSON):
+- `isSemanticallyCorrect` (boolean)
+- `isNaturalGerman` (boolean)
+- `feedback` (specific, actionable)
+- `nativeLikeVersion` (what a native speaker would say)
+- `alternatives[]` (optional)
 
 ---
 

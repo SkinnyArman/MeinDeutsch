@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import LoginView from "./components/LoginView.vue";
+import AlltagsspracheView from "./components/AlltagsspracheView.vue";
 import DailyTalkView from "./components/DailyTalkView.vue";
 import DailyTalkNewView from "./components/DailyTalkNewView.vue";
 import DailyTalkDetailView from "./components/DailyTalkDetailView.vue";
@@ -17,6 +18,7 @@ export const router = createRouter({
     { path: "/login", component: LoginView, meta: { public: true } },
     { path: "/", redirect: "/daily-talk" },
     { path: "/daily-talk", component: DailyTalkView },
+    { path: "/alltagssprache", component: AlltagsspracheView },
     { path: "/daily-talk/new", component: DailyTalkNewView },
     { path: "/daily-talk/:id", component: DailyTalkDetailView, props: true },
     { path: "/vocabulary", component: VocabularyView },

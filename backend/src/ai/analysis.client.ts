@@ -60,6 +60,34 @@ Rules:
 - Keep it tied only to the provided topic.
 - Respect custom prompt constraints exactly.`;
 
+const EXPRESSION_GENERATION_PROMPT = `Generate exactly one very common everyday English sentence or expression.
+Rules:
+- Output strict JSON only.
+- Target B1+/B2 difficulty.
+- Keep it practical and naturally spoken (roughly 5-14 words).
+- Prefer natural spoken daily usage (not literary).
+- Avoid very basic beginner phrases (e.g. "How are you?", "Where are you from?", "What is your name?").
+- Prefer expressions people actually say in daily situations (work, plans, stress, opinions, social situations).
+- Do not include profanity.
+- No explanation text, only JSON.`;
+
+const EXPRESSION_ASSESSMENT_PROMPT = `You are a German expression coach.
+Given an English expression and the user's German attempt, return strict JSON only:
+{
+  "isSemanticallyCorrect": boolean,
+  "isNaturalGerman": boolean,
+  "feedback": "string",
+  "nativeLikeVersion": "string",
+  "alternatives": ["string"]
+}
+Rules:
+- isSemanticallyCorrect evaluates meaning accuracy.
+- isNaturalGerman evaluates whether this is how native speakers would naturally say it.
+- feedback must explain what is wrong/right concretely.
+- nativeLikeVersion must be a clean, natural German version.
+- alternatives can be empty but include useful variants when relevant.
+- No CEFR or extra fields.`;
+
 const buildFallbackAnalysis = (reason: string): AnalysisResult => {
   return {
     cefrLevel: "A1",
@@ -122,6 +150,133 @@ export const generateQuestion = async (input: {
         : 502;
 
     throw new AppError(status, "AI_QUESTION_GENERATION_FAILED", API_MESSAGES.errors.aiQuestionGenerationFailed);
+  }
+};
+
+export const generateEverydayExpression = async (): Promise<{ englishText: string; generatedContext: string | null }> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+
+  try {
+    const completion = await openai.responses.create({
+      model: env.OPENAI_MODEL,
+      instructions: EXPRESSION_GENERATION_PROMPT,
+      input: "Generate one common everyday English sentence/expression.",
+      text: {
+        format: {
+          type: "json_schema",
+          name: "everyday_expression",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["englishText", "generatedContext"],
+            properties: {
+              englishText: { type: "string", minLength: 1 },
+              generatedContext: { type: ["string", "null"] }
+            }
+          }
+        }
+      }
+    });
+    return JSON.parse(completion.output_text) as { englishText: string; generatedContext: string | null };
+  } catch (error) {
+    logger.error("OpenAI expression generation failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return {
+        englishText: "I'm bored to death.",
+        generatedContext: "everyday_expression_fallback"
+      };
+    }
+
+    const status =
+      error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
+        ? ((error as { status: number }).status >= 400 && (error as { status: number }).status <= 599
+            ? (error as { status: number }).status
+            : 502)
+        : 502;
+    throw new AppError(status, "AI_EXPRESSION_GENERATION_FAILED", API_MESSAGES.errors.aiExpressionGenerationFailed, {
+      provider: "openai",
+      status: error && typeof error === "object" && "status" in error ? (error as { status?: unknown }).status : undefined,
+      code: error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined,
+      type: error && typeof error === "object" && "type" in error ? (error as { type?: unknown }).type : undefined
+    });
+  }
+};
+
+export interface ExpressionAssessmentResult {
+  isSemanticallyCorrect: boolean;
+  isNaturalGerman: boolean;
+  feedback: string;
+  nativeLikeVersion: string;
+  alternatives: string[];
+}
+
+export const assessExpressionAttempt = async (input: {
+  englishText: string;
+  userAnswerText: string;
+}): Promise<ExpressionAssessmentResult> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+
+  try {
+    const completion = await openai.responses.create({
+      model: env.OPENAI_MODEL,
+      instructions: EXPRESSION_ASSESSMENT_PROMPT,
+      input: `English expression: ${input.englishText}\nGerman attempt: ${input.userAnswerText}`,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "expression_assessment",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["isSemanticallyCorrect", "isNaturalGerman", "feedback", "nativeLikeVersion", "alternatives"],
+            properties: {
+              isSemanticallyCorrect: { type: "boolean" },
+              isNaturalGerman: { type: "boolean" },
+              feedback: { type: "string", minLength: 1 },
+              nativeLikeVersion: { type: "string", minLength: 1 },
+              alternatives: { type: "array", items: { type: "string" } }
+            }
+          }
+        }
+      }
+    });
+    return JSON.parse(completion.output_text) as ExpressionAssessmentResult;
+  } catch (error) {
+    logger.error("OpenAI expression assessment failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return {
+        isSemanticallyCorrect: false,
+        isNaturalGerman: false,
+        feedback: "Fallback mode: AI assessment unavailable. Please try again later.",
+        nativeLikeVersion: input.userAnswerText,
+        alternatives: []
+      };
+    }
+
+    const status =
+      error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
+        ? ((error as { status: number }).status >= 400 && (error as { status: number }).status <= 599
+            ? (error as { status: number }).status
+            : 502)
+        : 502;
+    throw new AppError(status, "AI_EXPRESSION_ASSESSMENT_FAILED", API_MESSAGES.errors.aiExpressionAssessmentFailed, {
+      provider: "openai",
+      status: error && typeof error === "object" && "status" in error ? (error as { status?: unknown }).status : undefined,
+      code: error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined,
+      type: error && typeof error === "object" && "type" in error ? (error as { type?: unknown }).type : undefined
+    });
   }
 };
 

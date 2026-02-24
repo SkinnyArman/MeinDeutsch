@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { THEME_MAP, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
 import { authFetch, clearSession, getSessionUser } from "./utils/auth";
 
-type ViewKey = "daily-talk" | "vocabulary" | "settings";
+type ViewKey = "daily-talk" | "alltagssprache" | "vocabulary" | "settings";
 
 const route = useRoute();
 const router = useRouter();
@@ -26,6 +26,12 @@ const navItems: Array<{ key: ViewKey; title: string; subtitle: string; path: str
     title: "Daily Talk",
     subtitle: "Generate, answer, and review",
     path: "/daily-talk"
+  },
+  {
+    key: "alltagssprache",
+    title: "Alltagssprache",
+    subtitle: "Native everyday expressions",
+    path: "/alltagssprache"
   },
   {
     key: "vocabulary",
@@ -172,6 +178,9 @@ const activeNavKey = computed(() => {
   }
   if (route.path.startsWith("/vocabulary")) {
     return "vocabulary";
+  }
+  if (route.path.startsWith("/alltagssprache")) {
+    return "alltagssprache";
   }
   return "daily-talk";
 });

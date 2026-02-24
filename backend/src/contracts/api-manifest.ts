@@ -173,6 +173,45 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     requestFields: []
   },
   {
+    id: "generate-expression",
+    method: "POST",
+    path: "/api/expressions/generate",
+    title: "Generate Alltagssprache Expression",
+    description: "Generates one common English everyday sentence/expression.",
+    requestFields: []
+  },
+  {
+    id: "assess-expression",
+    method: "POST",
+    path: "/api/expressions/attempt",
+    title: "Assess Alltagssprache Answer",
+    description: "Checks user German answer for correctness and naturalness, and returns native-like phrasing.",
+    requestFields: [
+      {
+        name: "promptId",
+        label: "Prompt ID",
+        type: "number",
+        required: true,
+        placeholder: "1"
+      },
+      {
+        name: "userAnswerText",
+        label: "German Answer",
+        type: "textarea",
+        required: true,
+        placeholder: "Ich bin zu Tode gelangweilt."
+      }
+    ]
+  },
+  {
+    id: "list-expression-history",
+    method: "GET",
+    path: "/api/expressions/history",
+    title: "List Alltagssprache History",
+    description: "Lists recent Alltagssprache attempts.",
+    requestFields: []
+  },
+  {
     id: "review-vocabulary",
     method: "POST",
     path: "/api/vocabulary/:id/review",
