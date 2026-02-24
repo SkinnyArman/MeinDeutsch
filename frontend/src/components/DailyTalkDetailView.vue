@@ -56,6 +56,13 @@ interface SavedVocabularyPayload {
   created: boolean;
 }
 
+interface VocabularyItemRecord {
+  id: number;
+  word: string;
+  description: string;
+  sourceAnswerLogId: number | null;
+}
+
 const props = defineProps<{
   id?: string;
 }>();
@@ -248,11 +255,30 @@ const loadDetail = async (): Promise<void> => {
       throw new Error(payload.message || "Failed to load submission");
     }
     log.value = payload.data;
-    savedWordKeys.value = new Set();
+    await loadSavedWordsForLog();
   } catch (error) {
     notifyError(error instanceof Error ? error.message : "Could not load submission");
   } finally {
     loading.value = false;
+  }
+};
+
+const loadSavedWordsForLog = async (): Promise<void> => {
+  if (!log.value) {
+    savedWordKeys.value = new Set();
+    return;
+  }
+
+  try {
+    const query = new URLSearchParams({ sourceAnswerLogId: String(log.value.id) }).toString();
+    const res = await authFetch(`${baseUrl}/api/vocabulary?${query}`);
+    const payload = (await res.json()) as ApiResponse<VocabularyItemRecord[]>;
+    if (!res.ok || !payload.success || !payload.data) {
+      throw new Error(payload.message || "Could not load saved vocabulary");
+    }
+    savedWordKeys.value = new Set(payload.data.map((item) => `${item.word}|${item.description}`));
+  } catch {
+    savedWordKeys.value = new Set();
   }
 };
 

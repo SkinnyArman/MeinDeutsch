@@ -57,7 +57,7 @@ export const vocabularyRepository = {
     return { entry: toVocabularyRecord(saved), created: true };
   },
 
-  async list(input: { userId: number; category?: string | null }): Promise<VocabularyItemRecord[]> {
+  async list(input: { userId: number; category?: string | null; sourceAnswerLogId?: number | null }): Promise<VocabularyItemRecord[]> {
     const repo = appDataSource.getRepository(VocabularyItem);
     const qb = repo
       .createQueryBuilder("vocab")
@@ -66,6 +66,11 @@ export const vocabularyRepository = {
 
     if (input.category) {
       qb.andWhere("vocab.category = :category", { category: input.category });
+    }
+    if (input.sourceAnswerLogId) {
+      qb.andWhere("vocab.source_answer_log_id = :sourceAnswerLogId", {
+        sourceAnswerLogId: String(input.sourceAnswerLogId)
+      });
     }
 
     const rows = await qb.getMany();

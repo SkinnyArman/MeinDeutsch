@@ -14,7 +14,8 @@ const saveVocabularySchema = z.object({
 });
 
 const listVocabularyQuerySchema = z.object({
-  category: z.string().trim().optional()
+  category: z.string().trim().optional(),
+  sourceAnswerLogId: z.coerce.number().int().positive().optional()
 });
 
 const reviewVocabularyParamSchema = z.object({
@@ -33,7 +34,11 @@ export const saveVocabularyController = async (req: Request, res: Response): Pro
 
 export const listVocabularyController = async (req: Request, res: Response): Promise<void> => {
   const query = listVocabularyQuerySchema.parse(req.query);
-  const entries = await vocabularyService.listWords({ userId: req.auth.userId, category: query.category });
+  const entries = await vocabularyService.listWords({
+    userId: req.auth.userId,
+    category: query.category,
+    sourceAnswerLogId: query.sourceAnswerLogId
+  });
   sendSuccess(res, 200, API_MESSAGES.vocabulary.listed, entries);
 };
 

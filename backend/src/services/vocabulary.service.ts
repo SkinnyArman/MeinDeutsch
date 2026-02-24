@@ -38,8 +38,12 @@ export const vocabularyService = {
     });
   },
 
-  async listWords(input: { userId: number; category?: string }): Promise<VocabularyItemRecord[]> {
-    return vocabularyRepository.list({ userId: input.userId, category: input.category?.trim() || null });
+  async listWords(input: { userId: number; category?: string; sourceAnswerLogId?: number }): Promise<VocabularyItemRecord[]> {
+    return vocabularyRepository.list({
+      userId: input.userId,
+      category: input.category?.trim() || null,
+      sourceAnswerLogId: input.sourceAnswerLogId
+    });
   },
 
   async listCategories(userId: number): Promise<string[]> {

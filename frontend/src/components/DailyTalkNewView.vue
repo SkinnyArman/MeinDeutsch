@@ -68,6 +68,13 @@ interface SavedVocabularyPayload {
   created: boolean;
 }
 
+interface VocabularyItemRecord {
+  id: number;
+  word: string;
+  description: string;
+  sourceAnswerLogId: number | null;
+}
+
 type Notice = {
   type: "success" | "error";
   text: string;
@@ -268,6 +275,22 @@ const parseApiResponse = async <T>(res: Response): Promise<ApiResponse<T>> => {
   return payload;
 };
 
+const loadSavedWordsForResult = async (): Promise<void> => {
+  if (!result.value) {
+    savedWordKeys.value = new Set();
+    return;
+  }
+
+  try {
+    const query = new URLSearchParams({ sourceAnswerLogId: String(result.value.id) }).toString();
+    const res = await authFetch(`${baseUrl}/api/vocabulary?${query}`);
+    const payload = await parseApiResponse<VocabularyItemRecord[]>(res);
+    savedWordKeys.value = new Set(payload.data.map((item) => `${item.word}|${item.description}`));
+  } catch {
+    savedWordKeys.value = new Set();
+  }
+};
+
 const loadTopics = async (): Promise<void> => {
   loadingTopics.value = true;
   try {
@@ -353,7 +376,7 @@ const submitAnswer = async (): Promise<void> => {
 
     const payload = await parseApiResponse<AnswerLogRecord>(res);
     result.value = payload.data;
-    savedWordKeys.value = new Set();
+    await loadSavedWordsForResult();
     notifySuccess("Answer analyzed and stored in your knowledge base.");
   } catch (error) {
     notifyError(error instanceof Error ? error.message : "Could not submit answer");
