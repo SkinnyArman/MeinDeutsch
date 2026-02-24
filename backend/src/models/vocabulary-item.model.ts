@@ -1,10 +1,13 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique } from "typeorm";
 
 @Entity({ name: "vocabulary_items" })
-@Unique("uq_vocabulary_normalized_word_category", ["normalizedWord", "category"])
+@Unique("uq_vocabulary_user_word_category", ["userId", "normalizedWord", "category"])
 export class VocabularyItem {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
+
+  @Column({ name: "user_id", type: "bigint", nullable: true })
+  userId!: string | null;
 
   @Column({ type: "text" })
   word!: string;

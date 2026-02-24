@@ -7,6 +7,9 @@ export class AnswerLog {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
+  @Column({ name: "user_id", type: "bigint", nullable: true })
+  userId!: string | null;
+
   @Column({ name: "prompt", type: "text" })
   questionText!: string;
 

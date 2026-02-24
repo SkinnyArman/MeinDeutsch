@@ -3,6 +3,7 @@
 ## 1. Objective
 
 Build a personal German learning MVP where:
+- Users authenticate with Google (whitelisted emails only).
 - You add learning topics.
 - AI generates questions tied to those topics.
 - You answer those questions (Daily Talk response; frontend can hint to keep it short).
@@ -16,6 +17,9 @@ Build a personal German learning MVP where:
 ## 2. MVP Scope
 
 ### In scope
+- Google-only sign-in/sign-up.
+- Email whitelist for allowed accounts.
+- User-specific data isolation across topics, questions, submissions, streaks, knowledge, and vocabulary.
 - Topic management (manual add/list).
 - AI question generation per topic.
 - Text answer submission.
@@ -49,12 +53,14 @@ Build a personal German learning MVP where:
 ## 3. Core Data Objects (MVP)
 
 ### topics
+- user_id
 - id
 - name
 - description (optional)
 - created_at
 
 ### questions
+- user_id
 - id
 - topic_id
 - question_text
@@ -63,6 +69,7 @@ Build a personal German learning MVP where:
 - created_at
 
 ### answer_logs
+- user_id
 - id
 - question_id (or question text for initial compatibility)
 - answer_text
@@ -74,12 +81,14 @@ Build a personal German learning MVP where:
 - created_at
 
 ### mistake_stats
+- user_id
 - mistake_type
 - frequency
 - severity_score
 - last_seen
 
 ### knowledge_items (MVP foundation)
+- user_id
 - id
 - topic_id (optional)
 - question_id (optional)
@@ -89,6 +98,7 @@ Build a personal German learning MVP where:
 - created_at
 
 ### vocabulary_items
+- user_id
 - id
 - word
 - normalized_word
@@ -103,6 +113,8 @@ Build a personal German learning MVP where:
 
 ## 4. API Goals (MVP)
 
+- `POST /api/auth/google`
+- `GET /api/auth/me`
 - `POST /api/topics`
 - `GET /api/topics`
 - `POST /api/questions/generate`
@@ -141,3 +153,10 @@ Next step uses those records for retrieval:
 - Inject retrieved context into future prompts.
 - Make coaching increasingly familiar with your recurring patterns.
 - Daily Talk assessments should use current answer + past Q&As to detect repeated patterns.
+- users
+  - id
+  - google_sub
+  - email
+  - display_name (optional)
+  - avatar_url (optional)
+  - created_at

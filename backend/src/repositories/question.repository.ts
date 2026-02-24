@@ -14,6 +14,7 @@ const toQuestionRecord = (entity: Question): QuestionRecord => ({
 
 export const questionRepository = {
   async createAIQuestion(input: {
+    userId: number;
     topicId: number;
     questionText: string;
     cefrTarget?: string;
@@ -21,6 +22,7 @@ export const questionRepository = {
   }): Promise<QuestionRecord> {
     const repo = appDataSource.getRepository(Question);
     const created = repo.create({
+      userId: String(input.userId),
       topicId: String(input.topicId),
       questionText: input.questionText,
       cefrTarget: input.cefrTarget ?? null,
@@ -33,10 +35,13 @@ export const questionRepository = {
     return toQuestionRecord(loaded ?? saved);
   },
 
-  async list(topicId?: number): Promise<QuestionRecord[]> {
+  async list(userId: number, topicId?: number): Promise<QuestionRecord[]> {
     const repo = appDataSource.getRepository(Question);
     const rows = await repo.find({
-      where: topicId ? { topicId: String(topicId) } : {},
+      where: {
+        userId: String(userId),
+        ...(topicId ? { topicId: String(topicId) } : {})
+      },
       relations: { topic: true },
       order: { createdAt: "DESC" }
     });
@@ -44,10 +49,10 @@ export const questionRepository = {
     return rows.map(toQuestionRecord);
   },
 
-  async findById(questionId: number): Promise<QuestionRecord | null> {
+  async findById(questionId: number, userId: number): Promise<QuestionRecord | null> {
     const repo = appDataSource.getRepository(Question);
     const row = await repo.findOne({
-      where: { id: String(questionId) },
+      where: { id: String(questionId), userId: String(userId) },
       relations: { topic: true }
     });
 

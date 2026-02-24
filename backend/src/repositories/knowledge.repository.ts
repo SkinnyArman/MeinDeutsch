@@ -3,6 +3,7 @@ import { type AnalysisResult } from "../types/submission.types.js";
 import { KnowledgeItem, type KnowledgeItemRecord } from "../models/knowledge-item.model.js";
 
 interface CreateKnowledgeInput {
+  userId: number;
   topicId?: number;
   topicName?: string;
   questionId?: number;
@@ -53,6 +54,7 @@ export const knowledgeRepository = {
     const repo = appDataSource.getRepository(KnowledgeItem);
 
     const created = repo.create({
+      userId: String(input.userId),
       topicId: input.topicId ? String(input.topicId) : null,
       questionId: input.questionId ? String(input.questionId) : null,
       answerLogId: String(input.answerLogId),
@@ -75,12 +77,13 @@ export const knowledgeRepository = {
     return toKnowledgeRecord(loaded ?? saved);
   },
 
-  async list(input: { topicId?: number; limit?: number }): Promise<KnowledgeItemRecord[]> {
+  async list(input: { userId: number; topicId?: number; limit?: number }): Promise<KnowledgeItemRecord[]> {
     const repo = appDataSource.getRepository(KnowledgeItem);
 
     const qb = repo
       .createQueryBuilder("knowledge")
       .leftJoinAndSelect("knowledge.topic", "topic")
+      .where("knowledge.user_id = :userId", { userId: String(input.userId) })
       .orderBy("knowledge.createdAt", "DESC")
       .take(input.limit ?? 30);
 

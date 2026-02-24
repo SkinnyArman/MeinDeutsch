@@ -19,11 +19,34 @@ export interface ApiEndpointDefinition {
 
 export const API_ENDPOINTS: ApiEndpointDefinition[] = [
   {
+    id: "google-signin",
+    method: "POST",
+    path: "/api/auth/google",
+    title: "Google Sign-In",
+    description: "Authenticates with a Google ID token and returns an app JWT session.",
+    requestFields: [
+      {
+        name: "idToken",
+        label: "Google ID Token",
+        type: "textarea",
+        required: true
+      }
+    ]
+  },
+  {
     id: "health",
     method: "GET",
     path: "/api/health",
     title: "Health Check",
     description: "Checks API and DB connectivity.",
+    requestFields: []
+  },
+  {
+    id: "auth-me",
+    method: "GET",
+    path: "/api/auth/me",
+    title: "Session User",
+    description: "Returns current authenticated user from app JWT.",
     requestFields: []
   },
   {

@@ -2,6 +2,7 @@ import { appDataSource } from "../db/pool.js";
 import { VocabularyItem, type VocabularyItemRecord } from "../models/vocabulary-item.model.js";
 
 interface CreateVocabularyInput {
+  userId: number;
   word: string;
   description: string;
   examples: string[];
@@ -27,7 +28,7 @@ export const vocabularyRepository = {
     const normalizedWord = input.word.trim().toLowerCase();
 
     const existing = await repo.findOne({
-      where: { normalizedWord, category: input.category }
+      where: { userId: String(input.userId), normalizedWord, category: input.category }
     });
 
     if (existing) {
@@ -35,6 +36,7 @@ export const vocabularyRepository = {
     }
 
     const created = repo.create({
+      userId: String(input.userId),
       word: input.word.trim(),
       normalizedWord,
       description: input.description.trim(),
@@ -48,9 +50,12 @@ export const vocabularyRepository = {
     return { entry: toVocabularyRecord(saved), created: true };
   },
 
-  async list(input: { category?: string | null }): Promise<VocabularyItemRecord[]> {
+  async list(input: { userId: number; category?: string | null }): Promise<VocabularyItemRecord[]> {
     const repo = appDataSource.getRepository(VocabularyItem);
-    const qb = repo.createQueryBuilder("vocab").orderBy("vocab.created_at", "DESC");
+    const qb = repo
+      .createQueryBuilder("vocab")
+      .where("vocab.user_id = :userId", { userId: String(input.userId) })
+      .orderBy("vocab.created_at", "DESC");
 
     if (input.category) {
       qb.where("vocab.category = :category", { category: input.category });
@@ -60,10 +65,11 @@ export const vocabularyRepository = {
     return rows.map(toVocabularyRecord);
   },
 
-  async listCategories(): Promise<string[]> {
+  async listCategories(userId: number): Promise<string[]> {
     const repo = appDataSource.getRepository(VocabularyItem);
     const rows = await repo
       .createQueryBuilder("vocab")
+      .where("vocab.user_id = :userId", { userId: String(userId) })
       .select("DISTINCT vocab.category", "category")
       .orderBy("vocab.category", "ASC")
       .getRawMany<{ category: string }>();

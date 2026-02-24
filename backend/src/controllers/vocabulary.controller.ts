@@ -19,17 +19,17 @@ const listVocabularyQuerySchema = z.object({
 
 export const saveVocabularyController = async (req: Request, res: Response): Promise<void> => {
   const payload = saveVocabularySchema.parse(req.body);
-  const result = await vocabularyService.saveWord(payload);
+  const result = await vocabularyService.saveWord({ ...payload, userId: req.auth.userId });
   sendSuccess(res, result.created ? 201 : 200, API_MESSAGES.vocabulary.saved, result);
 };
 
 export const listVocabularyController = async (req: Request, res: Response): Promise<void> => {
   const query = listVocabularyQuerySchema.parse(req.query);
-  const entries = await vocabularyService.listWords({ category: query.category });
+  const entries = await vocabularyService.listWords({ userId: req.auth.userId, category: query.category });
   sendSuccess(res, 200, API_MESSAGES.vocabulary.listed, entries);
 };
 
-export const listVocabularyCategoriesController = async (_req: Request, res: Response): Promise<void> => {
-  const categories = await vocabularyService.listCategories();
+export const listVocabularyCategoriesController = async (req: Request, res: Response): Promise<void> => {
+  const categories = await vocabularyService.listCategories(req.auth.userId);
   sendSuccess(res, 200, API_MESSAGES.vocabulary.categoriesListed, categories);
 };

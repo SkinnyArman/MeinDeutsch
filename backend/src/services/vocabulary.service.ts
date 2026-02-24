@@ -2,6 +2,7 @@ import { vocabularyRepository } from "../repositories/vocabulary.repository.js";
 import type { VocabularyItemRecord } from "../models/vocabulary-item.model.js";
 
 interface SaveVocabularyInput {
+  userId: number;
   word: string;
   description: string;
   examples: string[];
@@ -25,6 +26,7 @@ export const vocabularyService = {
   async saveWord(input: SaveVocabularyInput): Promise<{ entry: VocabularyItemRecord; created: boolean }> {
     const category = normalizeCategory(input.word, input.category);
     return vocabularyRepository.createOrGet({
+      userId: input.userId,
       word: input.word,
       description: input.description,
       examples: input.examples,
@@ -34,11 +36,11 @@ export const vocabularyService = {
     });
   },
 
-  async listWords(input: { category?: string }): Promise<VocabularyItemRecord[]> {
-    return vocabularyRepository.list({ category: input.category?.trim() || null });
+  async listWords(input: { userId: number; category?: string }): Promise<VocabularyItemRecord[]> {
+    return vocabularyRepository.list({ userId: input.userId, category: input.category?.trim() || null });
   },
 
-  async listCategories(): Promise<string[]> {
-    return vocabularyRepository.listCategories();
+  async listCategories(userId: number): Promise<string[]> {
+    return vocabularyRepository.listCategories(userId);
   }
 };

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { inject, onMounted, reactive, ref } from "vue";
+import { authFetch } from "../utils/auth";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -48,7 +49,7 @@ const showError = (text: string): void => {
 const loadTopics = async (): Promise<void> => {
   isLoading.value = true;
   try {
-    const res = await fetch(`${resolvedBaseUrl}/api/topics`);
+    const res = await authFetch(`${resolvedBaseUrl}/api/topics`);
     const payload = (await res.json()) as ApiResponse<TopicRecord[]>;
 
     if (!res.ok || !payload.success) {
@@ -71,7 +72,7 @@ const createTopic = async (): Promise<void> => {
 
   creating.value = true;
   try {
-    const res = await fetch(`${resolvedBaseUrl}/api/topics`, {
+    const res = await authFetch(`${resolvedBaseUrl}/api/topics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -99,7 +100,7 @@ const createTopic = async (): Promise<void> => {
 const deleteTopic = async (topicId: number): Promise<void> => {
   deletingTopicId.value = topicId;
   try {
-    const res = await fetch(`${resolvedBaseUrl}/api/topics/${topicId}`, {
+    const res = await authFetch(`${resolvedBaseUrl}/api/topics/${topicId}`, {
       method: "DELETE"
     });
 

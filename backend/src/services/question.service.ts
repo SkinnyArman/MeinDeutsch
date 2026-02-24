@@ -8,10 +8,11 @@ import { AppError } from "../utils/app-error.js";
 
 export const questionService = {
   async generateAndStore(input: {
+    userId: number;
     topicId: number;
     cefrTarget?: string;
   }): Promise<QuestionRecord> {
-    const topic = await topicRepository.findById(input.topicId);
+    const topic = await topicRepository.findById(input.topicId, input.userId);
     if (!topic) {
       throw new AppError(404, "TOPIC_NOT_FOUND", API_MESSAGES.errors.topicNotFound);
     }
@@ -24,6 +25,7 @@ export const questionService = {
     });
 
     return questionRepository.createAIQuestion({
+      userId: input.userId,
       topicId: input.topicId,
       questionText: generated.questionText,
       cefrTarget: generated.cefrTarget ?? input.cefrTarget,
@@ -31,7 +33,7 @@ export const questionService = {
     });
   },
 
-  async listQuestions(topicId?: number): Promise<QuestionRecord[]> {
-    return questionRepository.list(topicId);
+  async listQuestions(userId: number, topicId?: number): Promise<QuestionRecord[]> {
+    return questionRepository.list(userId, topicId);
   }
 };

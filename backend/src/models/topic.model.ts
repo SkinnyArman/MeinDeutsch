@@ -1,12 +1,16 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
 import { Question } from "./question.model.js";
 
 @Entity({ name: "topics" })
+@Unique("uq_topics_user_name", ["userId", "name"])
 export class Topic {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ type: "text", unique: true })
+  @Column({ name: "user_id", type: "bigint", nullable: true })
+  userId!: string | null;
+
+  @Column({ type: "text" })
   name!: string;
 
   @Column({ type: "text", nullable: true })

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { authFetch } from "../utils/auth";
 
 interface ApiErrorBody {
   code: string;
@@ -241,7 +242,7 @@ const loadDetail = async (): Promise<void> => {
 
   loading.value = true;
   try {
-    const res = await fetch(`${baseUrl}/api/submissions/${submissionId}`);
+    const res = await authFetch(`${baseUrl}/api/submissions/${submissionId}`);
     const payload = (await res.json()) as ApiResponse<AnswerLogRecord>;
     if (!res.ok || !payload.success || !payload.data) {
       throw new Error(payload.message || "Failed to load submission");
@@ -276,7 +277,7 @@ const saveWordToVocabulary = async (item: ContextualWordSuggestion): Promise<voi
 
   savingWordKey.value = key;
   try {
-    const res = await fetch(`${baseUrl}/api/vocabulary`, {
+    const res = await authFetch(`${baseUrl}/api/vocabulary`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

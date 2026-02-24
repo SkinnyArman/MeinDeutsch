@@ -2,6 +2,10 @@ export const API_MESSAGES = {
   health: {
     ok: "Health check passed"
   },
+  auth: {
+    signedIn: "Signed in successfully",
+    sessionFetched: "Session fetched successfully"
+  },
   submission: {
     created: "Submission processed successfully",
     listed: "Submissions fetched successfully",
@@ -33,6 +37,10 @@ export const API_MESSAGES = {
     aiConfigurationMissing: "AI provider is not configured",
     aiAnalysisFailed: "AI analysis failed",
     aiQuestionGenerationFailed: "AI question generation failed",
+    authMissingToken: "Authentication token is required",
+    authInvalidGoogleToken: "Google sign-in failed",
+    authEmailNotAllowed: "This email is not allowed to sign in",
+    authInvalidSession: "Invalid or expired session",
     topicNotFound: "Topic not found",
     questionNotFound: "Question not found",
     questionTextRequired: "Either questionId or prompt is required",

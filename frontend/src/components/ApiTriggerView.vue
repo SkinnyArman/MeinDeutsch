@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { inject, reactive, ref } from "vue";
 import { API_ENDPOINTS, type ApiEndpointDefinition } from "@backend/contracts/api-manifest";
+import { authFetch } from "../utils/auth";
 
 type FormState = Record<string, string>;
 
@@ -38,7 +39,7 @@ const runEndpoint = async (endpoint: ApiEndpointDefinition): Promise<void> => {
       init.body = JSON.stringify(payload);
     }
 
-    const res = await fetch(url, init);
+    const res = await authFetch(url, init);
     const data = await res.json();
 
     statusLine.value = `${res.status} ${res.statusText}`;

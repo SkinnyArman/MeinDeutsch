@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { inject, onMounted, reactive, ref } from "vue";
+import { authFetch } from "../utils/auth";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -73,7 +74,7 @@ const buildQuery = (): string => {
 const loadKnowledge = async (): Promise<void> => {
   loading.value = true;
   try {
-    const res = await fetch(`${resolvedBaseUrl}/api/knowledge${buildQuery()}`);
+    const res = await authFetch(`${resolvedBaseUrl}/api/knowledge${buildQuery()}`);
     const payload = (await res.json()) as ApiResponse<KnowledgeItemRecord[]>;
 
     if (!res.ok || !payload.success) {
@@ -92,7 +93,7 @@ const loadKnowledge = async (): Promise<void> => {
 const loadTopics = async (): Promise<void> => {
   loadingTopics.value = true;
   try {
-    const res = await fetch(`${resolvedBaseUrl}/api/topics`);
+    const res = await authFetch(`${resolvedBaseUrl}/api/topics`);
     const payload = (await res.json()) as ApiResponse<TopicRecord[]>;
 
     if (!res.ok || !payload.success) {

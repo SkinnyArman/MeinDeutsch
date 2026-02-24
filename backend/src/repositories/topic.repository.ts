@@ -9,9 +9,10 @@ const toTopicRecord = (entity: Topic): TopicRecord => ({
 });
 
 export const topicRepository = {
-  async create(input: { name: string; description?: string | null }): Promise<TopicRecord> {
+  async create(input: { userId: number; name: string; description?: string | null }): Promise<TopicRecord> {
     const repo = appDataSource.getRepository(Topic);
     const created = repo.create({
+      userId: String(input.userId),
       name: input.name,
       description: input.description ?? null
     });
@@ -20,21 +21,21 @@ export const topicRepository = {
     return toTopicRecord(saved);
   },
 
-  async list(): Promise<TopicRecord[]> {
+  async list(userId: number): Promise<TopicRecord[]> {
     const repo = appDataSource.getRepository(Topic);
-    const rows = await repo.find({ order: { createdAt: "DESC" } });
+    const rows = await repo.find({ where: { userId: String(userId) }, order: { createdAt: "DESC" } });
     return rows.map(toTopicRecord);
   },
 
-  async findById(topicId: number): Promise<TopicRecord | null> {
+  async findById(topicId: number, userId: number): Promise<TopicRecord | null> {
     const repo = appDataSource.getRepository(Topic);
-    const row = await repo.findOne({ where: { id: String(topicId) } });
+    const row = await repo.findOne({ where: { id: String(topicId), userId: String(userId) } });
     return row ? toTopicRecord(row) : null;
   },
 
-  async deleteById(topicId: number): Promise<boolean> {
+  async deleteById(topicId: number, userId: number): Promise<boolean> {
     const repo = appDataSource.getRepository(Topic);
-    const result = await repo.delete({ id: String(topicId) });
+    const result = await repo.delete({ id: String(topicId), userId: String(userId) });
     return Boolean(result.affected && result.affected > 0);
   }
 };

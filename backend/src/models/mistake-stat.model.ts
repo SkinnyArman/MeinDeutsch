@@ -1,12 +1,16 @@
-import { Column, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 import type { MistakeType } from "../types/submission.types.js";
 
 @Entity({ name: "mistake_stats" })
+@Unique("uq_mistake_stats_user_type", ["userId", "mistakeType"])
 export class MistakeStat {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ name: "mistake_type", type: "text", unique: true })
+  @Column({ name: "user_id", type: "bigint", nullable: true })
+  userId!: string | null;
+
+  @Column({ name: "mistake_type", type: "text" })
   mistakeType!: MistakeType;
 
   @Column({ type: "integer", default: 0 })

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, reactive, ref } from "vue";
+import { authFetch } from "../utils/auth";
 
 interface ApiErrorBody {
   code: string;
@@ -270,7 +271,7 @@ const parseApiResponse = async <T>(res: Response): Promise<ApiResponse<T>> => {
 const loadTopics = async (): Promise<void> => {
   loadingTopics.value = true;
   try {
-    const res = await fetch(`${baseUrl}/api/topics`);
+    const res = await authFetch(`${baseUrl}/api/topics`);
     const payload = await parseApiResponse<TopicRecord[]>(res);
     topics.value = payload.data;
 
@@ -305,7 +306,7 @@ const generateQuestion = async (): Promise<void> => {
       return;
     }
 
-    const res = await fetch(`${baseUrl}/api/questions/generate`, {
+    const res = await authFetch(`${baseUrl}/api/questions/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -341,7 +342,7 @@ const submitAnswer = async (): Promise<void> => {
   notice.value = null;
 
   try {
-    const res = await fetch(`${baseUrl}/api/submissions/text`, {
+    const res = await authFetch(`${baseUrl}/api/submissions/text`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -382,7 +383,7 @@ const saveWordToVocabulary = async (item: ContextualWordSuggestion): Promise<voi
 
   savingWordKey.value = key;
   try {
-    const res = await fetch(`${baseUrl}/api/vocabulary`, {
+    const res = await authFetch(`${baseUrl}/api/vocabulary`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

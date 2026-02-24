@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { inject, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { authFetch } from "../utils/auth";
 
 interface ApiErrorBody {
   code: string;
@@ -76,7 +77,7 @@ const parseApiResponse = async <T>(res: Response): Promise<ApiResponse<T>> => {
 const loadHistory = async (): Promise<void> => {
   loadingHistory.value = true;
   try {
-    const res = await fetch(`${baseUrl}/api/submissions?limit=50`);
+    const res = await authFetch(`${baseUrl}/api/submissions?limit=50`);
     const payload = await parseApiResponse<AnswerLogRecord[]>(res);
     history.value = payload.data;
     setHistoryNotice("success", `Loaded ${payload.data.length} submissions.`);

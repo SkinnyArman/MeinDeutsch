@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import LoginView from "./components/LoginView.vue";
 import DailyTalkView from "./components/DailyTalkView.vue";
 import DailyTalkNewView from "./components/DailyTalkNewView.vue";
 import DailyTalkDetailView from "./components/DailyTalkDetailView.vue";
@@ -8,10 +9,12 @@ import SettingsThemeView from "./components/SettingsThemeView.vue";
 import TopicsQuestionsView from "./components/TopicsQuestionsView.vue";
 import KnowledgeBaseView from "./components/KnowledgeBaseView.vue";
 import ApiTriggerView from "./components/ApiTriggerView.vue";
+import { getAuthToken } from "./utils/auth";
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: "/login", component: LoginView, meta: { public: true } },
     { path: "/", redirect: "/daily-talk" },
     { path: "/daily-talk", component: DailyTalkView },
     { path: "/daily-talk/new", component: DailyTalkNewView },
@@ -23,4 +26,19 @@ export const router = createRouter({
     { path: "/settings/knowledge", component: KnowledgeBaseView },
     { path: "/settings/api", component: ApiTriggerView }
   ]
+});
+
+router.beforeEach((to) => {
+  const token = getAuthToken();
+  const isPublic = Boolean(to.meta.public);
+
+  if (!isPublic && !token) {
+    return "/login";
+  }
+
+  if (to.path === "/login" && token) {
+    return "/daily-talk";
+  }
+
+  return true;
 });

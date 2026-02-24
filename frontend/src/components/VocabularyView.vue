@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, watch } from "vue";
+import { authFetch } from "../utils/auth";
 
 interface ApiErrorBody {
   code: string;
@@ -51,7 +52,7 @@ const parseApiResponse = async <T>(res: Response): Promise<ApiResponse<T>> => {
 const loadCategories = async (): Promise<void> => {
   loadingCategories.value = true;
   try {
-    const res = await fetch(`${baseUrl}/api/vocabulary/categories`);
+    const res = await authFetch(`${baseUrl}/api/vocabulary/categories`);
     const payload = await parseApiResponse<string[]>(res);
     categories.value = payload.data;
     if (!selectedCategory.value && categories.value.length > 0) {
@@ -71,7 +72,7 @@ const loadWords = async (): Promise<void> => {
     const query = selectedCategory.value
       ? `?${new URLSearchParams({ category: selectedCategory.value }).toString()}`
       : "";
-    const res = await fetch(`${baseUrl}/api/vocabulary${query}`);
+    const res = await authFetch(`${baseUrl}/api/vocabulary${query}`);
     const payload = await parseApiResponse<VocabularyItemRecord[]>(res);
     words.value = payload.data;
   } catch (error) {

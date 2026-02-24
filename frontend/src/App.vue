@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { THEME_MAP, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
+import { authFetch, clearSession, getSessionUser } from "./utils/auth";
 
 type ViewKey = "daily-talk" | "vocabulary" | "settings";
 
 const route = useRoute();
+const router = useRouter();
 const activeTheme = ref<ThemeKey>("default");
 const baseUrl = ref("http://localhost:4000");
 const nowMs = ref(Date.now());
@@ -13,6 +15,7 @@ const streakLoading = ref(false);
 const streakValue = ref(0);
 const streakWindowStartAt = ref<string | null>(null);
 const streakWindowEndAt = ref<string | null>(null);
+const sessionUser = ref(getSessionUser());
 
 let tickTimer: ReturnType<typeof setInterval> | undefined;
 let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -106,7 +109,7 @@ const streakRingStyle = computed(() => ({
 const loadStreak = async (): Promise<void> => {
   streakLoading.value = true;
   try {
-    const res = await fetch(`${baseUrl.value}/api/streaks/daily-talk`);
+    const res = await authFetch(`${baseUrl.value}/api/streaks/daily-talk`);
     const payload = await res.json();
     if (!res.ok || !payload.success) {
       throw new Error(payload.message || "Failed to load streak");
@@ -161,6 +164,9 @@ onUnmounted(() => {
 });
 
 const activeNavKey = computed(() => {
+  if (route.path === "/login") {
+    return "";
+  }
   if (route.path.startsWith("/settings")) {
     return "settings";
   }
@@ -169,10 +175,20 @@ const activeNavKey = computed(() => {
   }
   return "daily-talk";
 });
+
+const showMainLayout = computed(() => route.path !== "/login");
+
+const logout = async (): Promise<void> => {
+  clearSession();
+  sessionUser.value = null;
+  await router.replace("/login");
+};
 </script>
 
 <template>
-  <main class="min-h-screen p-4 md:p-6">
+  <RouterView v-if="!showMainLayout" />
+
+  <main v-else class="min-h-screen p-4 md:p-6">
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 md:flex-row">
       <aside class="w-full rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)] md:w-72 md:self-start">
         <div class="mb-3 flex items-center justify-between gap-3 px-2">
@@ -215,6 +231,19 @@ const activeNavKey = computed(() => {
             <p class="text-xs opacity-80">{{ item.subtitle }}</p>
           </RouterLink>
         </nav>
+
+        <div class="mt-4 rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3">
+          <p class="truncate text-sm font-semibold">
+            {{ sessionUser?.displayName?.trim() || "Signed in user" }}
+          </p>
+          <p class="truncate text-xs text-[var(--muted)]">{{ sessionUser?.email ?? "-" }}</p>
+          <button
+            class="mt-2 w-full rounded-md border border-[var(--line)] px-3 py-1.5 text-sm font-medium transition hover:border-[var(--accent)]"
+            @click="logout"
+          >
+            Log out
+          </button>
+        </div>
       </aside>
 
       <section class="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-[color-mix(in srgb, var(--panel-soft) 82%, transparent)] p-4 shadow-[var(--surface-shadow)] md:p-6">

@@ -1,11 +1,15 @@
-import { Column, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 
 @Entity({ name: "streak_status" })
+@Unique("uq_streak_user_feature", ["userId", "featureKey"])
 export class StreakStatus {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ name: "feature_key", type: "text", unique: true })
+  @Column({ name: "user_id", type: "bigint", nullable: true })
+  userId!: string | null;
+
+  @Column({ name: "feature_key", type: "text" })
   featureKey!: string;
 
   @Column({ name: "current_streak", type: "integer", default: 0 })

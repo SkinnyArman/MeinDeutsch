@@ -11,6 +11,6 @@ const listQuerySchema = z.object({
 
 export const listKnowledgeController = async (req: Request, res: Response): Promise<void> => {
   const query = listQuerySchema.parse(req.query);
-  const rows = await knowledgeService.listKnowledge(query);
+  const rows = await knowledgeService.listKnowledge({ ...query, userId: req.auth.userId });
   sendSuccess(res, 200, API_MESSAGES.knowledge.listed, rows);
 };

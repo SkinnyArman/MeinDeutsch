@@ -6,6 +6,7 @@ import { MistakeStat } from "../models/mistake-stat.model.js";
 import type { AnalysisResult, AssessmentContext, MistakeType } from "../types/submission.types.js";
 
 interface PersistedSubmission {
+  userId: number;
   questionId?: number;
   questionText: string;
   answerText: string;
@@ -51,6 +52,7 @@ export const submissionRepository = {
     const repo = appDataSource.getRepository(AnswerLog);
 
     const created = repo.create({
+      userId: String(input.userId),
       questionId: input.questionId ? String(input.questionId) : null,
       questionText: input.questionText,
       answerText: input.answerText,
@@ -66,7 +68,7 @@ export const submissionRepository = {
     return toAnswerLogRecord(saved);
   },
 
-  async upsertMistakeStats(analysis: AnalysisResult): Promise<void> {
+  async upsertMistakeStats(userId: number, analysis: AnalysisResult): Promise<void> {
     const grouped = analysis.errors.reduce<Record<MistakeType, { count: number; totalSeverity: number }>>(
       (acc, err) => {
         if (!acc[err.type]) {
@@ -85,10 +87,11 @@ export const submissionRepository = {
 
       for (const [mistakeType, data] of Object.entries(grouped) as [MistakeType, { count: number; totalSeverity: number }][]) {
         const avgSeverity = data.totalSeverity / data.count;
-        const existing = await repo.findOne({ where: { mistakeType } });
+        const existing = await repo.findOne({ where: { userId: String(userId), mistakeType } });
 
         if (!existing) {
           const created = repo.create({
+            userId: String(userId),
             mistakeType,
             frequency: data.count,
             severityScore: avgSeverity
@@ -109,16 +112,18 @@ export const submissionRepository = {
     });
   },
 
-  async getAssessmentContext(): Promise<AssessmentContext> {
+  async getAssessmentContext(userId: number): Promise<AssessmentContext> {
     const mistakeRepo = appDataSource.getRepository(MistakeStat);
     const answerLogRepo = appDataSource.getRepository(AnswerLog);
 
     const topMistakes = await mistakeRepo.find({
+      where: { userId: String(userId) },
       order: { frequency: "DESC", severityScore: "DESC" },
       take: 8
     });
 
     const recentLogs = await answerLogRepo.find({
+      where: { userId: String(userId) },
       order: { createdAt: "DESC" },
       take: 12,
       select: {
@@ -153,12 +158,13 @@ export const submissionRepository = {
   }
   ,
 
-  async listAnswerLogs(input: { limit: number; offset: number }): Promise<AnswerLogRecord[]> {
+  async listAnswerLogs(input: { userId: number; limit: number; offset: number }): Promise<AnswerLogRecord[]> {
     const repo = appDataSource.getRepository(AnswerLog);
     const rows = await repo
       .createQueryBuilder("answerLog")
       .leftJoin(Question, "question", "question.id = answerLog.question_id")
       .leftJoin(Topic, "topic", "topic.id = question.topic_id")
+      .where("answerLog.user_id = :userId", { userId: String(input.userId) })
       .orderBy("answerLog.created_at", "DESC")
       .limit(input.limit)
       .offset(input.offset)
@@ -179,13 +185,14 @@ export const submissionRepository = {
     );
   },
 
-  async findAnswerLogById(id: number): Promise<AnswerLogRecord | null> {
+  async findAnswerLogById(id: number, userId: number): Promise<AnswerLogRecord | null> {
     const repo = appDataSource.getRepository(AnswerLog);
     const rows = await repo
       .createQueryBuilder("answerLog")
       .leftJoin(Question, "question", "question.id = answerLog.question_id")
       .leftJoin(Topic, "topic", "topic.id = question.topic_id")
       .where("answerLog.id = :id", { id: String(id) })
+      .andWhere("answerLog.user_id = :userId", { userId: String(userId) })
       .select(["answerLog", "question.id", "topic.id", "topic.name"])
       .getRawAndEntities();
 

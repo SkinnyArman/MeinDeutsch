@@ -13,7 +13,7 @@ const schema = z.object({
 
 export const submitTextController = async (req: Request, res: Response): Promise<void> => {
   const payload = schema.parse(req.body);
-  const result = await submissionService.processTextSubmission(payload);
+  const result = await submissionService.processTextSubmission(payload, req.auth.userId);
   sendSuccess(res, 201, API_MESSAGES.submission.created, result);
 };
 
@@ -24,7 +24,7 @@ const listSchema = z.object({
 
 export const listSubmissionsController = async (req: Request, res: Response): Promise<void> => {
   const query = listSchema.parse(req.query);
-  const logs = await submissionRepository.listAnswerLogs({ limit: query.limit, offset: query.offset });
+  const logs = await submissionRepository.listAnswerLogs({ userId: req.auth.userId, limit: query.limit, offset: query.offset });
   sendSuccess(res, 200, API_MESSAGES.submission.listed, logs);
 };
 
@@ -34,7 +34,7 @@ const paramSchema = z.object({
 
 export const getSubmissionController = async (req: Request, res: Response): Promise<void> => {
   const params = paramSchema.parse(req.params);
-  const log = await submissionRepository.findAnswerLogById(params.id);
+  const log = await submissionRepository.findAnswerLogById(params.id, req.auth.userId);
   if (!log) {
     throw new AppError(404, "SUBMISSION_NOT_FOUND", API_MESSAGES.errors.submissionNotFound);
   }

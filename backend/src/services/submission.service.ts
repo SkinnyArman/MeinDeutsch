@@ -10,8 +10,8 @@ import { streakService } from "./streak.service.js";
 import { AppError } from "../utils/app-error.js";
 
 export const submissionService = {
-  async processTextSubmission(input: SubmissionInput): Promise<AnswerLogRecord> {
-    const question = await questionRepository.findById(input.questionId);
+  async processTextSubmission(input: SubmissionInput, userId: number): Promise<AnswerLogRecord> {
+    const question = await questionRepository.findById(input.questionId, userId);
     if (!question) {
       throw new AppError(404, "QUESTION_NOT_FOUND", API_MESSAGES.errors.questionNotFound);
     }
@@ -19,7 +19,7 @@ export const submissionService = {
     const topicId = question.topicId;
     const topicName = question.topicName;
 
-    const context = await submissionRepository.getAssessmentContext();
+    const context = await submissionRepository.getAssessmentContext(userId);
     const analysis = await analyzeSubmission(
       {
         questionText,
@@ -34,6 +34,7 @@ export const submissionService = {
 
     const answerLog = await submissionRepository.insertAnswerLog(
       {
+        userId,
         questionId: input.questionId,
         questionText,
         answerText: input.answerText,
@@ -43,6 +44,7 @@ export const submissionService = {
     );
 
     await knowledgeRepository.createFromSubmission({
+      userId,
       topicId,
       topicName,
       questionId: input.questionId,
@@ -52,8 +54,8 @@ export const submissionService = {
       analysis
     });
 
-    await submissionRepository.upsertMistakeStats(analysis);
-    await streakService.recordDailyTalkCompletion();
+    await submissionRepository.upsertMistakeStats(userId, analysis);
+    await streakService.recordDailyTalkCompletion(userId);
     return answerLog;
   }
 };

@@ -7,6 +7,9 @@ export class Question {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
+  @Column({ name: "user_id", type: "bigint", nullable: true })
+  userId!: string | null;
+
   @Column({ name: "topic_id", type: "bigint" })
   topicId!: string;
 

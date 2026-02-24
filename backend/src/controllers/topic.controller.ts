@@ -15,17 +15,17 @@ const topicParamSchema = z.object({
 
 export const createTopicController = async (req: Request, res: Response): Promise<void> => {
   const payload = createTopicSchema.parse(req.body);
-  const topic = await topicService.createTopic(payload);
+  const topic = await topicService.createTopic({ ...payload, userId: req.auth.userId });
   sendSuccess(res, 201, API_MESSAGES.topic.created, topic);
 };
 
-export const listTopicsController = async (_req: Request, res: Response): Promise<void> => {
-  const topics = await topicService.listTopics();
+export const listTopicsController = async (req: Request, res: Response): Promise<void> => {
+  const topics = await topicService.listTopics(req.auth.userId);
   sendSuccess(res, 200, API_MESSAGES.topic.listed, topics);
 };
 
 export const deleteTopicController = async (req: Request, res: Response): Promise<void> => {
   const { topicId } = topicParamSchema.parse(req.params);
-  await topicService.deleteTopic(topicId);
+  await topicService.deleteTopic(topicId, req.auth.userId);
   sendSuccess(res, 200, API_MESSAGES.topic.deleted, null);
 };
