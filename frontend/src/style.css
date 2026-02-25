@@ -4,6 +4,10 @@
 
 :root {
   --bg: #020617;
+  --content-bg: #0a1222;
+  --sidebar-bg: #111319;
+  --sidebar-text: #e7edf7;
+  --sidebar-muted: #9aa6ba;
   --panel: #111319;
   --panel-soft: #1a1f28;
   --line: #323b4a;

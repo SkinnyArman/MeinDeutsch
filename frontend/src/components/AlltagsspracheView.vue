@@ -124,7 +124,34 @@ const submitAttempt = async (): Promise<void> => {
   }
 };
 
-const formatDate = (value: string): string => new Date(value).toLocaleString();
+const formatDate = (value: string): string =>
+  new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+const scoreLabel = (score: number): string => {
+  if (score >= 80) {
+    return "Very Natural";
+  }
+  if (score >= 60) {
+    return "Good";
+  }
+  if (score >= 40) {
+    return "Okay";
+  }
+  return "Needs Work";
+};
+
+const scoreClass = (score: number): string => {
+  if (score >= 80) {
+    return "text-[var(--status-good)]";
+  }
+  if (score >= 60) {
+    return "text-[var(--accent)]";
+  }
+  if (score >= 40) {
+    return "text-[color-mix(in_srgb,var(--accent)_65%,var(--status-bad))]";
+  }
+  return "text-[var(--status-bad)]";
+};
 
 onMounted(() => {
   void loadHistory();
@@ -132,97 +159,145 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="space-y-4">
-    <header class="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[var(--surface-shadow)]">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_12%_14%,color-mix(in_srgb,var(--accent)_20%,transparent)_0%,transparent_45%)] opacity-60"></div>
-      <div class="relative flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-2xl font-semibold tracking-tight">Alltagssprache</h2>
-          <p class="mt-1 text-sm text-[var(--muted)]">Translate common everyday English expressions into natural German.</p>
-        </div>
-        <button
-          class="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="loadingPrompt"
-          @click="generatePrompt"
-        >
-          {{ loadingPrompt ? "Generating..." : "Generate" }}
-        </button>
+  <section class="mx-auto w-full max-w-3xl space-y-6">
+    <header class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 class="font-serif text-3xl font-semibold tracking-tight">Alltagssprache</h2>
+        <p class="mt-1 text-xs text-[var(--muted)]">Translate everyday expressions naturally into German.</p>
       </div>
+      <button
+        class="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)] disabled:opacity-60"
+        :disabled="loadingPrompt"
+        @click="generatePrompt"
+      >
+        <svg class="h-3.5 w-3.5" :class="loadingPrompt ? 'animate-pulse' : ''" viewBox="0 0 20 20" fill="none">
+          <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+        </svg>
+        {{ loadingPrompt ? "Generating..." : "New Expression" }}
+      </button>
     </header>
 
     <p
       v-if="notice"
-      class="rounded-lg border px-3 py-2 text-sm"
+      class="rounded-lg border px-3 py-2 text-xs"
       :class="notice.type === 'error'
-        ? 'border-[color-mix(in_srgb,var(--status-bad)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-        : 'border-[color-mix(in_srgb,var(--status-good)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'"
+        ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
+        : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'"
     >
       {{ notice.text }}
     </p>
 
-    <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-      <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">English Expression</p>
-      <p class="mt-2 text-lg">{{ prompt?.englishText ?? "Click Generate to start." }}</p>
-      <textarea
-        v-model="form.userAnswerText"
-        rows="4"
-        class="mt-4 w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
-        placeholder="Write how you'd say this in German..."
-      />
-      <button
-        class="mt-3 w-full rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-[var(--accent-contrast)] transition disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="submitting"
-        @click="submitAttempt"
-      >
-        {{ submitting ? "Checking..." : "Check answer" }}
-      </button>
+    <article class="rounded-2xl border border-[color-mix(in_srgb,var(--accent)_30%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_6%,var(--panel))] px-4 py-3">
+      <div class="flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+        <p class="inline-flex items-center gap-1.5">
+          <span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent)_20%,var(--panel-soft))]">
+            <svg viewBox="0 0 20 20" fill="none" class="h-3 w-3 text-[var(--accent)]">
+              <path d="M10 3.5a6.5 6.5 0 0 0-6.5 6.5v5h13v-5A6.5 6.5 0 0 0 10 3.5Z" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+          </span>
+          Express In German
+        </p>
+        <span class="rounded-full border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-0.5">Preferences</span>
+      </div>
+      <p class="mt-3 font-serif text-2xl leading-relaxed">{{ prompt?.englishText ? `"${prompt.englishText}"` : "Click New Expression to start." }}</p>
     </article>
 
-    <article v-if="latestAttempt" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-      <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Assessment</p>
-      <div class="mt-3 grid gap-3 md:grid-cols-2">
-        <div class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3">
-          <p class="text-xs text-[var(--muted)]">Naturalness</p>
-          <p class="text-lg font-semibold">{{ latestAttempt.naturalnessScore }}%</p>
-        </div>
-        <div class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3">
-          <p class="text-xs text-[var(--muted)]">Result</p>
-          <p class="text-lg font-semibold">
-            {{ latestAttempt.naturalnessScore >= 80 ? "Natural" : latestAttempt.naturalnessScore >= 60 ? "Okay" : "Needs work" }}
-          </p>
-        </div>
-      </div>
-      <p class="mt-3 text-sm"><span class="font-semibold">Feedback:</span> {{ latestAttempt.feedback }}</p>
-      <p class="mt-2 text-sm"><span class="font-semibold">Native way:</span> {{ latestAttempt.nativeLikeVersion }}</p>
-      <div v-if="latestAttempt.alternatives.length" class="mt-2 text-sm">
-        <p class="font-semibold">Alternatives:</p>
-        <ul class="mt-1 space-y-1">
-          <li v-for="(alt, idx) in latestAttempt.alternatives" :key="`alt-${idx}`">{{ alt }}</li>
-        </ul>
-      </div>
-    </article>
-
-    <section class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-      <div class="mb-3 flex items-center justify-between gap-3">
-        <h3 class="text-lg font-semibold">History</h3>
+    <article class="space-y-2">
+      <p class="text-sm text-[var(--muted)]">How would you say this in German?</p>
+      <div class="relative">
+        <textarea
+          v-model="form.userAnswerText"
+          rows="3"
+          class="min-h-[120px] w-full resize-none rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 pr-16 text-base outline-none transition focus:border-[var(--accent)]"
+          placeholder="Schreib deine Antwort hier..."
+        />
         <button
-          class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-1.5 text-sm transition hover:border-[var(--accent)]"
+          class="absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--accent)_82%,var(--panel-soft))] text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
+          :disabled="submitting"
+          @click="submitAttempt"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none">
+            <path d="m3 10 14-6-4 12-3-4-7-2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6" />
+          </svg>
+        </button>
+      </div>
+    </article>
+
+    <section v-if="latestAttempt" class="space-y-2">
+      <hr class="border-[var(--line)]" />
+      <div class="grid gap-4 md:grid-cols-[1fr_auto]">
+        <div class="space-y-3">
+          <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]">
+            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Feedback</p>
+            <p class="mt-2 text-sm text-[var(--muted)]">{{ latestAttempt.feedback }}</p>
+          </article>
+
+          <article class="rounded-xl border border-[color-mix(in_srgb,var(--status-good)_30%,var(--line))] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]">
+            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Native-like Version</p>
+            <p class="mt-2 rounded-md bg-[color-mix(in_srgb,var(--status-good)_10%,var(--panel-soft))] px-3 py-2 text-sm font-semibold">
+              {{ latestAttempt.nativeLikeVersion }}
+            </p>
+          </article>
+
+          <article v-if="latestAttempt.alternatives.length" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]">
+            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Other Ways To Say It</p>
+            <ul class="mt-2 space-y-1.5">
+              <li v-for="(alt, idx) in latestAttempt.alternatives" :key="`alt-${idx}`" class="flex items-center gap-2 rounded-md bg-[var(--panel-soft)] px-2 py-1.5 text-xs">
+                <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--line)] text-[10px] text-[var(--muted)]">{{ idx + 1 }}</span>
+                <span>{{ alt }}</span>
+              </li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="flex items-center justify-center md:pt-3">
+          <div class="flex flex-col items-center gap-2">
+            <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--accent)_14%,var(--panel-soft))]">
+              <span class="font-serif text-4xl font-bold leading-none" :class="scoreClass(latestAttempt.naturalnessScore)">
+                {{ latestAttempt.naturalnessScore }}
+              </span>
+            </div>
+            <div class="text-center">
+              <p class="text-sm font-semibold" :class="scoreClass(latestAttempt.naturalnessScore)">{{ scoreLabel(latestAttempt.naturalnessScore) }}</p>
+              <p class="text-xs text-[var(--muted)]">Naturalness</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="border-[var(--line)]" />
+    <section class="space-y-2">
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">History</p>
+        <button
+          class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 text-xs transition hover:border-[var(--accent)]"
           :disabled="loadingHistory"
           @click="loadHistory"
         >
           {{ loadingHistory ? "Refreshing..." : "Refresh" }}
         </button>
       </div>
-      <div v-if="!history.length && !loadingHistory" class="rounded-md border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]">
+      <div v-if="!history.length && !loadingHistory" class="rounded-md border border-dashed border-[var(--line)] p-3 text-xs text-[var(--muted)]">
         No Alltagssprache attempts yet.
       </div>
-      <ul v-else class="space-y-2">
-        <li v-for="item in history" :key="item.id" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3">
-          <p class="text-sm font-semibold">{{ item.englishText }}</p>
-          <p class="mt-1 text-xs text-[var(--muted)]">Naturalness: {{ item.naturalnessScore }}%</p>
-          <p class="mt-1 text-xs text-[var(--muted)]">Your answer: {{ item.userAnswerText }}</p>
-          <p class="mt-1 text-xs text-[var(--muted)]">Native: {{ item.nativeLikeVersion }}</p>
-          <p class="mt-1 text-xs text-[var(--muted)]">{{ formatDate(item.createdAt) }}</p>
+      <ul v-else class="space-y-1.5">
+        <li v-for="item in history" :key="item.id" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2.5 transition hover:bg-[var(--panel-soft)]">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold">{{ `"${item.englishText}"` }}</p>
+              <div class="mt-1 grid gap-x-4 gap-y-1 md:grid-cols-2">
+                <p class="truncate text-xs text-[var(--muted)]">You: {{ item.userAnswerText }}</p>
+                <p class="truncate text-xs text-[var(--muted)]">Native: {{ item.nativeLikeVersion }}</p>
+              </div>
+            </div>
+            <div class="shrink-0 text-right md:flex md:items-center md:gap-3">
+              <p class="text-xs font-semibold" :class="scoreClass(item.naturalnessScore)">
+                {{ item.naturalnessScore }}%
+              </p>
+              <p class="text-[10px] text-[var(--muted)]">{{ formatDate(item.createdAt) }}</p>
+            </div>
+          </div>
         </li>
       </ul>
     </section>
