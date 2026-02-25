@@ -26,8 +26,7 @@ interface ExpressionAttemptRecord {
   promptId: number;
   englishText: string;
   userAnswerText: string;
-  isSemanticallyCorrect: boolean;
-  isNaturalGerman: boolean;
+  naturalnessScore: number;
   feedback: string;
   nativeLikeVersion: string;
   alternatives: string[];
@@ -183,12 +182,14 @@ onMounted(() => {
       <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Assessment</p>
       <div class="mt-3 grid gap-3 md:grid-cols-2">
         <div class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3">
-          <p class="text-xs text-[var(--muted)]">Semantically Correct</p>
-          <p class="text-lg font-semibold">{{ latestAttempt.isSemanticallyCorrect ? "Yes" : "No" }}</p>
+          <p class="text-xs text-[var(--muted)]">Naturalness</p>
+          <p class="text-lg font-semibold">{{ latestAttempt.naturalnessScore }}%</p>
         </div>
         <div class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3">
-          <p class="text-xs text-[var(--muted)]">Natural German</p>
-          <p class="text-lg font-semibold">{{ latestAttempt.isNaturalGerman ? "Yes" : "No" }}</p>
+          <p class="text-xs text-[var(--muted)]">Result</p>
+          <p class="text-lg font-semibold">
+            {{ latestAttempt.naturalnessScore >= 80 ? "Natural" : latestAttempt.naturalnessScore >= 60 ? "Okay" : "Needs work" }}
+          </p>
         </div>
       </div>
       <p class="mt-3 text-sm"><span class="font-semibold">Feedback:</span> {{ latestAttempt.feedback }}</p>
@@ -218,7 +219,9 @@ onMounted(() => {
       <ul v-else class="space-y-2">
         <li v-for="item in history" :key="item.id" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3">
           <p class="text-sm font-semibold">{{ item.englishText }}</p>
+          <p class="mt-1 text-xs text-[var(--muted)]">Naturalness: {{ item.naturalnessScore }}%</p>
           <p class="mt-1 text-xs text-[var(--muted)]">Your answer: {{ item.userAnswerText }}</p>
+          <p class="mt-1 text-xs text-[var(--muted)]">Native: {{ item.nativeLikeVersion }}</p>
           <p class="mt-1 text-xs text-[var(--muted)]">{{ formatDate(item.createdAt) }}</p>
         </li>
       </ul>

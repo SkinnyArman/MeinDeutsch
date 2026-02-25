@@ -38,8 +38,7 @@ export const expressionService = {
       promptId: input.promptId,
       englishText: prompt.englishText,
       userAnswerText: input.userAnswerText,
-      isSemanticallyCorrect: assessment.isSemanticallyCorrect,
-      isNaturalGerman: assessment.isNaturalGerman,
+      naturalnessScore: Math.round(assessment.naturalnessScore),
       feedback: assessment.feedback,
       nativeLikeVersion: assessment.nativeLikeVersion,
       alternatives: assessment.alternatives

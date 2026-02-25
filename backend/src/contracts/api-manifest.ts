@@ -185,7 +185,7 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     method: "POST",
     path: "/api/expressions/attempt",
     title: "Assess Alltagssprache Answer",
-    description: "Checks user German answer for correctness and naturalness, and returns native-like phrasing.",
+    description: "Returns naturalness score (0-100), feedback, and native-like phrasing.",
     requestFields: [
       {
         name: "promptId",

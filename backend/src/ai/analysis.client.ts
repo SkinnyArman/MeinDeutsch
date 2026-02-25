@@ -74,15 +74,15 @@ Rules:
 const EXPRESSION_ASSESSMENT_PROMPT = `You are a German expression coach.
 Given an English expression and the user's German attempt, return strict JSON only:
 {
-  "isSemanticallyCorrect": boolean,
-  "isNaturalGerman": boolean,
+  "naturalnessScore": number,
   "feedback": "string",
   "nativeLikeVersion": "string",
   "alternatives": ["string"]
 }
 Rules:
-- isSemanticallyCorrect evaluates meaning accuracy.
-- isNaturalGerman evaluates whether this is how native speakers would naturally say it.
+- naturalnessScore is 0-100.
+- 0 means incorrect or hard to understand.
+- 100 means fully correct, natural, and how natives would say it.
 - feedback must explain what is wrong/right concretely.
 - nativeLikeVersion must be a clean, natural German version.
 - alternatives can be empty but include useful variants when relevant.
@@ -209,8 +209,7 @@ export const generateEverydayExpression = async (): Promise<{ englishText: strin
 };
 
 export interface ExpressionAssessmentResult {
-  isSemanticallyCorrect: boolean;
-  isNaturalGerman: boolean;
+  naturalnessScore: number;
   feedback: string;
   nativeLikeVersion: string;
   alternatives: string[];
@@ -240,10 +239,9 @@ export const assessExpressionAttempt = async (input: {
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["isSemanticallyCorrect", "isNaturalGerman", "feedback", "nativeLikeVersion", "alternatives"],
+            required: ["naturalnessScore", "feedback", "nativeLikeVersion", "alternatives"],
             properties: {
-              isSemanticallyCorrect: { type: "boolean" },
-              isNaturalGerman: { type: "boolean" },
+              naturalnessScore: { type: "number", minimum: 0, maximum: 100 },
               feedback: { type: "string", minLength: 1 },
               nativeLikeVersion: { type: "string", minLength: 1 },
               alternatives: { type: "array", items: { type: "string" } }
@@ -257,8 +255,7 @@ export const assessExpressionAttempt = async (input: {
     logger.error("OpenAI expression assessment failed", error);
     if (env.AI_FALLBACK_ENABLED) {
       return {
-        isSemanticallyCorrect: false,
-        isNaturalGerman: false,
+        naturalnessScore: 0,
         feedback: "Fallback mode: AI assessment unavailable. Please try again later.",
         nativeLikeVersion: input.userAnswerText,
         alternatives: []

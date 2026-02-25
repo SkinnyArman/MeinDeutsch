@@ -22,11 +22,8 @@ export class ExpressionAttempt {
   @Column({ name: "user_answer_text", type: "text" })
   userAnswerText!: string;
 
-  @Column({ name: "is_semantically_correct", type: "boolean", default: false })
-  isSemanticallyCorrect!: boolean;
-
-  @Column({ name: "is_natural_german", type: "boolean", default: false })
-  isNaturalGerman!: boolean;
+  @Column({ name: "naturalness_score", type: "integer", default: 0 })
+  naturalnessScore!: number;
 
   @Column({ type: "text" })
   feedback!: string;
@@ -46,8 +43,7 @@ export interface ExpressionAttemptRecord {
   promptId: number;
   englishText: string;
   userAnswerText: string;
-  isSemanticallyCorrect: boolean;
-  isNaturalGerman: boolean;
+  naturalnessScore: number;
   feedback: string;
   nativeLikeVersion: string;
   alternatives: string[];

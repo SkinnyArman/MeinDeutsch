@@ -14,8 +14,7 @@ const toAttemptRecord = (entity: ExpressionAttempt): ExpressionAttemptRecord => 
   promptId: Number(entity.promptId),
   englishText: entity.englishText,
   userAnswerText: entity.userAnswerText,
-  isSemanticallyCorrect: entity.isSemanticallyCorrect,
-  isNaturalGerman: entity.isNaturalGerman,
+  naturalnessScore: entity.naturalnessScore,
   feedback: entity.feedback,
   nativeLikeVersion: entity.nativeLikeVersion,
   alternatives: entity.alternatives,
@@ -50,8 +49,7 @@ export const expressionRepository = {
     promptId: number;
     englishText: string;
     userAnswerText: string;
-    isSemanticallyCorrect: boolean;
-    isNaturalGerman: boolean;
+    naturalnessScore: number;
     feedback: string;
     nativeLikeVersion: string;
     alternatives: string[];
@@ -62,8 +60,7 @@ export const expressionRepository = {
       promptId: String(input.promptId),
       englishText: input.englishText,
       userAnswerText: input.userAnswerText,
-      isSemanticallyCorrect: input.isSemanticallyCorrect,
-      isNaturalGerman: input.isNaturalGerman,
+      naturalnessScore: input.naturalnessScore,
       feedback: input.feedback,
       nativeLikeVersion: input.nativeLikeVersion,
       alternatives: input.alternatives
