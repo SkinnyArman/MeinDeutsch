@@ -127,6 +127,8 @@ const dueState = (item: VocabularyItemRecord): "due" | "soon" | "later" => {
   return "later";
 };
 
+const isDueNow = (item: VocabularyItemRecord): boolean => dueState(item) === "due";
+
 const dueBadge = (item: VocabularyItemRecord): string => {
   const state = dueState(item);
   if (state === "due") {
@@ -187,6 +189,11 @@ const categoryIcon = (category: string): string => {
 };
 
 const submitSrsRating = async (item: VocabularyItemRecord, rating: 1 | 2 | 3 | 4): Promise<void> => {
+  if (!isDueNow(item)) {
+    setError("This card is not due yet.");
+    return;
+  }
+
   reviewingWordId.value = item.id;
   try {
     const res = await authFetch(`${baseUrl}/api/vocabulary/${item.id}/review`, {
@@ -343,28 +350,28 @@ onMounted(() => {
           <div class="mt-2 grid grid-cols-4 gap-1.5 text-[11px]">
             <button
               class="rounded-md border border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_18%,var(--panel-soft))] px-2 py-1 font-semibold text-[var(--status-bad)] transition hover:opacity-90 disabled:opacity-60"
-              :disabled="reviewingWordId === item.id"
+              :disabled="reviewingWordId === item.id || !isDueNow(item)"
               @click="submitSrsRating(item, 1)"
             >
               Again
             </button>
             <button
               class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 font-medium transition hover:border-[var(--accent)] disabled:opacity-60"
-              :disabled="reviewingWordId === item.id"
+              :disabled="reviewingWordId === item.id || !isDueNow(item)"
               @click="submitSrsRating(item, 2)"
             >
               Hard
             </button>
             <button
               class="rounded-md border border-[color-mix(in_srgb,var(--status-good)_40%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_16%,var(--panel-soft))] px-2 py-1 font-semibold text-[var(--status-good)] transition hover:opacity-90 disabled:opacity-60"
-              :disabled="reviewingWordId === item.id"
+              :disabled="reviewingWordId === item.id || !isDueNow(item)"
               @click="submitSrsRating(item, 3)"
             >
               Good
             </button>
             <button
               class="rounded-md border border-[color-mix(in_srgb,var(--status-good)_55%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_26%,var(--panel-soft))] px-2 py-1 font-semibold text-[var(--status-good)] transition hover:opacity-90 disabled:opacity-60"
-              :disabled="reviewingWordId === item.id"
+              :disabled="reviewingWordId === item.id || !isDueNow(item)"
               @click="submitSrsRating(item, 4)"
             >
               Easy

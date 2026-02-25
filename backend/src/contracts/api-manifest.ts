@@ -212,6 +212,30 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     requestFields: []
   },
   {
+    id: "list-expression-review",
+    method: "GET",
+    path: "/api/expressions/review",
+    title: "List Alltagssprache Review Queue",
+    description: "Lists due Alltagssprache review items auto-added from low scores.",
+    requestFields: []
+  },
+  {
+    id: "assess-expression-review",
+    method: "POST",
+    path: "/api/expressions/review/:id/attempt",
+    title: "Assess Alltagssprache Review Attempt",
+    description: "Assesses a review attempt with a lighter token-efficient AI call.",
+    requestFields: [
+      {
+        name: "userAnswerText",
+        label: "German Answer",
+        type: "textarea",
+        required: true,
+        placeholder: "Das ist nicht mein Ding."
+      }
+    ]
+  },
+  {
     id: "review-vocabulary",
     method: "POST",
     path: "/api/vocabulary/:id/review",

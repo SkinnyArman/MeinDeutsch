@@ -124,23 +124,43 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="min-h-screen p-4 md:p-8">
-    <section class="mx-auto max-w-xl rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-8 shadow-[var(--surface-shadow)]">
-      <h1 class="text-3xl font-semibold tracking-tight">MeinDeutsch</h1>
-      <p class="mt-2 text-sm text-[var(--muted)]">Sign in with Google to access your personal learning data.</p>
+  <main class="relative min-h-screen overflow-hidden bg-[var(--content-bg)]">
+    <div class="pointer-events-none absolute inset-0">
+      <div class="absolute -left-24 -top-20 h-72 w-72 rounded-full bg-[color-mix(in_srgb,var(--accent)_22%,transparent)] blur-3xl" />
+      <div class="absolute -bottom-24 right-0 h-80 w-80 rounded-full bg-[color-mix(in_srgb,var(--accent)_15%,transparent)] blur-3xl" />
+    </div>
 
-      <p
-        v-if="notice"
-        class="mt-4 rounded-lg border px-3 py-2 text-sm"
-        :class="notice.type === 'error'
-          ? 'border-[color-mix(in_srgb,var(--status-bad)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-          : 'border-[color-mix(in_srgb,var(--status-good)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'"
-      >
-        {{ notice.text }}
-      </p>
+    <section class="relative mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center px-4 py-8">
+      <article class="w-full max-w-md rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-8 shadow-[var(--surface-shadow)] md:p-10">
+        <div class="mb-6 flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent)] text-sm font-semibold text-[var(--accent-contrast)]">
+            M
+          </div>
+          <div>
+            <h1 class="font-serif text-2xl font-semibold tracking-tight">MeinDeutsch</h1>
+            <p class="text-xs text-[var(--muted)]">Personalized German practice</p>
+          </div>
+        </div>
 
-      <div class="mt-6 flex min-h-12 items-center" ref="googleButtonRoot"></div>
-      <p v-if="loading" class="mt-3 text-xs text-[var(--muted)]">Signing in...</p>
+        <p class="text-sm text-[var(--muted)]">
+          Sign in with Google to access your personal learning history, streaks, and vocabulary.
+        </p>
+
+        <p
+          v-if="notice"
+          class="mt-4 rounded-lg border px-3 py-2 text-sm"
+          :class="notice.type === 'error'
+            ? 'border-[color-mix(in_srgb,var(--status-bad)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
+            : 'border-[color-mix(in_srgb,var(--status-good)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'"
+        >
+          {{ notice.text }}
+        </p>
+
+        <div class="mt-6 rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] p-3">
+          <div class="flex min-h-12 items-center justify-center" ref="googleButtonRoot" />
+        </div>
+        <p v-if="loading" class="mt-3 text-center text-xs text-[var(--muted)]">Signing in...</p>
+      </article>
     </section>
   </main>
 </template>

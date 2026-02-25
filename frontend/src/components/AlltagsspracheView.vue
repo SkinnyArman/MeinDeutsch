@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { inject, onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import { authFetch } from "../utils/auth";
 
 interface ApiErrorBody {
@@ -33,6 +34,7 @@ interface ExpressionAttemptRecord {
   createdAt: string;
 }
 
+const router = useRouter();
 const baseUrl = inject<import("vue").Ref<string>>("baseUrl")?.value ?? "http://localhost:4000";
 const loadingPrompt = ref(false);
 const submitting = ref(false);
@@ -41,6 +43,7 @@ const prompt = ref<ExpressionPromptRecord | null>(null);
 const latestAttempt = ref<ExpressionAttemptRecord | null>(null);
 const history = ref<ExpressionAttemptRecord[]>([]);
 const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
+const expandedHistoryId = ref<number | null>(null);
 
 const form = reactive({
   userAnswerText: ""
@@ -124,6 +127,10 @@ const submitAttempt = async (): Promise<void> => {
   }
 };
 
+const goToReview = (): void => {
+  void router.push("/alltagssprache/review");
+};
+
 const formatDate = (value: string): string =>
   new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
@@ -153,6 +160,10 @@ const scoreClass = (score: number): string => {
   return "text-[var(--status-bad)]";
 };
 
+const toggleHistoryItem = (id: number): void => {
+  expandedHistoryId.value = expandedHistoryId.value === id ? null : id;
+};
+
 onMounted(() => {
   void loadHistory();
 });
@@ -165,16 +176,31 @@ onMounted(() => {
         <h2 class="font-serif text-3xl font-semibold tracking-tight">Alltagssprache</h2>
         <p class="mt-1 text-xs text-[var(--muted)]">Translate everyday expressions naturally into German.</p>
       </div>
-      <button
-        class="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)] disabled:opacity-60"
-        :disabled="loadingPrompt"
-        @click="generatePrompt"
-      >
-        <svg class="h-3.5 w-3.5" :class="loadingPrompt ? 'animate-pulse' : ''" viewBox="0 0 20 20" fill="none">
-          <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
-        </svg>
-        {{ loadingPrompt ? "Generating..." : "New Expression" }}
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          class="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
+          @click="goToReview"
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none">
+            <path d="M4 4h12v12H4V4Zm3 3h6M7 10h6M7 13h4" stroke="currentColor" stroke-linecap="round" stroke-width="1.5" />
+          </svg>
+          Review
+        </button>
+        <button
+          class="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)] disabled:opacity-60"
+          :disabled="loadingPrompt"
+          @click="generatePrompt"
+        >
+          <svg v-if="loadingPrompt" class="h-3.5 w-3.5 animate-spin" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.6" />
+            <path d="M10 3.5a6.5 6.5 0 0 1 6.5 6.5" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+          </svg>
+          <svg v-else class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none">
+            <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+          </svg>
+          {{ loadingPrompt ? "Generating..." : "New Expression" }}
+        </button>
+      </div>
     </header>
 
     <p
@@ -282,20 +308,68 @@ onMounted(() => {
         No Alltagssprache attempts yet.
       </div>
       <ul v-else class="space-y-1.5">
-        <li v-for="item in history" :key="item.id" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2.5 transition hover:bg-[var(--panel-soft)]">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="truncate text-sm font-semibold">{{ `"${item.englishText}"` }}</p>
-              <div class="mt-1 grid gap-x-4 gap-y-1 md:grid-cols-2">
-                <p class="truncate text-xs text-[var(--muted)]">You: {{ item.userAnswerText }}</p>
-                <p class="truncate text-xs text-[var(--muted)]">Native: {{ item.nativeLikeVersion }}</p>
+        <li
+          v-for="item in history"
+          :key="item.id"
+          class="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2.5 transition-all duration-200"
+          :class="expandedHistoryId === item.id
+            ? 'border-[color-mix(in_srgb,var(--line)_90%,transparent)] bg-[color-mix(in_srgb,var(--panel-soft)_68%,var(--panel))]'
+            : 'hover:bg-[var(--panel-soft)]'"
+        >
+          <button class="w-full text-left" type="button" @click="toggleHistoryItem(item.id)">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold">{{ `"${item.englishText}"` }}</p>
+                <div class="mt-1 grid gap-x-4 gap-y-1 md:grid-cols-2">
+                  <p class="truncate text-xs text-[var(--muted)]">You: {{ item.userAnswerText }}</p>
+                  <p class="truncate text-xs text-[var(--muted)]">Native: {{ item.nativeLikeVersion }}</p>
+                </div>
+              </div>
+              <div class="shrink-0 text-right md:flex md:items-center md:gap-3">
+                <p class="text-xs font-semibold" :class="scoreClass(item.naturalnessScore)">
+                  {{ item.naturalnessScore }}%
+                </p>
+                <p class="text-[10px] text-[var(--muted)]">{{ formatDate(item.createdAt) }}</p>
+                <svg
+                  class="ml-2 h-3.5 w-3.5 text-[var(--muted)] transition"
+                  :class="expandedHistoryId === item.id ? 'rotate-180' : ''"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                >
+                  <path d="m5.5 7.5 4.5 5 4.5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" />
+                </svg>
               </div>
             </div>
-            <div class="shrink-0 text-right md:flex md:items-center md:gap-3">
-              <p class="text-xs font-semibold" :class="scoreClass(item.naturalnessScore)">
-                {{ item.naturalnessScore }}%
-              </p>
-              <p class="text-[10px] text-[var(--muted)]">{{ formatDate(item.createdAt) }}</p>
+          </button>
+
+          <div
+            class="grid transition-all duration-300 ease-out"
+            :style="{ gridTemplateRows: expandedHistoryId === item.id ? '1fr' : '0fr' }"
+          >
+            <div class="overflow-hidden">
+              <div
+                class="mt-3 space-y-2 rounded-lg border border-[color-mix(in_srgb,var(--line)_92%,transparent)] bg-[color-mix(in_srgb,var(--panel)_90%,var(--panel-soft))] p-3 transition-opacity duration-200"
+                :class="expandedHistoryId === item.id ? 'opacity-100' : 'opacity-0'"
+              >
+                <div class="min-w-0 border-l-2 border-[color-mix(in_srgb,var(--accent)_45%,transparent)] pl-2.5">
+                  <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Feedback</p>
+                  <p class="mt-1 text-xs text-[var(--muted)]">{{ item.feedback }}</p>
+                </div>
+
+                <div v-if="item.alternatives.length" class="space-y-1">
+                  <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Alternatives</p>
+                  <ul class="space-y-1">
+                    <li
+                      v-for="(alt, idx) in item.alternatives"
+                      :key="`history-alt-${item.id}-${idx}`"
+                      class="rounded-md bg-[var(--panel)] px-2 py-1.5 text-xs"
+                    >
+                      <span class="text-[var(--muted)]">{{ idx + 1 }}.</span>
+                      {{ alt }}
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </li>

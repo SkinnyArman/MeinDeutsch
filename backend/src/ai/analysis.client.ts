@@ -63,13 +63,49 @@ Rules:
 const EXPRESSION_GENERATION_PROMPT = `Generate exactly one very common everyday English sentence or expression.
 Rules:
 - Output strict JSON only.
-- Target B1+/B2 difficulty.
+- Target B2/B2+/C1 difficulty.
 - Keep it practical and naturally spoken (roughly 5-14 words).
 - Prefer natural spoken daily usage (not literary).
+- Vary heavily across requests:
+  - expression types: idiom, proverb/saying, casual reaction, social phrase, opinion phrase, complaint, encouragement, planning phrase, casual profanity.
+  - contexts: friendship, family, dating, food, travel, money, stress, emotions, health, study, work, time pressure, conflict, success/failure.
+- Include idioms/proverbs regularly (examples of desired style: "Break a leg", "Better late than never", "Call it a day", "It's not my cup of tea" and so on).
 - Avoid very basic beginner phrases (e.g. "How are you?", "Where are you from?", "What is your name?").
-- Prefer expressions people actually say in daily situations (work, plans, stress, opinions, social situations).
-- Do not include profanity.
+- Casual everyday profanity is allowed in moderation when natural (frustration, surprise, emphasis).
+- Keep profanity realistic and commonly spoken, not extreme.
+- Return generatedContext as a short lowercase label like "idiom_social", "proverb_time", "casual_emotion", "planning_travel".
 - No explanation text, only JSON.`;
+
+const EXPRESSION_TARGET_TYPES = [
+  "idiom",
+  "proverb",
+  "casual_reaction",
+  "social_phrase",
+  "opinion_phrase",
+  "complaint",
+  "encouragement",
+  "planning_phrase",
+  "casual_profanity"
+] as const;
+
+const EXPRESSION_TARGET_CONTEXTS = [
+  "friendship",
+  "family",
+  "dating",
+  "food",
+  "travel",
+  "money",
+  "stress",
+  "emotions",
+  "health",
+  "study",
+  "work",
+  "time_pressure",
+  "conflict",
+  "success_failure"
+] as const;
+
+const pickRandom = <T>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)] as T;
 
 const EXPRESSION_ASSESSMENT_PROMPT = `You are a German expression coach.
 Given an English expression and the user's German attempt, return strict JSON only:
@@ -83,10 +119,25 @@ Rules:
 - naturalnessScore is 0-100.
 - 0 means incorrect or hard to understand.
 - 100 means fully correct, natural, and how natives would say it.
-- feedback must explain what is wrong/right concretely.
+- feedback should explain what is wrong/right concretely.
+- If the user's answer is fully correct and natural, return feedback as an empty string.
 - nativeLikeVersion must be a clean, natural German version.
 - alternatives can be empty but include useful variants when relevant.
 - No CEFR or extra fields.`;
+
+const EXPRESSION_REVIEW_ASSESSMENT_PROMPT = `You are a German expression coach in review mode.
+Given an English expression and the user's German attempt, return strict JSON only:
+{
+  "naturalnessScore": number,
+  "feedback": "string"
+}
+Rules:
+- naturalnessScore is 0-100.
+- Keep feedback concise (max 2 sentences) and concrete.
+- If fully correct and natural, it's not necessary to give a feedback you can just say a couple of complimenting words.
+- Focus only on what still needs fixing or what improved.
+- Do not return nativeLikeVersion or alternatives in review mode.
+- No extra fields.`;
 
 const buildFallbackAnalysis = (reason: string): AnalysisResult => {
   return {
@@ -162,10 +213,17 @@ export const generateEverydayExpression = async (): Promise<{ englishText: strin
   }
 
   try {
+    const targetType = pickRandom(EXPRESSION_TARGET_TYPES);
+    const targetContext = pickRandom(EXPRESSION_TARGET_CONTEXTS);
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
       instructions: EXPRESSION_GENERATION_PROMPT,
-      input: "Generate one common everyday English sentence/expression.",
+      input: [
+        "Generate one common everyday English sentence/expression.",
+        `Target expression type: ${targetType}`,
+        `Target context: ${targetContext}`,
+        "Use the target type/context as a strong preference to maximize variety."
+      ].join("\n"),
       text: {
         format: {
           type: "json_schema",
@@ -177,7 +235,7 @@ export const generateEverydayExpression = async (): Promise<{ englishText: strin
             required: ["englishText", "generatedContext"],
             properties: {
               englishText: { type: "string", minLength: 1 },
-              generatedContext: { type: ["string", "null"] }
+              generatedContext: { type: "string", minLength: 1 }
             }
           }
         }
@@ -187,9 +245,19 @@ export const generateEverydayExpression = async (): Promise<{ englishText: strin
   } catch (error) {
     logger.error("OpenAI expression generation failed", error);
     if (env.AI_FALLBACK_ENABLED) {
+      const fallbackExpressions = [
+        { englishText: "Break a leg.", generatedContext: "idiom_encouragement" },
+        { englishText: "Better late than never.", generatedContext: "proverb_time" },
+        { englishText: "It's not my cup of tea.", generatedContext: "idiom_opinion" },
+        { englishText: "Call it a day.", generatedContext: "idiom_work" },
+        { englishText: "I can't keep up with this pace.", generatedContext: "casual_stress" },
+        { englishText: "Let's not make a mountain out of a molehill.", generatedContext: "idiom_conflict" },
+        { englishText: "I'm so damn tired today.", generatedContext: "casual_profanity_emotion" }
+      ];
+      const fallback = pickRandom(fallbackExpressions);
       return {
-        englishText: "I'm bored to death.",
-        generatedContext: "everyday_expression_fallback"
+        englishText: fallback.englishText,
+        generatedContext: fallback.generatedContext
       };
     }
 
@@ -213,6 +281,11 @@ export interface ExpressionAssessmentResult {
   feedback: string;
   nativeLikeVersion: string;
   alternatives: string[];
+}
+
+export interface ExpressionReviewAssessmentResult {
+  naturalnessScore: number;
+  feedback: string;
 }
 
 export const assessExpressionAttempt = async (input: {
@@ -242,7 +315,7 @@ export const assessExpressionAttempt = async (input: {
             required: ["naturalnessScore", "feedback", "nativeLikeVersion", "alternatives"],
             properties: {
               naturalnessScore: { type: "number", minimum: 0, maximum: 100 },
-              feedback: { type: "string", minLength: 1 },
+              feedback: { type: "string" },
               nativeLikeVersion: { type: "string", minLength: 1 },
               alternatives: { type: "array", items: { type: "string" } }
             }
@@ -269,6 +342,69 @@ export const assessExpressionAttempt = async (input: {
             : 502)
         : 502;
     throw new AppError(status, "AI_EXPRESSION_ASSESSMENT_FAILED", API_MESSAGES.errors.aiExpressionAssessmentFailed, {
+      provider: "openai",
+      status: error && typeof error === "object" && "status" in error ? (error as { status?: unknown }).status : undefined,
+      code: error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined,
+      type: error && typeof error === "object" && "type" in error ? (error as { type?: unknown }).type : undefined
+    });
+  }
+};
+
+export const assessExpressionReviewAttempt = async (input: {
+  englishText: string;
+  userAnswerText: string;
+  baselineNativeLikeVersion: string;
+}): Promise<ExpressionReviewAssessmentResult> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+
+  try {
+    const completion = await openai.responses.create({
+      model: env.OPENAI_MODEL,
+      instructions: EXPRESSION_REVIEW_ASSESSMENT_PROMPT,
+      input: [
+        `English expression: ${input.englishText}`,
+        `German attempt: ${input.userAnswerText}`,
+        `Reference native-like version: ${input.baselineNativeLikeVersion}`
+      ].join("\n"),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "expression_review_assessment",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["naturalnessScore", "feedback"],
+            properties: {
+              naturalnessScore: { type: "number", minimum: 0, maximum: 100 },
+              feedback: { type: "string" }
+            }
+          }
+        }
+      }
+    });
+    return JSON.parse(completion.output_text) as ExpressionReviewAssessmentResult;
+  } catch (error) {
+    logger.error("OpenAI expression review assessment failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return {
+        naturalnessScore: 0,
+        feedback: "Fallback mode: review assessment unavailable. Please try again later."
+      };
+    }
+
+    const status =
+      error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
+        ? ((error as { status: number }).status >= 400 && (error as { status: number }).status <= 599
+            ? (error as { status: number }).status
+            : 502)
+        : 502;
+    throw new AppError(status, "AI_EXPRESSION_REVIEW_ASSESSMENT_FAILED", API_MESSAGES.errors.aiExpressionReviewAssessmentFailed, {
       provider: "openai",
       status: error && typeof error === "object" && "status" in error ? (error as { status?: unknown }).status : undefined,
       code: error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined,

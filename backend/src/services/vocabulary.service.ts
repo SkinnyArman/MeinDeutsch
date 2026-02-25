@@ -60,6 +60,16 @@ export const vocabularyService = {
       throw new AppError(404, "VOCABULARY_NOT_FOUND", API_MESSAGES.errors.vocabularyNotFound);
     }
 
+    // Backend guard: reviews are only allowed when due now (or no due date yet).
+    if (existing.srsDueAt) {
+      const dueAtMs = new Date(existing.srsDueAt).getTime();
+      if (Number.isFinite(dueAtMs) && dueAtMs > Date.now()) {
+        throw new AppError(409, "VOCABULARY_NOT_DUE", API_MESSAGES.errors.vocabularyNotDue, {
+          dueAt: existing.srsDueAt
+        });
+      }
+    }
+
     // SM-2 style rating mapping:
     // 1 = Again, 2 = Hard, 3 = Good, 4 = Easy
     const quality = Math.max(0, Math.min(5, input.rating + 1));

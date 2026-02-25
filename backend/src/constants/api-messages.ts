@@ -35,7 +35,9 @@ export const API_MESSAGES = {
   expression: {
     generated: "Expression generated successfully",
     assessed: "Expression attempt assessed successfully",
-    historyListed: "Expression history fetched successfully"
+    historyListed: "Expression history fetched successfully",
+    reviewListed: "Expression review items fetched successfully",
+    reviewAssessed: "Expression review attempt assessed successfully"
   },
   errors: {
     validationFailed: "Validation failed",
@@ -45,6 +47,7 @@ export const API_MESSAGES = {
     aiQuestionGenerationFailed: "AI question generation failed",
     aiExpressionGenerationFailed: "AI expression generation failed",
     aiExpressionAssessmentFailed: "AI expression assessment failed",
+    aiExpressionReviewAssessmentFailed: "AI expression review assessment failed",
     authMissingToken: "Authentication token is required",
     authInvalidGoogleToken: "Google sign-in failed",
     authEmailNotAllowed: "This email is not allowed to sign in",
@@ -54,7 +57,10 @@ export const API_MESSAGES = {
     questionTextRequired: "Either questionId or prompt is required",
     submissionNotFound: "Submission not found",
     expressionPromptNotFound: "Expression prompt not found",
+    expressionReviewItemNotFound: "Expression review item not found",
+    expressionReviewItemNotDue: "Expression review item is not due yet",
     vocabularyNotFound: "Vocabulary item not found",
+    vocabularyNotDue: "Vocabulary item is not due for review yet",
     internalServerError: "Internal server error",
     routeNotFound: "Route not found"
   }

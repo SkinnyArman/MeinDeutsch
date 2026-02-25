@@ -1,9 +1,26 @@
-import { assessExpressionAttempt, generateEverydayExpression } from "../ai/analysis.client.js";
+import { assessExpressionAttempt, assessExpressionReviewAttempt, generateEverydayExpression } from "../ai/analysis.client.js";
 import { API_MESSAGES } from "../constants/api-messages.js";
 import type { ExpressionAttemptRecord } from "../models/expression-attempt.model.js";
 import type { ExpressionPromptRecord } from "../models/expression-prompt.model.js";
+import type { ExpressionReviewItemRecord } from "../models/expression-review-item.model.js";
+import { expressionReviewRepository } from "../repositories/expression-review.repository.js";
 import { expressionRepository } from "../repositories/expression.repository.js";
 import { AppError } from "../utils/app-error.js";
+
+const REVIEW_ENQUEUE_THRESHOLD = 70;
+const REVIEW_SUCCESS_SCORE = 90;
+const REVIEW_FOLLOW_UP_DAYS = 7;
+const REVIEW_RETRY_DAYS = 1;
+
+const plusDays = (base: Date, days: number): Date => {
+  return new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+};
+
+export interface ExpressionReviewAssessmentRecord {
+  reviewItem: ExpressionReviewItemRecord;
+  naturalnessScore: number;
+  feedback: string;
+}
 
 export const expressionService = {
   async generatePrompt(userId: number): Promise<ExpressionPromptRecord> {
@@ -33,7 +50,7 @@ export const expressionService = {
       userAnswerText: input.userAnswerText
     });
 
-    return expressionRepository.createAttempt({
+    const created = await expressionRepository.createAttempt({
       userId: input.userId,
       promptId: input.promptId,
       englishText: prompt.englishText,
@@ -43,6 +60,19 @@ export const expressionService = {
       nativeLikeVersion: assessment.nativeLikeVersion,
       alternatives: assessment.alternatives
     });
+
+    if (created.naturalnessScore <= REVIEW_ENQUEUE_THRESHOLD) {
+      await expressionReviewRepository.upsertLowScoreItem({
+        userId: input.userId,
+        englishText: created.englishText,
+        naturalnessScore: created.naturalnessScore,
+        baselineNativeLikeVersion: created.nativeLikeVersion,
+        baselineAlternatives: created.alternatives,
+        baselineFeedback: created.feedback
+      });
+    }
+
+    return created;
   },
 
   async listHistory(input: { userId: number; limit?: number }): Promise<ExpressionAttemptRecord[]> {
@@ -50,5 +80,101 @@ export const expressionService = {
       userId: input.userId,
       limit: input.limit ?? 30
     });
+  },
+
+  async listDueReviewItems(input: { userId: number; limit?: number }): Promise<{ dueCount: number; items: ExpressionReviewItemRecord[] }> {
+    const [dueCount, items] = await Promise.all([
+      expressionReviewRepository.countDueItems(input.userId),
+      expressionReviewRepository.listDueItems({
+        userId: input.userId,
+        limit: input.limit ?? 50
+      })
+    ]);
+    return { dueCount, items };
+  },
+
+  async assessReviewAttempt(input: {
+    userId: number;
+    reviewItemId: number;
+    userAnswerText: string;
+  }): Promise<ExpressionReviewAssessmentRecord> {
+    const item = await expressionReviewRepository.findById({
+      userId: input.userId,
+      reviewItemId: input.reviewItemId
+    });
+
+    if (!item) {
+      throw new AppError(404, "EXPRESSION_REVIEW_ITEM_NOT_FOUND", API_MESSAGES.errors.expressionReviewItemNotFound);
+    }
+
+    const dueAtMs = new Date(item.nextReviewAt).getTime();
+    if (Number.isFinite(dueAtMs) && dueAtMs > Date.now()) {
+      throw new AppError(409, "EXPRESSION_REVIEW_ITEM_NOT_DUE", API_MESSAGES.errors.expressionReviewItemNotDue, {
+        nextReviewAt: item.nextReviewAt
+      });
+    }
+
+    const reviewAssessment = await assessExpressionReviewAttempt({
+      englishText: item.englishText,
+      userAnswerText: input.userAnswerText,
+      baselineNativeLikeVersion: item.baselineNativeLikeVersion
+    });
+
+    const roundedScore = Math.round(reviewAssessment.naturalnessScore);
+    const now = new Date();
+
+    let successCount = item.successCount;
+    let status: "active" | "graduated" = "active";
+    let nextReviewAt: Date | null = plusDays(now, REVIEW_RETRY_DAYS);
+
+    if (roundedScore >= REVIEW_SUCCESS_SCORE) {
+      successCount += 1;
+      if (successCount >= 2) {
+        status = "graduated";
+      } else {
+        nextReviewAt = plusDays(now, REVIEW_FOLLOW_UP_DAYS);
+      }
+    } else {
+      successCount = 0;
+      nextReviewAt = plusDays(now, REVIEW_RETRY_DAYS);
+    }
+
+    const updated = await expressionReviewRepository.saveReviewProgress({
+      userId: input.userId,
+      reviewItemId: input.reviewItemId,
+      naturalnessScore: roundedScore,
+      successCount,
+      reviewAttemptCount: item.reviewAttemptCount + 1,
+      nextReviewAt,
+      status
+    });
+
+    if (!updated) {
+      throw new AppError(404, "EXPRESSION_REVIEW_ITEM_NOT_FOUND", API_MESSAGES.errors.expressionReviewItemNotFound);
+    }
+
+    // Persist review attempts into regular expression history as well,
+    // so history reflects the latest percentages over retries.
+    const reviewPrompt = await expressionRepository.createPrompt({
+      userId: input.userId,
+      englishText: item.englishText,
+      generatedContext: "review_retry"
+    });
+    await expressionRepository.createAttempt({
+      userId: input.userId,
+      promptId: reviewPrompt.id,
+      englishText: item.englishText,
+      userAnswerText: input.userAnswerText,
+      naturalnessScore: roundedScore,
+      feedback: reviewAssessment.feedback,
+      nativeLikeVersion: item.baselineNativeLikeVersion,
+      alternatives: item.baselineAlternatives
+    });
+
+    return {
+      reviewItem: updated,
+      naturalnessScore: roundedScore,
+      feedback: reviewAssessment.feedback
+    };
   }
 };
