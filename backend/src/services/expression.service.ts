@@ -94,16 +94,24 @@ export const expressionService = {
       }),
       expressionRepository.countAttempts({ userId: input.userId })
     ]);
+    const historyByExpression = await expressionRepository.listAttemptHistoryByEnglishTexts({
+      userId: input.userId,
+      englishTexts: items.map((item) => item.englishText)
+    });
+    const itemsWithHistory = items.map((item) => ({
+      ...item,
+      attemptHistory: historyByExpression[item.englishText] ?? []
+    }));
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const page = Math.floor(offset / limit) + 1;
     return {
-      items,
+      items: itemsWithHistory,
       total,
       limit,
       offset,
       page,
       totalPages,
-      hasMore: offset + items.length < total
+      hasMore: offset + itemsWithHistory.length < total
     };
   },
 

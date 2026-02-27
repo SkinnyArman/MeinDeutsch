@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
 import { CheckCircle2, ChevronDown, ChevronUp, Globe, History, Loader2, MessageSquareText, Plus, Send, Sparkles } from "lucide-vue-next";
-import type { ExpressionAttemptRecord, ExpressionPromptRecord } from "@/types/ApiTypes";
+import type { ExpressionAttemptHistoryPoint, ExpressionAttemptRecord, ExpressionPromptRecord } from "@/types/ApiTypes";
 import AppContainer from "./AppContainer.vue";
 import {
   useAlltagAttemptMutation,
@@ -31,27 +31,22 @@ const attemptMutation = useAlltagAttemptMutation();
 const historyItems = computed(() => historyQuery.data.value?.pages.flatMap((page) => page.items) ?? []);
 const hasMoreHistory = computed(() => Boolean(historyQuery.hasNextPage.value));
 
-const scoreHistoryByExpression = computed<Record<string, Array<{ id: number; score: number; at: string }>>>(() => {
-  const grouped: Record<string, Array<{ id: number; score: number; at: string }>> = {};
-  for (const item of historyItems.value) {
-    if (!grouped[item.englishText]) {
-      grouped[item.englishText] = [];
-    }
-    grouped[item.englishText].push({
-      id: item.id,
+const previousAttemptScores = (attemptHistory: ExpressionAttemptHistoryPoint[], currentId: number): number[] => {
+  return attemptHistory
+    .filter((point) => point.id !== currentId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .map((point) => point.naturalnessScore);
+};
+
+const previousAnswers = (attemptHistory: ExpressionAttemptHistoryPoint[], currentId: number): Array<{ answer: string; score: number; at: string }> => {
+  return attemptHistory
+    .filter((item) => item.id !== currentId)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .map((item) => ({
+      answer: item.userAnswerText,
       score: item.naturalnessScore,
       at: item.createdAt
-    });
-  }
-  return grouped;
-});
-
-const previousAttemptScores = (englishText: string, currentId: number): number[] => {
-  const all = scoreHistoryByExpression.value[englishText] ?? [];
-  return all
-    .filter((point) => point.id !== currentId)
-    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-    .map((point) => point.score);
+    }));
 };
 
 watchEffect(() => {
@@ -301,7 +296,6 @@ onMounted(() => {
             <button class="flex w-full items-start justify-between gap-3 text-left" type="button" @click="toggleHistoryItem(item.id)">
               <div class="min-w-0">
                 <p class="truncate text-sm font-medium">{{ `"${item.englishText}"` }}</p>
-                <p class="mt-1 truncate text-xs text-[var(--muted)]">{{ item.userAnswerText }}</p>
               </div>
               <span class="inline-flex items-center gap-2 self-center">
                 <span class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold" :class="[scoreBadgeTone(item.naturalnessScore), scoreTone(item.naturalnessScore)]">
@@ -324,11 +318,11 @@ onMounted(() => {
                 v-if="expandedHistoryId === item.id"
                 class="mt-3 space-y-3 rounded-lg border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_90%,white)] p-3 text-xs text-[var(--muted)]"
               >
-                <div v-if="previousAttemptScores(item.englishText, item.id).length > 0">
+                <div v-if="previousAttemptScores(item.attemptHistory, item.id).length > 0">
                   <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.attempts() }}</p>
                   <div class="mt-1 flex flex-wrap gap-1.5">
                     <span
-                      v-for="(score, idx) in previousAttemptScores(item.englishText, item.id)"
+                      v-for="(score, idx) in previousAttemptScores(item.attemptHistory, item.id)"
                       :key="`${item.id}-prev-score-${idx}-${score}`"
                       class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold"
                       :class="[scoreBadgeTone(score), scoreTone(score)]"
@@ -336,6 +330,21 @@ onMounted(() => {
                       {{ score }}%
                     </span>
                   </div>
+                </div>
+                <div v-if="previousAnswers(item.attemptHistory, item.id).length > 0">
+                  <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.previousAnswers() }}</p>
+                  <ul class="mt-1 space-y-1.5">
+                    <li
+                      v-for="(entry, idx) in previousAnswers(item.attemptHistory, item.id)"
+                      :key="`${item.id}-prev-answer-${idx}-${entry.at}`"
+                      class="flex items-start justify-between gap-2 border-l-2 border-[color-mix(in_srgb,var(--accent)_50%,var(--line))] pl-2"
+                    >
+                      <span class="text-[var(--text)]">{{ entry.answer }}</span>
+                      <span class="shrink-0 text-[10px] font-semibold" :class="scoreTone(entry.score)">
+                        {{ entry.score }}%
+                      </span>
+                    </li>
+                  </ul>
                 </div>
                 <p>{{ item.feedback }}</p>
                 <div>

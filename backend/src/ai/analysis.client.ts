@@ -133,8 +133,12 @@ Given an English expression and the user's German attempt, return strict JSON on
 }
 Rules:
 - naturalnessScore is 0-100.
+- Use the provided reference native-like version as the PRIMARY gold standard for scoring.
+- Score based on semantic equivalence, idiomaticity, and closeness to the reference wording/register.
+- Do not reward alternate phrasings if they drift from the reference's natural register or intent.
+- If the attempt is valid but less natural than the reference, cap score below 90 and explain why briefly.
 - Keep feedback concise (max 2 sentences) and concrete.
-- If fully correct and natural, it's not necessary to give a feedback you can just say a couple of complimenting words.
+- If fully correct and near-native relative to the reference, feedback can be empty or a very short confirmation.
 - Focus only on what still needs fixing or what improved.
 - Do not return nativeLikeVersion or alternatives in review mode.
 - No extra fields.`;

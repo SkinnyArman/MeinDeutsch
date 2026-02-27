@@ -5,9 +5,10 @@ import { API_PATHS } from "@/config/api";
 import { ALLTAG_HISTORY_PAGE_SIZE } from "@/constants/app";
 
 export const useAlltagHistoryInfiniteQuery = () => {
-  return useInfiniteQuery({
+  return useInfiniteQuery<Paginated<ExpressionAttemptRecord>, Error>({
     queryKey: ["expressions", "history"],
-    queryFn: async ({ pageParam = 0 }) => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams({
         limit: String(ALLTAG_HISTORY_PAGE_SIZE),
         offset: String(pageParam)

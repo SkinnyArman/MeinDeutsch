@@ -122,6 +122,7 @@ export const messages = {
       nativeLike: "Native-like Version",
       alternatives: "Other Ways to Say It",
       attempts: "Attempts",
+      previousAnswers: "Previous Answers",
       history: "History",
       historyLoadFailed: "Could not load history",
       promptFailed: "Could not generate expression",
@@ -132,8 +133,12 @@ export const messages = {
       loadFailed: "Could not load review queue",
       submitFailed: "Could not submit review attempt",
       noDue: "No due items",
+      noDueTitle: "Nothing to review right now",
+      noDueHint: "Nice work. Come back later for your next review round.",
       answerPrompt: "Write your German answer",
-      submit: "Check"
+      submit: "Check",
+      checked: "Checked",
+      naturalFallback: "Looks natural."
     },
     topics: {
       title: "Topics",

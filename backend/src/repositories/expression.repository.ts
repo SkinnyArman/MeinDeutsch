@@ -1,5 +1,9 @@
 import { appDataSource } from "../db/pool.js";
-import { ExpressionAttempt, type ExpressionAttemptRecord } from "../models/expression-attempt.model.js";
+import {
+  ExpressionAttempt,
+  type ExpressionAttemptHistoryPoint,
+  type ExpressionAttemptRecord
+} from "../models/expression-attempt.model.js";
 import { ExpressionPrompt, type ExpressionPromptRecord } from "../models/expression-prompt.model.js";
 
 const toPromptRecord = (entity: ExpressionPrompt): ExpressionPromptRecord => ({
@@ -18,6 +22,7 @@ const toAttemptRecord = (entity: ExpressionAttempt): ExpressionAttemptRecord => 
   feedback: entity.feedback,
   nativeLikeVersion: entity.nativeLikeVersion,
   alternatives: entity.alternatives,
+  attemptHistory: [],
   createdAt: entity.createdAt.toISOString()
 });
 
@@ -85,5 +90,43 @@ export const expressionRepository = {
     return repo.count({
       where: { userId: String(input.userId) }
     });
+  },
+
+  async listAttemptHistoryByEnglishTexts(input: {
+    userId: number;
+    englishTexts: string[];
+  }): Promise<Record<string, ExpressionAttemptHistoryPoint[]>> {
+    if (input.englishTexts.length === 0) {
+      return {};
+    }
+
+    const repo = appDataSource.getRepository(ExpressionAttempt);
+    const uniqueTexts = [...new Set(input.englishTexts.map((text) => text.trim()).filter(Boolean))];
+    if (uniqueTexts.length === 0) {
+      return {};
+    }
+
+    const rows = await repo
+      .createQueryBuilder("attempt")
+      .where("attempt.user_id = :userId", { userId: String(input.userId) })
+      .andWhere("attempt.english_text IN (:...englishTexts)", { englishTexts: uniqueTexts })
+      .orderBy("attempt.created_at", "ASC")
+      .addOrderBy("attempt.id", "ASC")
+      .getMany();
+
+    const grouped: Record<string, ExpressionAttemptHistoryPoint[]> = {};
+    for (const row of rows) {
+      const key = row.englishText;
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push({
+        id: Number(row.id),
+        userAnswerText: row.userAnswerText,
+        naturalnessScore: row.naturalnessScore,
+        createdAt: row.createdAt.toISOString()
+      });
+    }
+    return grouped;
   }
 };

@@ -172,10 +172,10 @@ const logout = async (): Promise<void> => {
 <template>
   <RouterView v-if="!showMainLayout" />
 
-  <main v-else class="h-screen overflow-hidden">
+  <main v-else class="h-[100dvh] overflow-hidden">
     <div class="flex h-full">
       <aside
-        class="flex h-full shrink-0 flex-col overflow-hidden border-r border-[color-mix(in_srgb,var(--sidebar-muted)_22%,transparent)] bg-[var(--sidebar-bg)] text-[var(--sidebar-text)] transition-all duration-200"
+        class="flex h-[100dvh] min-h-0 shrink-0 flex-col border-r border-[color-mix(in_srgb,var(--sidebar-muted)_22%,transparent)] bg-[var(--sidebar-bg)] text-[var(--sidebar-text)] transition-all duration-200"
         :class="sidebarOpen ? 'w-64' : 'w-16'"
       >
         <div class="px-3 pt-4">
@@ -210,7 +210,7 @@ const logout = async (): Promise<void> => {
           </div>
         </div>
 
-        <nav class="mt-4 flex-1 space-y-1 px-2">
+        <nav class="mt-4 min-h-0 flex-1 space-y-1 overflow-y-auto px-2">
           <RouterLink
             v-for="item in navItems.filter((n) => n.key !== 'settings')"
             :key="item.key"
@@ -234,7 +234,7 @@ const logout = async (): Promise<void> => {
           </RouterLink>
         </div>
 
-        <div class="mt-auto border-t border-[color-mix(in_srgb,var(--sidebar-muted)_22%,transparent)] p-3">
+        <div class="mt-auto shrink-0 border-t border-[color-mix(in_srgb,var(--sidebar-muted)_22%,transparent)] p-3">
           <div class="flex items-center gap-2" :class="sidebarOpen ? '' : 'justify-center'">
             <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--panel-soft)] text-[10px] font-semibold">
               {{ sessionUser?.displayName?.slice(0, 1)?.toUpperCase() ?? "U" }}

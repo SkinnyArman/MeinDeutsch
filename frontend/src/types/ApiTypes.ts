@@ -114,6 +114,14 @@ export interface ExpressionAttemptRecord {
   feedback: string;
   nativeLikeVersion: string;
   alternatives: string[];
+  attemptHistory: ExpressionAttemptHistoryPoint[];
+  createdAt: string;
+}
+
+export interface ExpressionAttemptHistoryPoint {
+  id: number;
+  userAnswerText: string;
+  naturalnessScore: number;
   createdAt: string;
 }
 

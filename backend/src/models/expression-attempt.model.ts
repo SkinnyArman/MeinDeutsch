@@ -1,6 +1,13 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { ExpressionPrompt } from "./expression-prompt.model.js";
 
+export interface ExpressionAttemptHistoryPoint {
+  id: number;
+  userAnswerText: string;
+  naturalnessScore: number;
+  createdAt: string;
+}
+
 @Entity({ name: "expression_attempts" })
 export class ExpressionAttempt {
   @PrimaryGeneratedColumn({ type: "bigint" })
@@ -47,5 +54,6 @@ export interface ExpressionAttemptRecord {
   feedback: string;
   nativeLikeVersion: string;
   alternatives: string[];
+  attemptHistory: ExpressionAttemptHistoryPoint[];
   createdAt: string;
 }
