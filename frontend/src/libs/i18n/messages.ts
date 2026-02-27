@@ -114,6 +114,7 @@ export const messages = {
       subtitle: "Translate everyday expressions naturally into German.",
       newExpression: "New Expression",
       review: "Review",
+      idk: "I don't know!",
       generating: "Generating...",
       expressInGerman: "Express in German",
       answerPrompt: "How would you say this in German?",

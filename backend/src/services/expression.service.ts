@@ -40,10 +40,15 @@ export const expressionService = {
       throw new AppError(404, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
     }
 
+    const isSkipAnswer = isIDontKnowAnswer(input.userAnswerText);
     const assessment = await assessExpressionAttempt({
       englishText: prompt.englishText,
       userAnswerText: input.userAnswerText
     });
+    if (isSkipAnswer) {
+      assessment.feedback = "";
+      assessment.naturalnessScore = 0;
+    }
 
     const created = await expressionRepository.createAttempt({
       userId: input.userId,
@@ -191,4 +196,9 @@ export const expressionService = {
       feedback: reviewAssessment.feedback
     };
   }
+};
+
+const isIDontKnowAnswer = (text: string): boolean => {
+  const normalized = text.trim().toLowerCase();
+  return normalized === "i don't know." || normalized === "i don't know" || normalized === "idk";
 };

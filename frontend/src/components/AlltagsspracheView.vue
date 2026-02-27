@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
-import { CheckCircle2, ChevronDown, ChevronUp, Globe, History, Loader2, MessageSquareText, Plus, Send, Sparkles } from "lucide-vue-next";
+import { CheckCircle2, ChevronDown, ChevronUp, CircleHelp, Globe, History, Loader2, MessageSquareText, Plus, Send, Sparkles } from "lucide-vue-next";
 import type { ExpressionAttemptHistoryPoint, ExpressionAttemptRecord, ExpressionPromptRecord } from "@/types/ApiTypes";
 import AppContainer from "./AppContainer.vue";
 import {
@@ -10,6 +10,7 @@ import {
   useAlltagGeneratePromptMutation,
   useAlltagHistoryInfiniteQuery
 } from "@/queries/alltag";
+import { ALLTAG_IDK_ANSWER } from "@/constants/app";
 
 const { t } = useLanguage();
 const router = useRouter();
@@ -30,6 +31,9 @@ const attemptMutation = useAlltagAttemptMutation();
 
 const historyItems = computed(() => historyQuery.data.value?.pages.flatMap((page) => page.items) ?? []);
 const hasMoreHistory = computed(() => Boolean(historyQuery.hasNextPage.value));
+const hasFeedback = computed(() => Boolean(latestAttempt.value?.feedback?.trim()));
+const hasNativeLike = computed(() => Boolean(latestAttempt.value?.nativeLikeVersion?.trim()));
+const hasAlternatives = computed(() => (latestAttempt.value?.alternatives?.length ?? 0) > 0);
 
 const previousAttemptScores = (attemptHistory: ExpressionAttemptHistoryPoint[], currentId: number): number[] => {
   return attemptHistory
@@ -68,17 +72,30 @@ const handleGenerate = async () => {
   form.userAnswerText = "";
 };
 
-const handleSubmit = async () => {
+const submitAttempt = async (userAnswerText: string) => {
   if (!prompt.value) {
     notice.value = { type: "error", text: t.alltag.promptFailed() };
     return;
   }
   const data = await attemptMutation.mutateAsync({
     promptId: prompt.value.id,
-    userAnswerText: form.userAnswerText.trim()
+    userAnswerText
   });
   latestAttempt.value = data;
   historyQuery.refetch();
+};
+
+const handleSubmit = async () => {
+  const userAnswerText = form.userAnswerText.trim();
+  if (!userAnswerText) {
+    return;
+  }
+  await submitAttempt(userAnswerText);
+};
+
+const handleIDontKnow = async () => {
+  form.userAnswerText = ALLTAG_IDK_ANSWER;
+  await submitAttempt(ALLTAG_IDK_ANSWER);
 };
 
 const toggleHistoryItem = (id: number) => {
@@ -231,18 +248,28 @@ onMounted(() => {
             class="min-h-[80px] w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-3 pr-12 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
             :placeholder="t.alltag.answerPlaceholder()"
           />
-          <button
-            class="absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--panel-soft)] transition hover:border-[var(--accent)] disabled:opacity-50"
-            :disabled="!form.userAnswerText.trim() || attemptMutation.isPending.value"
-            @click="handleSubmit"
-          >
-            <Send class="h-4 w-4" />
-          </button>
+          <div class="absolute bottom-3 right-3 flex items-center gap-2">
+            <button
+              class="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 text-[10px] font-semibold uppercase tracking-wide transition hover:border-[var(--accent)] disabled:opacity-50"
+              :disabled="!prompt || attemptMutation.isPending.value"
+              @click="handleIDontKnow"
+            >
+              <CircleHelp class="h-3.5 w-3.5" />
+              <span>{{ t.alltag.idk() }}</span>
+            </button>
+            <button
+              class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--panel-soft)] transition hover:border-[var(--accent)] disabled:opacity-50"
+              :disabled="!form.userAnswerText.trim() || attemptMutation.isPending.value"
+              @click="handleSubmit"
+            >
+              <Send class="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       <div v-if="latestAttempt" class="space-y-4">
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+        <div v-if="hasFeedback" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
           <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             <MessageSquareText class="h-3.5 w-3.5" />
             {{ t.alltag.feedback() }}
@@ -253,7 +280,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+        <div v-if="hasNativeLike" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
           <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             <CheckCircle2 class="h-3.5 w-3.5 text-[var(--status-good)]" />
             {{ t.alltag.nativeLike() }}
@@ -261,7 +288,7 @@ onMounted(() => {
           <p class="mt-2 rounded-lg bg-[var(--panel-soft)] px-3 py-2 text-sm font-medium">{{ latestAttempt.nativeLikeVersion }}</p>
         </div>
 
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+        <div v-if="hasAlternatives" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
           <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
             <Sparkles class="h-3.5 w-3.5" />
             {{ t.alltag.alternatives() }}
@@ -346,12 +373,12 @@ onMounted(() => {
                     </li>
                   </ul>
                 </div>
-                <p>{{ item.feedback }}</p>
-                <div>
+                <p v-if="item.feedback">{{ item.feedback }}</p>
+                <div v-if="item.nativeLikeVersion">
                   <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.nativeLike() }}</p>
                   <p class="mt-1 border-l-2 border-[color-mix(in_srgb,var(--accent)_50%,var(--line))] pl-2 text-sm text-[var(--text)]">{{ item.nativeLikeVersion }}</p>
                 </div>
-                <div>
+                <div v-if="item.alternatives.length">
                   <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.alternatives() }}</p>
                   <ul class="mt-1 space-y-1">
                     <li

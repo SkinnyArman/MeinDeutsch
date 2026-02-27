@@ -68,8 +68,9 @@ Rules:
 - Prefer natural spoken daily usage (not literary).
 - Vary heavily across requests:
   - expression types: idiom, proverb/saying, casual reaction, social phrase, opinion phrase, complaint, encouragement, planning phrase, casual profanity.
-  - contexts: friendship, family, dating, food, travel, money, stress, emotions, health, study, work, time pressure, conflict, success/failure.
+  - contexts: friendship, family, dating, food, travel, money, stress, emotions, health, study, work, time pressure, conflict, success/failure, university, cinema, public transport (bus/u-bahn/train), doctor's office, with parents, with little kids, concerts/live events, grocery shopping, landlord/neighbor interactions.
 - Include idioms/proverbs regularly (examples of desired style: "Break a leg", "Better late than never", "Call it a day", "It's not my cup of tea" and so on).
+- Include fixed expressions/sayings from real daily situations, not only generic project/work phrases.
 - Avoid very basic beginner phrases (e.g. "How are you?", "Where are you from?", "What is your name?").
 - Casual everyday profanity is allowed in moderation when natural (frustration, surprise, emphasis).
 - Keep profanity realistic and commonly spoken, not extreme.
@@ -99,7 +100,16 @@ const EXPRESSION_TARGET_CONTEXTS = [
   "emotions",
   "health",
   "study",
+  "university",
   "work",
+  "cinema",
+  "public_transport",
+  "doctor_office",
+  "parents",
+  "little_kids",
+  "concerts",
+  "grocery_shopping",
+  "neighbors_landlord",
   "time_pressure",
   "conflict",
   "success_failure"
