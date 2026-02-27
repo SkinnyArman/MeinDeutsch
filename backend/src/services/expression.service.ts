@@ -3,18 +3,13 @@ import { API_MESSAGES } from "../constants/api-messages.js";
 import type { ExpressionAttemptRecord } from "../models/expression-attempt.model.js";
 import type { ExpressionPromptRecord } from "../models/expression-prompt.model.js";
 import type { ExpressionReviewItemRecord } from "../models/expression-review-item.model.js";
+import {
+  computeReviewTransition,
+  shouldEnqueueForReview
+} from "../logic/expression-review.logic.js";
 import { expressionReviewRepository } from "../repositories/expression-review.repository.js";
 import { expressionRepository } from "../repositories/expression.repository.js";
 import { AppError } from "../utils/app-error.js";
-
-const REVIEW_ENQUEUE_THRESHOLD = 70;
-const REVIEW_SUCCESS_SCORE = 90;
-const REVIEW_FOLLOW_UP_DAYS = 7;
-const REVIEW_RETRY_DAYS = 1;
-
-const plusDays = (base: Date, days: number): Date => {
-  return new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
-};
 
 export interface ExpressionReviewAssessmentRecord {
   reviewItem: ExpressionReviewItemRecord;
@@ -61,7 +56,7 @@ export const expressionService = {
       alternatives: assessment.alternatives
     });
 
-    if (created.naturalnessScore <= REVIEW_ENQUEUE_THRESHOLD) {
+    if (shouldEnqueueForReview(created.naturalnessScore)) {
       await expressionReviewRepository.upsertLowScoreItem({
         userId: input.userId,
         englishText: created.englishText,
@@ -156,30 +151,16 @@ export const expressionService = {
     const roundedScore = Math.round(reviewAssessment.naturalnessScore);
     const now = new Date();
 
-    let successCount = item.successCount;
-    let status: "active" | "graduated" = "active";
-    let nextReviewAt: Date | null = plusDays(now, REVIEW_RETRY_DAYS);
-
-    if (roundedScore >= REVIEW_SUCCESS_SCORE) {
-      successCount += 1;
-      if (successCount >= 2) {
-        status = "graduated";
-      } else {
-        nextReviewAt = plusDays(now, REVIEW_FOLLOW_UP_DAYS);
-      }
-    } else {
-      successCount = 0;
-      nextReviewAt = plusDays(now, REVIEW_RETRY_DAYS);
-    }
+    const transition = computeReviewTransition(item, roundedScore, now);
 
     const updated = await expressionReviewRepository.saveReviewProgress({
       userId: input.userId,
       reviewItemId: input.reviewItemId,
       naturalnessScore: roundedScore,
-      successCount,
+      successCount: transition.successCount,
       reviewAttemptCount: item.reviewAttemptCount + 1,
-      nextReviewAt,
-      status
+      nextReviewAt: transition.nextReviewAt,
+      status: transition.status
     });
 
     if (!updated) {

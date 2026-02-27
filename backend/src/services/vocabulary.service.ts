@@ -3,6 +3,7 @@ import type { VocabularyItemRecord } from "../models/vocabulary-item.model.js";
 import { AppError } from "../utils/app-error.js";
 import { API_MESSAGES } from "../constants/api-messages.js";
 import { categoryToIcon } from "../constants/vocabulary-icons.js";
+import { computeNextSrsState } from "../logic/srs.logic.js";
 
 interface SaveVocabularyInput {
   userId: number;
@@ -78,43 +79,18 @@ export const vocabularyService = {
       }
     }
 
-    // SM-2 style rating mapping:
-    // 1 = Again, 2 = Hard, 3 = Good, 4 = Easy
-    const quality = Math.max(0, Math.min(5, input.rating + 1));
-    const oldEase = existing.srsEaseFactor || 2.5;
-    const nextEase = Math.max(1.3, oldEase + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
     const now = new Date();
-
-    let nextIntervalDays: number;
-    let incrementLapse = false;
-
-    if (input.rating <= 1) {
-      nextIntervalDays = 1;
-      incrementLapse = true;
-    } else if (existing.srsReviewCount === 0) {
-      nextIntervalDays = input.rating >= 4 ? 4 : 2;
-    } else if (existing.srsIntervalDays <= 1) {
-      nextIntervalDays = input.rating >= 4 ? 4 : 3;
-    } else {
-      const base = existing.srsIntervalDays * nextEase;
-      if (input.rating === 2) {
-        nextIntervalDays = Math.max(2, Math.round(base * 0.85));
-      } else if (input.rating === 3) {
-        nextIntervalDays = Math.max(2, Math.round(base));
-      } else {
-        nextIntervalDays = Math.max(3, Math.round(base * 1.3));
-      }
-    }
-
+    const nextSrsState = computeNextSrsState(existing, input.rating);
+    const nextIntervalDays = nextSrsState.nextIntervalDays;
     const nextDueAt = new Date(now.getTime() + nextIntervalDays * 24 * 60 * 60 * 1000);
     const updated = await vocabularyRepository.saveSrsState({
       userId: input.userId,
       vocabularyId: input.vocabularyId,
       nextIntervalDays,
-      nextEaseFactor: Number(nextEase.toFixed(2)),
+      nextEaseFactor: nextSrsState.nextEaseFactor,
       nextDueAt,
       rating: input.rating,
-      incrementLapse,
+      incrementLapse: nextSrsState.incrementLapse,
       reviewedAt: now
     });
 
