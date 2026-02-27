@@ -75,11 +75,36 @@ export const expressionService = {
     return created;
   },
 
-  async listHistory(input: { userId: number; limit?: number }): Promise<ExpressionAttemptRecord[]> {
-    return expressionRepository.listAttempts({
-      userId: input.userId,
-      limit: input.limit ?? 30
-    });
+  async listHistory(input: { userId: number; limit?: number; offset?: number }): Promise<{
+    items: ExpressionAttemptRecord[];
+    total: number;
+    limit: number;
+    offset: number;
+    page: number;
+    totalPages: number;
+    hasMore: boolean;
+  }> {
+    const limit = input.limit ?? 30;
+    const offset = input.offset ?? 0;
+    const [items, total] = await Promise.all([
+      expressionRepository.listAttempts({
+        userId: input.userId,
+        limit,
+        offset
+      }),
+      expressionRepository.countAttempts({ userId: input.userId })
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const page = Math.floor(offset / limit) + 1;
+    return {
+      items,
+      total,
+      limit,
+      offset,
+      page,
+      totalPages,
+      hasMore: offset + items.length < total
+    };
   },
 
   async listDueReviewItems(input: { userId: number; limit?: number }): Promise<{ dueCount: number; items: ExpressionReviewItemRecord[] }> {

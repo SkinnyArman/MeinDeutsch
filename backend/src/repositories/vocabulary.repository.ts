@@ -57,7 +57,7 @@ export const vocabularyRepository = {
     return { entry: toVocabularyRecord(saved), created: true };
   },
 
-  async list(input: { userId: number; category?: string | null; sourceAnswerLogId?: number | null }): Promise<VocabularyItemRecord[]> {
+  async list(input: { userId: number; category?: string | null; sourceAnswerLogId?: number | null; limit?: number; offset?: number }): Promise<VocabularyItemRecord[]> {
     const repo = appDataSource.getRepository(VocabularyItem);
     const qb = repo
       .createQueryBuilder("vocab")
@@ -73,8 +73,33 @@ export const vocabularyRepository = {
       });
     }
 
+    if (typeof input.limit === "number") {
+      qb.limit(input.limit);
+    }
+    if (typeof input.offset === "number") {
+      qb.offset(input.offset);
+    }
+
     const rows = await qb.getMany();
     return rows.map(toVocabularyRecord);
+  },
+
+  async count(input: { userId: number; category?: string | null; sourceAnswerLogId?: number | null }): Promise<number> {
+    const repo = appDataSource.getRepository(VocabularyItem);
+    const qb = repo
+      .createQueryBuilder("vocab")
+      .where("vocab.user_id = :userId", { userId: String(input.userId) });
+
+    if (input.category) {
+      qb.andWhere("vocab.category = :category", { category: input.category });
+    }
+    if (input.sourceAnswerLogId) {
+      qb.andWhere("vocab.source_answer_log_id = :sourceAnswerLogId", {
+        sourceAnswerLogId: String(input.sourceAnswerLogId)
+      });
+    }
+
+    return qb.getCount();
   },
 
   async listCategories(userId: number): Promise<string[]> {

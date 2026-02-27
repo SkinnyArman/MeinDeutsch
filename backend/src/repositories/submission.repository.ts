@@ -185,6 +185,13 @@ export const submissionRepository = {
     );
   },
 
+  async countAnswerLogs(userId: number): Promise<number> {
+    const repo = appDataSource.getRepository(AnswerLog);
+    return repo.count({
+      where: { userId: String(userId) }
+    });
+  },
+
   async findAnswerLogById(id: number, userId: number): Promise<AnswerLogRecord | null> {
     const repo = appDataSource.getRepository(AnswerLog);
     const rows = await repo

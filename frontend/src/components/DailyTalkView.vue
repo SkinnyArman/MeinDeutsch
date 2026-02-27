@@ -1,165 +1,116 @@
 <script setup lang="ts">
-import { inject, onMounted, ref } from "vue";
+import { computed, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
-import { authFetch } from "../utils/auth";
+import { useLanguage } from "@/libs/i18n";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-vue-next";
+import AppContainer from "./AppContainer.vue";
+import { useDailyTalkHistoryQuery } from "@/queries/dailyTalk";
+import { DEFAULT_PAGE_SIZE } from "@/constants/app";
 
-interface ApiErrorBody {
-  code: string;
-  details?: unknown;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T | null;
-  error: ApiErrorBody | null;
-}
-
-interface AnalysisError {
-  type: string;
-  message: string;
-  description: string;
-  evidence: string;
-  correction: string;
-  start: number | null;
-  end: number | null;
-  severity: number;
-}
-
-interface ContextualWordSuggestion {
-  word: string;
-  description: string;
-  examples: string[];
-}
-
-interface AnswerLogRecord {
-  id: number;
-  questionId: number | null;
-  topicId?: number | null;
-  topicName?: string;
-  questionText: string;
-  answerText: string;
-  correctedText: string;
-  cefrLevel: string;
-  errorTypes: AnalysisError[];
-  tips: string[];
-  contextualWordSuggestions: ContextualWordSuggestion[];
-  modelUsed: string;
-  createdAt: string;
-}
-
-type Notice = {
-  type: "success" | "error";
-  text: string;
-};
-
-const baseUrl = inject<import("vue").Ref<string>>("baseUrl")?.value ?? "http://localhost:4000";
 const router = useRouter();
+const { t } = useLanguage();
 
-const loadingHistory = ref(false);
-const historyNotice = ref<Notice | null>(null);
-const history = ref<AnswerLogRecord[]>([]);
+const page = ref(1);
+const pageSize = ref(DEFAULT_PAGE_SIZE);
+const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
 
-const setHistoryNotice = (type: "success" | "error", text: string): void => {
-  historyNotice.value = { type, text };
-};
-
-const parseApiResponse = async <T>(res: Response): Promise<ApiResponse<T>> => {
-  const payload = (await res.json()) as ApiResponse<T>;
-
-  if (!res.ok || !payload.success || !payload.data) {
-    throw new Error(payload.message || "Request failed");
-  }
-
-  return payload;
-};
-
-const loadHistory = async (): Promise<void> => {
-  loadingHistory.value = true;
-  try {
-    const res = await authFetch(`${baseUrl}/api/submissions?limit=50`);
-    const payload = await parseApiResponse<AnswerLogRecord[]>(res);
-    history.value = payload.data;
-    setHistoryNotice("success", `Loaded ${payload.data.length} submissions.`);
-  } catch (error) {
-    setHistoryNotice("error", error instanceof Error ? error.message : "Could not load submissions");
-  } finally {
-    loadingHistory.value = false;
-  }
-};
-
-const formatDate = (value: string): string => new Date(value).toLocaleString();
-
-onMounted(() => {
-  void loadHistory();
+const historyQuery = useDailyTalkHistoryQuery({
+  page: () => page.value,
+  pageSize: pageSize.value
 });
+
+const history = computed(() => historyQuery.data.value?.items ?? []);
+const totalPages = computed(() => historyQuery.data.value?.totalPages ?? 1);
+
+watchEffect(() => {
+  if (historyQuery.error.value) {
+    notice.value = { type: "error", text: historyQuery.error.value.message };
+  }
+});
+
+const goPrev = () => {
+  if (page.value > 1) {
+    page.value -= 1;
+  }
+};
+
+const goNext = () => {
+  if (page.value < totalPages.value) {
+    page.value += 1;
+  }
+};
 </script>
 
 <template>
-  <section class="space-y-4">
-    <header class="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[var(--surface-shadow)]">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_10%_10%,color-mix(in_srgb,var(--accent)_20%,transparent)_0%,transparent_45%)] opacity-60"></div>
-      <div class="relative flex flex-wrap items-center justify-between gap-4">
+  <AppContainer>
+    <section class="space-y-5">
+      <header class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 class="text-2xl font-semibold tracking-tight">Daily Talk</h2>
-          <p class="mt-1 text-sm text-[var(--muted)]">Review your past answers or start a new question.</p>
+          <h2 class="font-serif text-3xl font-semibold tracking-tight">{{ t.dailyTalk.title() }}</h2>
+          <p class="mt-1 text-xs text-[var(--muted)]">{{ t.dailyTalk.history() }}</p>
         </div>
         <button
-          class="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent-contrast)] transition hover:opacity-90"
+          class="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
           @click="router.push('/daily-talk/new')"
         >
-          New
+          <Plus class="h-3.5 w-3.5" />
+          {{ t.dailyTalk.newQuestion() }}
         </button>
-      </div>
-    </header>
+      </header>
 
-    <section class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-      <div class="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <h3 class="text-lg font-semibold">Past Daily Talks</h3>
-          <p class="text-xs text-[var(--muted)]">Click a question to open the full detail page.</p>
-        </div>
-        <button
-          class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-1 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
-          :disabled="loadingHistory"
-          @click="loadHistory"
-        >
-          {{ loadingHistory ? "Refreshing..." : "Refresh" }}
-        </button>
-      </div>
-
-      <p v-if="historyNotice" class="mb-3 rounded-lg border px-3 py-2 text-sm"
-        :class="historyNotice.type === 'error'
-          ? 'border-[color-mix(in_srgb,var(--status-bad)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-          : 'border-[color-mix(in_srgb,var(--status-good)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
+      <p
+        v-if="notice"
+        class="rounded-lg border px-3 py-2 text-xs"
+        :class="notice.type === 'error'
+          ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
+          : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
         "
       >
-        {{ historyNotice.text }}
+        {{ notice.text }}
       </p>
 
-      <div v-if="!history.length && !loadingHistory" class="rounded-md border border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]">
-        No Daily Talk submissions yet.
+      <div class="flex items-center justify-end gap-2 text-xs">
+        <button
+          class="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 transition hover:border-[var(--accent)] disabled:opacity-60"
+          :disabled="page <= 1"
+          @click="goPrev"
+        >
+          <ChevronLeft class="h-3.5 w-3.5" />
+          {{ t.common.previous() }}
+        </button>
+        <span class="text-[var(--muted)]">{{ t.common.page() }} {{ page }} {{ t.common.of() }} {{ totalPages }}</span>
+        <button
+          class="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 transition hover:border-[var(--accent)] disabled:opacity-60"
+          :disabled="page >= totalPages"
+          @click="goNext"
+        >
+          {{ t.common.next() }}
+          <ChevronRight class="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      <ul v-else class="space-y-3">
-        <li
+      <div v-if="!history.length && !historyQuery.isFetching.value" class="rounded-xl border border-dashed border-[var(--line)] bg-[var(--panel)] p-4 text-sm text-[var(--muted)]">
+        {{ t.dailyTalk.noHistory() }}
+      </div>
+
+      <div class="space-y-2">
+        <article
           v-for="item in history"
           :key="item.id"
-          class="cursor-pointer rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-3 transition hover:border-[var(--accent)]"
-          @click="router.push(`/daily-talk/${item.id}`)"
+          class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)] transition hover:border-[var(--accent)]"
         >
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <p class="text-sm font-semibold">{{ item.questionText }}</p>
-              <p class="mt-1 text-xs text-[var(--muted)]">{{ formatDate(item.createdAt) }}</p>
-              <p class="mt-1 text-xs text-[var(--muted)]">{{ item.topicName ?? "General" }} · CEFR {{ item.cefrLevel }}</p>
+          <button class="flex w-full items-start justify-between gap-3 text-left" type="button" @click="router.push(`/daily-talk/${item.id}`)">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold">{{ item.questionText }}</p>
+              <p class="mt-1 truncate text-xs text-[var(--muted)]">{{ item.answerText }}</p>
             </div>
-            <span class="rounded border border-[color-mix(in_srgb,var(--accent)_35%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_16%,var(--panel-soft))] px-2 py-1 text-xs text-[var(--accent)]">
-              #{{ item.id }}
-            </span>
-          </div>
-        </li>
-      </ul>
+            <div class="flex items-center gap-2 text-[10px] text-[var(--muted)]">
+              <CalendarDays class="h-3.5 w-3.5" />
+              <span>{{ new Date(item.createdAt).toLocaleDateString() }}</span>
+            </div>
+          </button>
+        </article>
+      </div>
     </section>
-  </section>
+  </AppContainer>
 </template>

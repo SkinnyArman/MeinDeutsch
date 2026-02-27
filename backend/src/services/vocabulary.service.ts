@@ -2,6 +2,7 @@ import { vocabularyRepository } from "../repositories/vocabulary.repository.js";
 import type { VocabularyItemRecord } from "../models/vocabulary-item.model.js";
 import { AppError } from "../utils/app-error.js";
 import { API_MESSAGES } from "../constants/api-messages.js";
+import { categoryToIcon } from "../constants/vocabulary-icons.js";
 
 interface SaveVocabularyInput {
   userId: number;
@@ -38,16 +39,23 @@ export const vocabularyService = {
     });
   },
 
-  async listWords(input: { userId: number; category?: string; sourceAnswerLogId?: number }): Promise<VocabularyItemRecord[]> {
+  async listWords(input: { userId: number; category?: string; sourceAnswerLogId?: number; limit?: number; offset?: number }): Promise<VocabularyItemRecord[]> {
     return vocabularyRepository.list({
       userId: input.userId,
       category: input.category?.trim() || null,
-      sourceAnswerLogId: input.sourceAnswerLogId
+      sourceAnswerLogId: input.sourceAnswerLogId,
+      limit: input.limit,
+      offset: input.offset
     });
   },
 
   async listCategories(userId: number): Promise<string[]> {
     return vocabularyRepository.listCategories(userId);
+  },
+
+  async listCategoryMeta(userId: number): Promise<Array<{ name: string; icon: string }>> {
+    const categories = await vocabularyRepository.listCategories(userId);
+    return categories.map((name) => ({ name, icon: categoryToIcon(name) }));
   },
 
   async reviewWord(input: { userId: number; vocabularyId: number; rating: number }): Promise<VocabularyItemRecord> {

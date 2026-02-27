@@ -167,9 +167,9 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
   {
     id: "list-vocabulary",
     method: "GET",
-    path: "/api/vocabulary?category=...",
+    path: "/api/vocabulary?category=...&limit=...&offset=...",
     title: "List Vocabulary",
-    description: "Lists vocabulary items, optionally filtered by category.",
+    description: "Lists vocabulary items with optional pagination.",
     requestFields: []
   },
   {
@@ -206,9 +206,9 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
   {
     id: "list-expression-history",
     method: "GET",
-    path: "/api/expressions/history",
+    path: "/api/expressions/history?limit=...&offset=...",
     title: "List Alltagssprache History",
-    description: "Lists recent Alltagssprache attempts.",
+    description: "Lists recent Alltagssprache attempts with pagination.",
     requestFields: []
   },
   {

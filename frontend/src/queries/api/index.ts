@@ -1,0 +1,1 @@
+export { useApiTriggerMutation } from "./useApiTrigger";

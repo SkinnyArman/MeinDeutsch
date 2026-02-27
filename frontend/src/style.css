@@ -21,6 +21,7 @@
   --bg-gradient-b: color-mix(in srgb, var(--accent) 12%, transparent);
   --bg-gradient-base: var(--bg);
   --status-good: #10b981;
+  --status-warn: #f59e0b;
   --status-bad: #ef4444;
 }
 

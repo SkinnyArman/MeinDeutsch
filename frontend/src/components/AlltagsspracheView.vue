@@ -1,379 +1,373 @@
 <script setup lang="ts">
-import { inject, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
-import { authFetch } from "../utils/auth";
+import { useLanguage } from "@/libs/i18n";
+import { CheckCircle2, ChevronDown, ChevronUp, Globe, History, Loader2, MessageSquareText, Plus, Send, Sparkles } from "lucide-vue-next";
+import type { ExpressionAttemptRecord, ExpressionPromptRecord } from "@/types/ApiTypes";
+import AppContainer from "./AppContainer.vue";
+import {
+  useAlltagAttemptMutation,
+  useAlltagGeneratePromptMutation,
+  useAlltagHistoryInfiniteQuery
+} from "@/queries/alltag";
 
-interface ApiErrorBody {
-  code: string;
-  details?: unknown;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T | null;
-  error: ApiErrorBody | null;
-}
-
-interface ExpressionPromptRecord {
-  id: number;
-  englishText: string;
-  generatedContext: string | null;
-  createdAt: string;
-}
-
-interface ExpressionAttemptRecord {
-  id: number;
-  promptId: number;
-  englishText: string;
-  userAnswerText: string;
-  naturalnessScore: number;
-  feedback: string;
-  nativeLikeVersion: string;
-  alternatives: string[];
-  createdAt: string;
-}
-
+const { t } = useLanguage();
 const router = useRouter();
-const baseUrl = inject<import("vue").Ref<string>>("baseUrl")?.value ?? "http://localhost:4000";
-const loadingPrompt = ref(false);
-const submitting = ref(false);
-const loadingHistory = ref(false);
+const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
+
 const prompt = ref<ExpressionPromptRecord | null>(null);
 const latestAttempt = ref<ExpressionAttemptRecord | null>(null);
-const history = ref<ExpressionAttemptRecord[]>([]);
-const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
 const expandedHistoryId = ref<number | null>(null);
+const loadMoreSentinel = ref<HTMLElement | null>(null);
 
 const form = reactive({
   userAnswerText: ""
 });
 
-const setError = (text: string): void => {
-  notice.value = { type: "error", text };
-};
+const historyQuery = useAlltagHistoryInfiniteQuery();
+const generateMutation = useAlltagGeneratePromptMutation();
+const attemptMutation = useAlltagAttemptMutation();
 
-const setSuccess = (text: string): void => {
-  notice.value = { type: "success", text };
-};
+const historyItems = computed(() => historyQuery.data.value?.pages.flatMap((page) => page.items) ?? []);
+const hasMoreHistory = computed(() => Boolean(historyQuery.hasNextPage.value));
 
-const parseApiResponse = async <T>(res: Response): Promise<ApiResponse<T>> => {
-  const payload = (await res.json()) as ApiResponse<T>;
-  if (!res.ok || !payload.success || payload.data === null) {
-    throw new Error(payload.message || "Request failed");
+const scoreHistoryByExpression = computed<Record<string, Array<{ id: number; score: number; at: string }>>>(() => {
+  const grouped: Record<string, Array<{ id: number; score: number; at: string }>> = {};
+  for (const item of historyItems.value) {
+    if (!grouped[item.englishText]) {
+      grouped[item.englishText] = [];
+    }
+    grouped[item.englishText].push({
+      id: item.id,
+      score: item.naturalnessScore,
+      at: item.createdAt
+    });
   }
-  return payload;
+  return grouped;
+});
+
+const previousAttemptScores = (englishText: string, currentId: number): number[] => {
+  const all = scoreHistoryByExpression.value[englishText] ?? [];
+  return all
+    .filter((point) => point.id !== currentId)
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .map((point) => point.score);
 };
 
-const loadHistory = async (): Promise<void> => {
-  loadingHistory.value = true;
-  try {
-    const res = await authFetch(`${baseUrl}/api/expressions/history?limit=30`);
-    const payload = await parseApiResponse<ExpressionAttemptRecord[]>(res);
-    history.value = payload.data;
-  } catch (error) {
-    setError(error instanceof Error ? error.message : "Could not load history");
-  } finally {
-    loadingHistory.value = false;
+watchEffect(() => {
+  if (historyQuery.error.value) {
+    notice.value = { type: "error", text: historyQuery.error.value.message };
   }
-};
+  if (generateMutation.error.value) {
+    notice.value = { type: "error", text: generateMutation.error.value.message };
+  }
+  if (attemptMutation.error.value) {
+    notice.value = { type: "error", text: attemptMutation.error.value.message };
+  }
+});
 
-const generatePrompt = async (): Promise<void> => {
-  loadingPrompt.value = true;
+const handleGenerate = async () => {
+  const data = await generateMutation.mutateAsync();
+  prompt.value = data;
   latestAttempt.value = null;
-  try {
-    const res = await authFetch(`${baseUrl}/api/expressions/generate`, {
-      method: "POST"
-    });
-    const payload = await parseApiResponse<ExpressionPromptRecord>(res);
-    prompt.value = payload.data;
-    form.userAnswerText = "";
-    setSuccess("New expression generated.");
-  } catch (error) {
-    setError(error instanceof Error ? error.message : "Could not generate expression");
-  } finally {
-    loadingPrompt.value = false;
-  }
+  form.userAnswerText = "";
 };
 
-const submitAttempt = async (): Promise<void> => {
+const handleSubmit = async () => {
   if (!prompt.value) {
-    setError("Generate an expression first.");
+    notice.value = { type: "error", text: t.alltag.promptFailed() };
     return;
   }
-  if (!form.userAnswerText.trim()) {
-    setError("Write your German answer first.");
-    return;
-  }
-
-  submitting.value = true;
-  try {
-    const res = await authFetch(`${baseUrl}/api/expressions/attempt`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        promptId: prompt.value.id,
-        userAnswerText: form.userAnswerText.trim()
-      })
-    });
-    const payload = await parseApiResponse<ExpressionAttemptRecord>(res);
-    latestAttempt.value = payload.data;
-    setSuccess("Answer assessed.");
-    await loadHistory();
-  } catch (error) {
-    setError(error instanceof Error ? error.message : "Could not assess answer");
-  } finally {
-    submitting.value = false;
-  }
+  const data = await attemptMutation.mutateAsync({
+    promptId: prompt.value.id,
+    userAnswerText: form.userAnswerText.trim()
+  });
+  latestAttempt.value = data;
+  historyQuery.refetch();
 };
 
-const goToReview = (): void => {
-  void router.push("/alltagssprache/review");
+const toggleHistoryItem = (id: number) => {
+  expandedHistoryId.value = expandedHistoryId.value === id ? null : id;
 };
 
-const formatDate = (value: string): string =>
-  new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-
-const scoreLabel = (score: number): string => {
-  if (score >= 80) {
-    return "Very Natural";
-  }
-  if (score >= 60) {
-    return "Good";
-  }
-  if (score >= 40) {
-    return "Okay";
-  }
-  return "Needs Work";
+const beforeEnter = (el: Element): void => {
+  const node = el as HTMLElement;
+  node.style.height = "0px";
+  node.style.opacity = "0";
+  node.style.transform = "translateY(-4px)";
+  node.style.overflow = "hidden";
 };
 
-const scoreClass = (score: number): string => {
-  if (score >= 80) {
+const enter = (el: Element): void => {
+  const node = el as HTMLElement;
+  node.style.transition = "height 220ms ease, opacity 220ms ease, transform 220ms ease";
+  requestAnimationFrame(() => {
+    node.style.height = `${node.scrollHeight}px`;
+    node.style.opacity = "1";
+    node.style.transform = "translateY(0)";
+  });
+};
+
+const afterEnter = (el: Element): void => {
+  const node = el as HTMLElement;
+  node.style.height = "auto";
+  node.style.overflow = "visible";
+  node.style.transition = "";
+};
+
+const beforeLeave = (el: Element): void => {
+  const node = el as HTMLElement;
+  node.style.height = `${node.scrollHeight}px`;
+  node.style.opacity = "1";
+  node.style.transform = "translateY(0)";
+  node.style.overflow = "hidden";
+};
+
+const leave = (el: Element): void => {
+  const node = el as HTMLElement;
+  node.style.transition = "height 220ms ease, opacity 220ms ease, transform 220ms ease";
+  requestAnimationFrame(() => {
+    node.style.height = "0px";
+    node.style.opacity = "0";
+    node.style.transform = "translateY(-4px)";
+  });
+};
+
+const afterLeave = (el: Element): void => {
+  const node = el as HTMLElement;
+  node.style.transition = "";
+  node.style.overflow = "visible";
+};
+
+const scoreTone = (score: number): string => {
+  if (score >= 85) {
     return "text-[var(--status-good)]";
   }
-  if (score >= 60) {
+  if (score >= 65) {
     return "text-[var(--accent)]";
   }
-  if (score >= 40) {
-    return "text-[color-mix(in_srgb,var(--accent)_65%,var(--status-bad))]";
+  if (score >= 45) {
+    return "text-[var(--status-warn)]";
   }
   return "text-[var(--status-bad)]";
 };
 
-const toggleHistoryItem = (id: number): void => {
-  expandedHistoryId.value = expandedHistoryId.value === id ? null : id;
+const scoreBadgeTone = (score: number): string => {
+  if (score >= 85) {
+    return "border-[color-mix(in_srgb,var(--status-good)_55%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_20%,var(--panel-soft))]";
+  }
+  if (score >= 65) {
+    return "border-[color-mix(in_srgb,var(--accent)_55%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_20%,var(--panel-soft))]";
+  }
+  if (score >= 45) {
+    return "border-[color-mix(in_srgb,var(--status-warn)_55%,var(--line))] bg-[color-mix(in_srgb,var(--status-warn)_20%,var(--panel-soft))]";
+  }
+  return "border-[color-mix(in_srgb,var(--status-bad)_55%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_20%,var(--panel-soft))]";
 };
 
 onMounted(() => {
-  void loadHistory();
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0]?.isIntersecting && hasMoreHistory.value && !historyQuery.isFetchingNextPage.value) {
+      void historyQuery.fetchNextPage();
+    }
+  });
+
+  if (loadMoreSentinel.value) {
+    observer.observe(loadMoreSentinel.value);
+  }
 });
 </script>
 
 <template>
-  <section class="mx-auto w-full max-w-3xl space-y-6">
-    <header class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 class="font-serif text-3xl font-semibold tracking-tight">Alltagssprache</h2>
-        <p class="mt-1 text-xs text-[var(--muted)]">Translate everyday expressions naturally into German.</p>
+  <AppContainer size="sm">
+    <div class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="font-serif text-2xl font-bold tracking-tight">{{ t.alltag.title() }}</h1>
+          <p class="mt-1 text-sm text-[var(--muted)]">{{ t.alltag.subtitle() }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            class="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
+            type="button"
+            @click="router.push('/alltagssprache/review')"
+          >
+            <History class="h-3.5 w-3.5" />
+            {{ t.alltag.review() }}
+          </button>
+          <button
+            class="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
+            :disabled="generateMutation.isPending.value"
+            @click="handleGenerate"
+          >
+            <Loader2 v-if="generateMutation.isPending.value" class="h-3.5 w-3.5 animate-spin" />
+            <Plus v-else class="h-3.5 w-3.5" />
+            {{ generateMutation.isPending.value ? t.alltag.generating() : t.alltag.newExpression() }}
+          </button>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <button
-          class="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
-          @click="goToReview"
-        >
-          <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none">
-            <path d="M4 4h12v12H4V4Zm3 3h6M7 10h6M7 13h4" stroke="currentColor" stroke-linecap="round" stroke-width="1.5" />
-          </svg>
-          Review
-        </button>
-        <button
-          class="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)] disabled:opacity-60"
-          :disabled="loadingPrompt"
-          @click="generatePrompt"
-        >
-          <svg v-if="loadingPrompt" class="h-3.5 w-3.5 animate-spin" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.6" />
-            <path d="M10 3.5a6.5 6.5 0 0 1 6.5 6.5" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
-          </svg>
-          <svg v-else class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none">
-            <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
-          </svg>
-          {{ loadingPrompt ? "Generating..." : "New Expression" }}
-        </button>
-      </div>
-    </header>
 
-    <p
-      v-if="notice"
-      class="rounded-lg border px-3 py-2 text-xs"
-      :class="notice.type === 'error'
-        ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-        : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'"
-    >
-      {{ notice.text }}
-    </p>
+      <p
+        v-if="notice"
+        class="rounded-lg border px-3 py-2 text-xs"
+        :class="notice.type === 'error'
+          ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
+          : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
+        "
+      >
+        {{ notice.text }}
+      </p>
 
-    <article class="rounded-2xl border border-[color-mix(in_srgb,var(--accent)_30%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_6%,var(--panel))] px-4 py-3">
-      <div class="flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-        <p class="inline-flex items-center gap-1.5">
-          <span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent)_20%,var(--panel-soft))]">
-            <svg viewBox="0 0 20 20" fill="none" class="h-3 w-3 text-[var(--accent)]">
-              <path d="M10 3.5a6.5 6.5 0 0 0-6.5 6.5v5h13v-5A6.5 6.5 0 0 0 10 3.5Z" stroke="currentColor" stroke-width="1.5" />
-            </svg>
-          </span>
-          Express In German
+      <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+        <div class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+          <Globe class="h-3.5 w-3.5" />
+          <span>{{ t.alltag.expressInGerman() }}</span>
+        </div>
+        <p class="mt-3 font-serif text-2xl leading-relaxed">
+          {{ prompt?.englishText ? `"${prompt.englishText}"` : t.alltag.newExpression() }}
         </p>
-        <span class="rounded-full border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-0.5">Preferences</span>
       </div>
-      <p class="mt-3 font-serif text-2xl leading-relaxed">{{ prompt?.englishText ? `"${prompt.englishText}"` : "Click New Expression to start." }}</p>
-    </article>
 
-    <article class="space-y-2">
-      <p class="text-sm text-[var(--muted)]">How would you say this in German?</p>
-      <div class="relative">
-        <textarea
-          v-model="form.userAnswerText"
-          rows="3"
-          class="min-h-[120px] w-full resize-none rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 pr-16 text-base outline-none transition focus:border-[var(--accent)]"
-          placeholder="Schreib deine Antwort hier..."
-        />
-        <button
-          class="absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--accent)_82%,var(--panel-soft))] text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
-          :disabled="submitting"
-          @click="submitAttempt"
-        >
-          <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none">
-            <path d="m3 10 14-6-4 12-3-4-7-2Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.6" />
-          </svg>
-        </button>
+      <div class="space-y-2">
+        <label class="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.answerPrompt() }}</label>
+        <div class="relative">
+          <textarea
+            v-model="form.userAnswerText"
+            class="min-h-[80px] w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-3 pr-12 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+            :placeholder="t.alltag.answerPlaceholder()"
+          />
+          <button
+            class="absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--panel-soft)] transition hover:border-[var(--accent)] disabled:opacity-50"
+            :disabled="!form.userAnswerText.trim() || attemptMutation.isPending.value"
+            @click="handleSubmit"
+          >
+            <Send class="h-4 w-4" />
+          </button>
+        </div>
       </div>
-    </article>
 
-    <section v-if="latestAttempt" class="space-y-2">
-      <hr class="border-[var(--line)]" />
-      <div class="grid gap-4 md:grid-cols-[1fr_auto]">
-        <div class="space-y-3">
-          <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]">
-            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Feedback</p>
-            <p class="mt-2 text-sm text-[var(--muted)]">{{ latestAttempt.feedback }}</p>
-          </article>
-
-          <article class="rounded-xl border border-[color-mix(in_srgb,var(--status-good)_30%,var(--line))] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]">
-            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Native-like Version</p>
-            <p class="mt-2 rounded-md bg-[color-mix(in_srgb,var(--status-good)_10%,var(--panel-soft))] px-3 py-2 text-sm font-semibold">
-              {{ latestAttempt.nativeLikeVersion }}
-            </p>
-          </article>
-
-          <article v-if="latestAttempt.alternatives.length" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]">
-            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Other Ways To Say It</p>
-            <ul class="mt-2 space-y-1.5">
-              <li v-for="(alt, idx) in latestAttempt.alternatives" :key="`alt-${idx}`" class="flex items-center gap-2 rounded-md bg-[var(--panel-soft)] px-2 py-1.5 text-xs">
-                <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--line)] text-[10px] text-[var(--muted)]">{{ idx + 1 }}</span>
-                <span>{{ alt }}</span>
-              </li>
-            </ul>
-          </article>
+      <div v-if="latestAttempt" class="space-y-4">
+        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            <MessageSquareText class="h-3.5 w-3.5" />
+            {{ t.alltag.feedback() }}
+          </div>
+          <p class="mt-2 text-sm text-[var(--muted)]">{{ latestAttempt.feedback }}</p>
+          <div class="mt-3 inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-semibold" :class="[scoreBadgeTone(latestAttempt.naturalnessScore), scoreTone(latestAttempt.naturalnessScore)]">
+            <span>{{ latestAttempt.naturalnessScore }}%</span>
+          </div>
         </div>
 
-        <div class="flex items-center justify-center md:pt-3">
-          <div class="flex flex-col items-center gap-2">
-            <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--accent)_14%,var(--panel-soft))]">
-              <span class="font-serif text-4xl font-bold leading-none" :class="scoreClass(latestAttempt.naturalnessScore)">
-                {{ latestAttempt.naturalnessScore }}
-              </span>
-            </div>
-            <div class="text-center">
-              <p class="text-sm font-semibold" :class="scoreClass(latestAttempt.naturalnessScore)">{{ scoreLabel(latestAttempt.naturalnessScore) }}</p>
-              <p class="text-xs text-[var(--muted)]">Naturalness</p>
+        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            <CheckCircle2 class="h-3.5 w-3.5 text-[var(--status-good)]" />
+            {{ t.alltag.nativeLike() }}
+          </div>
+          <p class="mt-2 rounded-lg bg-[var(--panel-soft)] px-3 py-2 text-sm font-medium">{{ latestAttempt.nativeLikeVersion }}</p>
+        </div>
+
+        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            <Sparkles class="h-3.5 w-3.5" />
+            {{ t.alltag.alternatives() }}
+          </div>
+          <div class="mt-2 space-y-2">
+            <div
+              v-for="(alt, i) in latestAttempt.alternatives"
+              :key="`${latestAttempt.id}-${i}`"
+              class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm"
+            >
+              {{ alt }}
             </div>
           </div>
         </div>
       </div>
-    </section>
 
-    <hr class="border-[var(--line)]" />
-    <section class="space-y-2">
-      <div class="mb-2 flex items-center justify-between gap-2">
-        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">History</p>
-        <button
-          class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 text-xs transition hover:border-[var(--accent)]"
-          :disabled="loadingHistory"
-          @click="loadHistory"
-        >
-          {{ loadingHistory ? "Refreshing..." : "Refresh" }}
-        </button>
-      </div>
-      <div v-if="!history.length && !loadingHistory" class="rounded-md border border-dashed border-[var(--line)] p-3 text-xs text-[var(--muted)]">
-        No Alltagssprache attempts yet.
-      </div>
-      <ul v-else class="space-y-1.5">
-        <li
-          v-for="item in history"
-          :key="item.id"
-          class="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2.5 transition-all duration-200"
-          :class="expandedHistoryId === item.id
-            ? 'border-[color-mix(in_srgb,var(--line)_90%,transparent)] bg-[color-mix(in_srgb,var(--panel-soft)_68%,var(--panel))]'
-            : 'hover:bg-[var(--panel-soft)]'"
-        >
-          <button class="w-full text-left" type="button" @click="toggleHistoryItem(item.id)">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="truncate text-sm font-semibold">{{ `"${item.englishText}"` }}</p>
-                <div class="mt-1 grid gap-x-4 gap-y-1 md:grid-cols-2">
-                  <p class="truncate text-xs text-[var(--muted)]">You: {{ item.userAnswerText }}</p>
-                  <p class="truncate text-xs text-[var(--muted)]">Native: {{ item.nativeLikeVersion }}</p>
-                </div>
-              </div>
-              <div class="shrink-0 text-right md:flex md:items-center md:gap-3">
-                <p class="text-xs font-semibold" :class="scoreClass(item.naturalnessScore)">
-                  {{ item.naturalnessScore }}%
-                </p>
-                <p class="text-[10px] text-[var(--muted)]">{{ formatDate(item.createdAt) }}</p>
-                <svg
-                  class="ml-2 h-3.5 w-3.5 text-[var(--muted)] transition"
-                  :class="expandedHistoryId === item.id ? 'rotate-180' : ''"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                >
-                  <path d="m5.5 7.5 4.5 5 4.5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" />
-                </svg>
-              </div>
-            </div>
-          </button>
-
+      <div class="space-y-3">
+        <div class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+          <History class="h-3.5 w-3.5" />
+          {{ t.alltag.history() }}
+        </div>
+        <div v-if="!historyItems.length && !historyQuery.isFetching.value" class="rounded-xl border border-dashed border-[var(--line)] bg-[var(--panel)] p-3 text-xs text-[var(--muted)]">
+          {{ t.dailyTalk.noHistory() }}
+        </div>
+        <div class="space-y-2">
           <div
-            class="grid transition-all duration-300 ease-out"
-            :style="{ gridTemplateRows: expandedHistoryId === item.id ? '1fr' : '0fr' }"
+            v-for="item in historyItems"
+            :key="item.id"
+            class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]"
+            :class="expandedHistoryId === item.id ? 'bg-[var(--panel-soft)]' : ''"
           >
-            <div class="overflow-hidden">
-              <div
-                class="mt-3 space-y-2 rounded-lg border border-[color-mix(in_srgb,var(--line)_92%,transparent)] bg-[color-mix(in_srgb,var(--panel)_90%,var(--panel-soft))] p-3 transition-opacity duration-200"
-                :class="expandedHistoryId === item.id ? 'opacity-100' : 'opacity-0'"
-              >
-                <div class="min-w-0 border-l-2 border-[color-mix(in_srgb,var(--accent)_45%,transparent)] pl-2.5">
-                  <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Feedback</p>
-                  <p class="mt-1 text-xs text-[var(--muted)]">{{ item.feedback }}</p>
-                </div>
+            <button class="flex w-full items-start justify-between gap-3 text-left" type="button" @click="toggleHistoryItem(item.id)">
+              <div class="min-w-0">
+                <p class="truncate text-sm font-medium">{{ `"${item.englishText}"` }}</p>
+                <p class="mt-1 truncate text-xs text-[var(--muted)]">{{ item.userAnswerText }}</p>
+              </div>
+              <span class="inline-flex items-center gap-2 self-center">
+                <span class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold" :class="[scoreBadgeTone(item.naturalnessScore), scoreTone(item.naturalnessScore)]">
+                  {{ item.naturalnessScore }}%
+                </span>
+                <ChevronDown v-if="expandedHistoryId !== item.id" class="h-3.5 w-3.5 text-[var(--muted)]" />
+                <ChevronUp v-else class="h-3.5 w-3.5 text-[var(--muted)]" />
+              </span>
+            </button>
 
-                <div v-if="item.alternatives.length" class="space-y-1">
-                  <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Alternatives</p>
-                  <ul class="space-y-1">
+            <transition
+              @before-enter="beforeEnter"
+              @enter="enter"
+              @after-enter="afterEnter"
+              @before-leave="beforeLeave"
+              @leave="leave"
+              @after-leave="afterLeave"
+            >
+              <div
+                v-if="expandedHistoryId === item.id"
+                class="mt-3 space-y-3 rounded-lg border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_90%,white)] p-3 text-xs text-[var(--muted)]"
+              >
+                <div v-if="previousAttemptScores(item.englishText, item.id).length > 0">
+                  <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.attempts() }}</p>
+                  <div class="mt-1 flex flex-wrap gap-1.5">
+                    <span
+                      v-for="(score, idx) in previousAttemptScores(item.englishText, item.id)"
+                      :key="`${item.id}-prev-score-${idx}-${score}`"
+                      class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold"
+                      :class="[scoreBadgeTone(score), scoreTone(score)]"
+                    >
+                      {{ score }}%
+                    </span>
+                  </div>
+                </div>
+                <p>{{ item.feedback }}</p>
+                <div>
+                  <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.nativeLike() }}</p>
+                  <p class="mt-1 border-l-2 border-[color-mix(in_srgb,var(--accent)_50%,var(--line))] pl-2 text-sm text-[var(--text)]">{{ item.nativeLikeVersion }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.alternatives() }}</p>
+                  <ul class="mt-1 space-y-1">
                     <li
                       v-for="(alt, idx) in item.alternatives"
-                      :key="`history-alt-${item.id}-${idx}`"
-                      class="rounded-md bg-[var(--panel)] px-2 py-1.5 text-xs"
+                      :key="`${item.id}-alt-${idx}`"
+                      class="border-l-2 border-[color-mix(in_srgb,var(--accent)_50%,var(--line))] pl-2"
                     >
-                      <span class="text-[var(--muted)]">{{ idx + 1 }}.</span>
                       {{ alt }}
                     </li>
                   </ul>
                 </div>
               </div>
-            </div>
+            </transition>
           </div>
-        </li>
-      </ul>
-    </section>
-  </section>
+        </div>
+        <div ref="loadMoreSentinel" class="h-6" />
+        <button
+          v-if="hasMoreHistory"
+          class="w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs text-[var(--muted)]"
+          :disabled="historyQuery.isFetchingNextPage.value"
+          @click="historyQuery.fetchNextPage()"
+        >
+          {{ historyQuery.isFetchingNextPage.value ? t.common.loading() : t.common.next() }}
+        </button>
+      </div>
+    </div>
+  </AppContainer>
 </template>

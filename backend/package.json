@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "check": "tsc --noEmit -p tsconfig.json",
-    "lint": "echo \"No linter configured yet\""
+    "lint": "echo \"No linter configured yet\"",
+    "sync:types": "node scripts/sync-api-types.mjs"
   },
   "keywords": [],
   "author": "",

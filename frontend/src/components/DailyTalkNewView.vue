@@ -1,99 +1,32 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, reactive, ref } from "vue";
-import { authFetch } from "../utils/auth";
-
-interface ApiErrorBody {
-  code: string;
-  details?: unknown;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T | null;
-  error: ApiErrorBody | null;
-}
-
-interface TopicRecord {
-  id: number;
-  name: string;
-  description: string | null;
-}
-
-interface QuestionRecord {
-  id: number;
-  topicId: number;
-  questionText: string;
-  cefrTarget: string | null;
-}
-
-interface AnalysisError {
-  type: string;
-  message: string;
-  description: string;
-  evidence: string;
-  correction: string;
-  start: number | null;
-  end: number | null;
-  severity: number;
-}
-
-interface ContextualWordSuggestion {
-  word: string;
-  description: string;
-  examples: string[];
-}
-
-interface AnswerLogRecord {
-  id: number;
-  questionId: number | null;
-  topicId?: number | null;
-  topicName?: string;
-  questionText: string;
-  answerText: string;
-  correctedText: string;
-  cefrLevel: string;
-  errorTypes: AnalysisError[];
-  tips: string[];
-  contextualWordSuggestions: ContextualWordSuggestion[];
-  modelUsed: string;
-  createdAt: string;
-}
-
-interface SavedVocabularyPayload {
-  entry: {
-    id: number;
-    category: string;
-  };
-  created: boolean;
-}
-
-interface VocabularyItemRecord {
-  id: number;
-  word: string;
-  description: string;
-  sourceAnswerLogId: number | null;
-}
+import { computed, reactive, ref, watchEffect } from "vue";
+import { useLanguage } from "@/libs/i18n";
+import { Loader2, Plus, Send, Sparkles, Tag } from "lucide-vue-next";
+import type { AnalysisError, AnswerLogRecord, QuestionRecord, TopicRecord } from "@/types/ApiTypes";
+import { DEFAULT_CATEGORY } from "@/constants/app";
+import AppContainer from "./AppContainer.vue";
+import HighlightedText from "./HighlightedText.vue";
+import {
+  useDailyTalkGenerateQuestionMutation,
+  useDailyTalkSavedVocabQuery,
+  useDailyTalkSaveWordMutation,
+  useDailyTalkSubmitMutation,
+  useDailyTalkTopicsQuery
+} from "@/queries/dailyTalk";
 
 type Notice = {
   type: "success" | "error";
   text: string;
 };
 
-const baseUrl = inject<import("vue").Ref<string>>("baseUrl")?.value ?? "http://localhost:4000";
+const { t } = useLanguage();
 
-const topics = ref<TopicRecord[]>([]);
 const selectedTopicId = ref<string>("");
 const selectedCefrTarget = ref<string>("");
 const generatedQuestion = ref<QuestionRecord | null>(null);
 const result = ref<AnswerLogRecord | null>(null);
 const notice = ref<Notice | null>(null);
-
-const loadingTopics = ref(false);
-const generatingQuestion = ref(false);
-const submittingAnswer = ref(false);
 const savingWordKey = ref<string | null>(null);
-const savedWordKeys = ref<Set<string>>(new Set());
 
 const form = reactive({
   answerText: ""
@@ -188,44 +121,6 @@ const mergeRanges = (
   return merged.sort((a, b) => a.start - b.start);
 };
 
-const buildHighlightedSegments = (text: string, errors: AnalysisError[]): HighlightSegment[] => {
-  if (!text) {
-    return [];
-  }
-
-  const ranges = errors
-    .filter((error) => typeof error.start === "number" && typeof error.end === "number")
-    .map((error) => ({
-      start: error.start as number,
-      end: error.end as number,
-      type: error.type
-    }))
-    .filter((range) => range.start >= 0 && range.end > range.start && range.end <= text.length)
-    .sort((a, b) => a.start - b.start);
-
-  const segments: HighlightSegment[] = [];
-  let cursor = 0;
-
-  for (const range of ranges) {
-    if (range.start < cursor) {
-      continue;
-    }
-
-    if (range.start > cursor) {
-      segments.push({ text: text.slice(cursor, range.start), highlight: false });
-    }
-
-    segments.push({ text: text.slice(range.start, range.end), highlight: true, type: range.type });
-    cursor = range.end;
-  }
-
-  if (cursor < text.length) {
-    segments.push({ text: text.slice(cursor), highlight: false });
-  }
-
-  return segments;
-};
-
 const highlightedAnswerSegments = computed(() => {
   if (!result.value) {
     return [] as HighlightSegment[];
@@ -257,371 +152,237 @@ const highlightedAnswerSegments = computed(() => {
   return segments;
 });
 
-const notifyError = (text: string): void => {
-  notice.value = { type: "error", text };
-};
+const topicsQuery = useDailyTalkTopicsQuery();
+const generateMutation = useDailyTalkGenerateQuestionMutation();
+const submitMutation = useDailyTalkSubmitMutation();
+const savedWordsQuery = useDailyTalkSavedVocabQuery({
+  answerLogId: () => result.value?.id ?? null
+});
+const saveWordMutation = useDailyTalkSaveWordMutation();
 
-const notifySuccess = (text: string): void => {
-  notice.value = { type: "success", text };
-};
-
-const parseApiResponse = async <T>(res: Response): Promise<ApiResponse<T>> => {
-  const payload = (await res.json()) as ApiResponse<T>;
-
-  if (!res.ok || !payload.success || !payload.data) {
-    throw new Error(payload.message || "Request failed");
+watchEffect(() => {
+  if (!selectedTopicId.value && topicsQuery.data.value?.length) {
+    selectedTopicId.value = String(topicsQuery.data.value[0].id);
   }
+});
 
-  return payload;
-};
-
-const loadSavedWordsForResult = async (): Promise<void> => {
-  if (!result.value) {
-    savedWordKeys.value = new Set();
-    return;
+watchEffect(() => {
+  if (topicsQuery.error.value) {
+    notice.value = { type: "error", text: topicsQuery.error.value.message };
   }
-
-  try {
-    const query = new URLSearchParams({ sourceAnswerLogId: String(result.value.id) }).toString();
-    const res = await authFetch(`${baseUrl}/api/vocabulary?${query}`);
-    const payload = await parseApiResponse<VocabularyItemRecord[]>(res);
-    savedWordKeys.value = new Set(payload.data.map((item) => `${item.word}|${item.description}`));
-  } catch {
-    savedWordKeys.value = new Set();
+  if (generateMutation.error.value) {
+    notice.value = { type: "error", text: generateMutation.error.value.message };
   }
-};
-
-const loadTopics = async (): Promise<void> => {
-  loadingTopics.value = true;
-  try {
-    const res = await authFetch(`${baseUrl}/api/topics`);
-    const payload = await parseApiResponse<TopicRecord[]>(res);
-    topics.value = payload.data;
-
-    if (!selectedTopicId.value && topics.value.length > 0) {
-      selectedTopicId.value = String(topics.value[0].id);
-    }
-  } catch (error) {
-    notifyError(error instanceof Error ? error.message : "Could not load topics");
-  } finally {
-    loadingTopics.value = false;
+  if (submitMutation.error.value) {
+    notice.value = { type: "error", text: submitMutation.error.value.message };
   }
-};
+  if (savedWordsQuery.error.value) {
+    notice.value = { type: "error", text: savedWordsQuery.error.value.message };
+  }
+  if (saveWordMutation.error.value) {
+    notice.value = { type: "error", text: saveWordMutation.error.value.message };
+  }
+});
 
-const generateQuestion = async (): Promise<void> => {
+const handleGenerateQuestion = async (): Promise<void> => {
   if (!selectedTopicId.value) {
-    notifyError("Choose a topic first");
+    notice.value = { type: "error", text: t.dailyTalkNew.pickTopic() };
     return;
   }
-
-  generatingQuestion.value = true;
+  const data = await generateMutation.mutateAsync({
+    topicId: Number(selectedTopicId.value),
+    cefrTarget: selectedCefrTarget.value || undefined
+  });
+  generatedQuestion.value = data as QuestionRecord;
   result.value = null;
   notice.value = null;
-
-  try {
-    const resolvedTopicId =
-      selectedTopicId.value === "random"
-        ? topics.value[Math.floor(Math.random() * topics.value.length)]?.id
-        : Number(selectedTopicId.value);
-
-    if (!resolvedTopicId) {
-      notifyError("No topics available to choose from");
-      return;
-    }
-
-    const res = await authFetch(`${baseUrl}/api/questions/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        topicId: resolvedTopicId,
-        cefrTarget: selectedCefrTarget.value || undefined
-      })
-    });
-
-    const payload = await parseApiResponse<QuestionRecord>(res);
-    generatedQuestion.value = payload.data;
-    form.answerText = "";
-    notifySuccess("Question generated. Answer it and submit for correction.");
-  } catch (error) {
-    generatedQuestion.value = null;
-    notifyError(error instanceof Error ? error.message : "Could not generate question");
-  } finally {
-    generatingQuestion.value = false;
-  }
 };
 
-const submitAnswer = async (): Promise<void> => {
+const handleSubmitAnswer = async (): Promise<void> => {
   if (!generatedQuestion.value) {
-    notifyError("Generate a question first");
+    notice.value = { type: "error", text: t.dailyTalkNew.questionFailed() };
     return;
   }
-
-  if (!form.answerText.trim()) {
-    notifyError("Write your answer before submitting");
-    return;
-  }
-
-  submittingAnswer.value = true;
-  notice.value = null;
-
-  try {
-    const res = await authFetch(`${baseUrl}/api/submissions/text`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        questionId: generatedQuestion.value.id,
-        answerText: form.answerText.trim()
-      })
-    });
-
-    const payload = await parseApiResponse<AnswerLogRecord>(res);
-    result.value = payload.data;
-    await loadSavedWordsForResult();
-    notifySuccess("Answer analyzed and stored in your knowledge base.");
-  } catch (error) {
-    notifyError(error instanceof Error ? error.message : "Could not submit answer");
-  } finally {
-    submittingAnswer.value = false;
-  }
+  const data = await submitMutation.mutateAsync({
+    questionId: generatedQuestion.value.id,
+    questionText: generatedQuestion.value.questionText,
+    answerText: form.answerText.trim()
+  });
+  result.value = data as AnswerLogRecord;
+  notice.value = { type: "success", text: t.dailyTalkNew.submitted() };
 };
 
-const buildWordKey = (item: ContextualWordSuggestion): string => `${item.word}|${item.description}`;
-
-const inferVocabularyCategory = (word: string, topicName?: string): string => {
-  if (/\(perfekt:/i.test(word)) {
-    return "General";
-  }
-  return topicName?.trim() || "General";
-};
-
-const saveWordToVocabulary = async (item: ContextualWordSuggestion): Promise<void> => {
-  if (!result.value) {
-    return;
-  }
-
-  const key = buildWordKey(item);
-  if (savedWordKeys.value.has(key)) {
-    return;
-  }
-
-  savingWordKey.value = key;
-  try {
-    const res = await authFetch(`${baseUrl}/api/vocabulary`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        word: item.word,
-        description: item.description,
-        examples: item.examples,
-        category: inferVocabularyCategory(item.word, result.value.topicName),
-        sourceAnswerLogId: result.value.id,
-        sourceQuestionId: result.value.questionId ?? undefined
-      })
-    });
-
-    const payload = await parseApiResponse<SavedVocabularyPayload>(res);
-    savedWordKeys.value = new Set([...savedWordKeys.value, key]);
-    notifySuccess(
-      payload.data.created
-        ? `Saved "${item.word}" to ${payload.data.entry.category}.`
-        : `"${item.word}" already exists in ${payload.data.entry.category}.`
-    );
-  } catch (error) {
-    notifyError(error instanceof Error ? error.message : "Could not save word");
-  } finally {
-    savingWordKey.value = null;
-  }
-};
-
-onMounted(() => {
-  void loadTopics();
+const savedWordKeys = computed(() => {
+  const items = savedWordsQuery.data.value?.items ?? [];
+  return new Set(items.map((item) => `${item.word}|${item.description}`));
 });
+
+const handleSaveWord = async (payload: { word: string; description: string; examples: string[]; category: string }) => {
+  savingWordKey.value = `${payload.word}|${payload.description}`;
+  const data = await saveWordMutation.mutateAsync({
+    ...payload,
+    sourceAnswerLogId: result.value?.id ?? undefined,
+    sourceQuestionId: generatedQuestion.value?.id ?? undefined
+  });
+  await savedWordsQuery.refetch();
+  notice.value = { type: "success", text: data.created ? t.dailyTalkNew.wordSaved() : t.dailyTalkNew.wordAlready() };
+  savingWordKey.value = null;
+};
 </script>
 
 <template>
-  <section class="space-y-4">
-    <header class="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[var(--surface-shadow)]">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_10%_10%,color-mix(in_srgb,var(--accent)_20%,transparent)_0%,transparent_45%)] opacity-60"></div>
-      <div class="relative">
-        <h2 class="text-2xl font-semibold tracking-tight">New Daily Talk</h2>
-        <p class="mt-1 text-sm text-[var(--muted)]">Generate a new question and submit your answer.</p>
-      </div>
-    </header>
-
-    <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h3 class="text-lg font-semibold">Daily Talk Setup</h3>
-        <button
-          class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-1 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent)]"
-          :disabled="loadingTopics"
-          @click="loadTopics"
-        >
-          {{ loadingTopics ? "Loading..." : "Refresh topics" }}
-        </button>
-      </div>
-
-      <div class="grid gap-3 md:grid-cols-2">
+  <AppContainer>
+    <section class="space-y-5">
+      <header class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <label class="mb-2 block text-sm text-[var(--muted)]">Topic</label>
-          <select v-model="selectedTopicId" class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]">
-            <option value="">Choose topic</option>
-            <option value="random">Random topic</option>
-            <option v-for="topic in topics" :key="topic.id" :value="String(topic.id)">
+          <h2 class="font-serif text-3xl font-semibold tracking-tight">{{ t.dailyTalkNew.title() }}</h2>
+          <p class="mt-1 text-xs text-[var(--muted)]">{{ t.dailyTalkNew.subtitle() }}</p>
+        </div>
+      </header>
+
+      <p
+        v-if="notice"
+        class="rounded-lg border px-3 py-2 text-xs"
+        :class="notice.type === 'error'
+          ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
+          : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
+        "
+      >
+        {{ notice.text }}
+      </p>
+
+      <div class="grid gap-4 md:grid-cols-[220px_1fr]">
+        <aside class="space-y-3">
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.topic() }}</label>
+          <select
+            v-model="selectedTopicId"
+            class="w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm"
+          >
+            <option value="">{{ t.dailyTalkNew.pickTopic() }}</option>
+            <option v-for="topic in (topicsQuery.data.value as TopicRecord[] | undefined) ?? []" :key="topic.id" :value="String(topic.id)">
               {{ topic.name }}
             </option>
           </select>
-        </div>
 
-        <div>
-          <label class="mb-2 block text-sm text-[var(--muted)]">CEFR Target (optional)</label>
-          <select v-model="selectedCefrTarget" class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]">
-            <option value="">Auto</option>
-            <option value="A1">A1</option>
-            <option value="A2">A2</option>
-            <option value="B1">B1</option>
-            <option value="B2">B2</option>
-            <option value="C1">C1</option>
-            <option value="C2">C2</option>
-          </select>
-        </div>
-      </div>
+          <label class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.cefrTarget() }}</label>
+          <input
+            v-model="selectedCefrTarget"
+            class="w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm"
+            type="text"
+            placeholder="B1"
+          />
 
-      <button
-        class="mt-4 w-full rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-[var(--accent-contrast)] transition disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="generatingQuestion || !selectedTopicId"
-        @click="generateQuestion"
-      >
-        {{ generatingQuestion ? "Generating question..." : "Generate Daily Talk question" }}
-      </button>
-    </article>
-
-    <article v-if="generatedQuestion" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5 shadow-[var(--surface-shadow)]">
-      <p class="inline-flex rounded-full border border-[color-mix(in_srgb,var(--accent)_35%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_12%,var(--panel-soft))] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-        Today's question
-      </p>
-      <p class="mt-3 text-lg leading-relaxed">{{ generatedQuestion.questionText }}</p>
-      <p class="mt-3 text-xs text-[var(--muted)]">
-        Topic ID {{ generatedQuestion.topicId }}
-        <span v-if="generatedQuestion.cefrTarget"> · Target {{ generatedQuestion.cefrTarget }}</span>
-      </p>
-    </article>
-
-    <article v-if="generatedQuestion" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-      <div class="mb-2 flex items-center justify-between gap-3">
-        <h3 class="text-lg font-semibold">Your Answer</h3>
-        <span class="rounded px-2 py-1 text-xs text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_16%,var(--panel-soft))] border border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]">
-          {{ answerWordCount }} words
-        </span>
-      </div>
-      <p class="mb-3 text-sm text-[var(--muted)]">Keep it concise and natural.</p>
-      <textarea
-        v-model="form.answerText"
-        rows="6"
-        class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
-        placeholder="Write your German answer here..."
-      />
-      <button
-        class="mt-4 w-full rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-medium text-[var(--accent-contrast)] transition disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="submittingAnswer"
-        @click="submitAnswer"
-      >
-        {{ submittingAnswer ? "Submitting..." : "Submit answer" }}
-      </button>
-    </article>
-
-    <p
-      v-if="notice"
-      class="rounded-lg border px-3 py-2 text-sm"
-      :class="notice.type === 'error'
-        ? 'border-[color-mix(in_srgb,var(--status-bad)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-        : 'border-[color-mix(in_srgb,var(--status-good)_50%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
-      "
-    >
-      {{ notice.text }}
-    </p>
-
-    <article v-if="result" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-      <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Your Answer With Highlights</p>
-      <p class="mt-3 whitespace-pre-wrap text-sm">
-        <template v-for="(segment, idx) in highlightedAnswerSegments" :key="`seg-${idx}`">
-          <span
-            v-if="segment.highlight"
-            class="rounded bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] px-0.5"
-            :title="segment.type ? `Error: ${segment.type}` : 'Error'"
+          <button
+            class="inline-flex w-full items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs transition hover:border-[var(--accent)] disabled:opacity-60"
+            :disabled="generateMutation.isPending.value"
+            @click="handleGenerateQuestion"
           >
-            {{ segment.text }}
-          </span>
-          <span v-else>{{ segment.text }}</span>
-        </template>
-      </p>
-    </article>
+            <Loader2 v-if="generateMutation.isPending.value" class="h-3.5 w-3.5 animate-spin" />
+            <Plus v-else class="h-3.5 w-3.5" />
+            {{ generateMutation.isPending.value ? t.dailyTalkNew.generating() : t.dailyTalkNew.generate() }}
+          </button>
+        </aside>
 
-    <section v-if="result" class="grid gap-4 md:grid-cols-2">
-      <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">CEFR Level</p>
-        <p class="mt-3 text-3xl font-semibold">{{ result.cefrLevel }}</p>
-      </article>
+        <section class="space-y-4">
+          <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.question() }}</p>
+            <p class="mt-2 text-lg font-medium">{{ generatedQuestion?.questionText || t.dailyTalkNew.questionPlaceholder() }}</p>
+          </div>
 
-      <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Model Used</p>
-        <p class="mt-3 text-lg font-semibold">{{ result.modelUsed }}</p>
-      </article>
-
-      <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)] md:col-span-2">
-        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Fully Corrected Text</p>
-        <p class="mt-3 whitespace-pre-wrap text-base leading-relaxed">{{ result.correctedText || "No correction returned." }}</p>
-      </article>
-
-      <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Mistakes</p>
-        <ul class="mt-3 space-y-2" v-if="result.errorTypes.length">
-          <li v-for="(error, idx) in result.errorTypes" :key="`${error.type}-${idx}`" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2">
-            <p class="text-sm font-medium">{{ error.message }}</p>
-            <p v-if="error.description" class="text-xs text-[var(--muted)]">Explanation: {{ error.description }}</p>
-            <p v-if="error.evidence" class="mt-1 text-xs">From your text: "{{ error.evidence }}"</p>
-          </li>
-        </ul>
-        <p class="mt-3 text-sm text-[var(--muted)]" v-else>No mistakes detected.</p>
-      </article>
-
-      <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Tips</p>
-        <ul class="mt-3 space-y-2" v-if="result.tips.length">
-          <li v-for="(tip, idx) in result.tips" :key="`tip-${idx}`" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2">
-            <p class="text-sm">{{ tip }}</p>
-          </li>
-        </ul>
-        <p class="mt-3 text-sm text-[var(--muted)]" v-else>No tips returned.</p>
-      </article>
-
-      <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)] md:col-span-2">
-        <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Contextual Word Suggestions</p>
-        <div v-if="result.contextualWordSuggestions.length" class="mt-3 grid gap-3 md:grid-cols-2">
-          <div v-for="(item, idx) in result.contextualWordSuggestions" :key="`word-${idx}`" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2">
-            <div class="flex items-center justify-between gap-3">
-              <p class="text-sm font-semibold">{{ item.word }}</p>
-              <button
-                class="rounded-md border border-[color-mix(in_srgb,var(--accent)_48%,var(--line))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent)_34%,var(--panel-soft))_0%,color-mix(in_srgb,var(--accent-strong)_30%,var(--panel-soft))_100%)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] shadow-[0_4px_18px_color-mix(in_srgb,var(--accent)_20%,transparent)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_color-mix(in_srgb,var(--accent)_30%,transparent)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="savingWordKey === buildWordKey(item) || savedWordKeys.has(buildWordKey(item))"
-                @click="saveWordToVocabulary(item)"
-              >
-                {{
-                  savedWordKeys.has(buildWordKey(item))
-                    ? "Saved"
-                    : savingWordKey === buildWordKey(item)
-                      ? "Saving..."
-                      : "New?"
-                }}
-              </button>
+          <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+            <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              <p>{{ t.dailyTalkNew.answerPrompt() }}</p>
+              <span>{{ answerWordCount }} {{ t.dailyTalkNew.words() }}</span>
             </div>
-            <p class="text-sm text-[var(--muted)]">{{ item.description }}</p>
-            <div class="text-xs text-[var(--muted)]" v-if="item.examples.length">
-              <p v-for="(example, exIdx) in item.examples" :key="`example-${idx}-${exIdx}`">Example: {{ example }}</p>
+            <textarea
+              v-model="form.answerText"
+              class="mt-3 min-h-[120px] w-full rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm"
+              :placeholder="t.dailyTalkNew.answerPlaceholder()"
+            />
+            <button
+              class="mt-3 inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)] disabled:opacity-60"
+              :disabled="submitMutation.isPending.value || !form.answerText.trim()"
+              @click="handleSubmitAnswer"
+            >
+              <Loader2 v-if="submitMutation.isPending.value" class="h-3.5 w-3.5 animate-spin" />
+              <Send v-else class="h-3.5 w-3.5" />
+              {{ submitMutation.isPending.value ? t.dailyTalkNew.submitting() : t.dailyTalkNew.submit() }}
+            </button>
+          </div>
+
+          <div v-if="result" class="space-y-4">
+            <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+              <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.yourAnswer() }}</p>
+              <HighlightedText class="mt-2" :segments="highlightedAnswerSegments" />
+            </div>
+
+            <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+              <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.correctedText() }}</p>
+              <p class="mt-2 text-sm text-[var(--muted)]">{{ result.correctedText }}</p>
+            </div>
+
+            <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+              <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.tips() }}</p>
+              <ul class="mt-2 space-y-2 text-sm text-[var(--muted)]">
+                <li v-for="(tip, idx) in result.tips" :key="`tip-${idx}`">{{ tip }}</li>
+              </ul>
+            </div>
+
+            <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+              <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.errors() }}</p>
+              <ul class="mt-2 space-y-2 text-sm text-[var(--muted)]">
+                <li v-for="(error, idx) in result.errorTypes" :key="`${error.type}-${idx}`" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2">
+                  <p class="text-sm font-semibold text-[var(--text)]">{{ error.message }}</p>
+                  <p class="mt-1 text-xs text-[var(--muted)]">{{ error.description }}</p>
+                </li>
+              </ul>
+            </div>
+
+            <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+              <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                <Sparkles class="h-3.5 w-3.5" />
+                {{ t.dailyTalkNew.wordSuggestions() }}
+              </div>
+              <div class="mt-3 space-y-3">
+                <div
+                  v-for="(word, idx) in result.contextualWordSuggestions"
+                  :key="`${word.word}-${idx}`"
+                  class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3"
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <div>
+                      <p class="text-sm font-semibold">{{ word.word }}</p>
+                      <p class="mt-1 text-xs text-[var(--muted)]">{{ word.description }}</p>
+                    </div>
+                    <button
+                      class="inline-flex items-center gap-1 rounded-md border border-[var(--line)] px-2 py-1 text-[10px] transition hover:border-[var(--accent)] disabled:opacity-50"
+                      :disabled="savingWordKey === `${word.word}|${word.description}` || savedWordKeys.has(`${word.word}|${word.description}`)"
+                      @click="handleSaveWord({ word: word.word, description: word.description, examples: word.examples, category: result.topicName || DEFAULT_CATEGORY })"
+                    >
+                      <Tag class="h-3 w-3" />
+                      {{ savedWordKeys.has(`${word.word}|${word.description}`) ? t.dailyTalkNew.wordSavedLabel() : t.dailyTalkNew.wordSave() }}
+                    </button>
+                  </div>
+                  <ul class="mt-2 space-y-1 text-xs text-[var(--muted)]">
+                    <li v-for="(example, exIdx) in word.examples" :key="`ex-${idx}-${exIdx}`">{{ example }}</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-2">
+              <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+                <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.cefrLevel() }}</p>
+                <p class="mt-2 text-base font-semibold">{{ result.cefrLevel }}</p>
+              </div>
+              <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
+                <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.modelUsed() }}</p>
+                <p class="mt-2 text-base font-semibold">{{ result.modelUsed }}</p>
+              </div>
             </div>
           </div>
-        </div>
-        <p v-else class="mt-3 text-sm text-[var(--muted)]">No extra suggestions returned.</p>
-      </article>
+        </section>
+      </div>
     </section>
-  </section>
+  </AppContainer>
 </template>

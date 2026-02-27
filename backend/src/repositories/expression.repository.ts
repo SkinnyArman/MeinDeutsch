@@ -69,13 +69,21 @@ export const expressionRepository = {
     return toAttemptRecord(saved);
   },
 
-  async listAttempts(input: { userId: number; limit: number }): Promise<ExpressionAttemptRecord[]> {
+  async listAttempts(input: { userId: number; limit: number; offset: number }): Promise<ExpressionAttemptRecord[]> {
     const repo = appDataSource.getRepository(ExpressionAttempt);
     const rows = await repo.find({
       where: { userId: String(input.userId) },
       order: { createdAt: "DESC" },
-      take: input.limit
+      take: input.limit,
+      skip: input.offset
     });
     return rows.map(toAttemptRecord);
+  },
+
+  async countAttempts(input: { userId: number }): Promise<number> {
+    const repo = appDataSource.getRepository(ExpressionAttempt);
+    return repo.count({
+      where: { userId: String(input.userId) }
+    });
   }
 };

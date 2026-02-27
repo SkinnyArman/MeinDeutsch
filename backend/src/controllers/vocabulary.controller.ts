@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { API_MESSAGES } from "../constants/api-messages.js";
 import { vocabularyService } from "../services/vocabulary.service.js";
+import { vocabularyRepository } from "../repositories/vocabulary.repository.js";
 import { sendSuccess } from "../utils/http-response.js";
 
 const saveVocabularySchema = z.object({
@@ -15,7 +16,9 @@ const saveVocabularySchema = z.object({
 
 const listVocabularyQuerySchema = z.object({
   category: z.string().trim().optional(),
-  sourceAnswerLogId: z.coerce.number().int().positive().optional()
+  sourceAnswerLogId: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+  offset: z.coerce.number().int().min(0).optional()
 });
 
 const reviewVocabularyParamSchema = z.object({
@@ -34,16 +37,37 @@ export const saveVocabularyController = async (req: Request, res: Response): Pro
 
 export const listVocabularyController = async (req: Request, res: Response): Promise<void> => {
   const query = listVocabularyQuerySchema.parse(req.query);
-  const entries = await vocabularyService.listWords({
-    userId: req.auth.userId,
-    category: query.category,
-    sourceAnswerLogId: query.sourceAnswerLogId
+  const [items, total] = await Promise.all([
+    vocabularyService.listWords({
+      userId: req.auth.userId,
+      category: query.category,
+      sourceAnswerLogId: query.sourceAnswerLogId,
+      limit: query.limit,
+      offset: query.offset
+    }),
+    vocabularyRepository.count({
+      userId: req.auth.userId,
+      category: query.category?.trim() || null,
+      sourceAnswerLogId: query.sourceAnswerLogId
+    })
+  ]);
+  const limit = query.limit ?? items.length;
+  const offset = query.offset ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const page = Math.floor(offset / limit) + 1;
+  sendSuccess(res, 200, API_MESSAGES.vocabulary.listed, {
+    items,
+    total,
+    limit,
+    offset,
+    page,
+    totalPages,
+    hasMore: offset + items.length < total
   });
-  sendSuccess(res, 200, API_MESSAGES.vocabulary.listed, entries);
 };
 
 export const listVocabularyCategoriesController = async (req: Request, res: Response): Promise<void> => {
-  const categories = await vocabularyService.listCategories(req.auth.userId);
+  const categories = await vocabularyService.listCategoryMeta(req.auth.userId);
   sendSuccess(res, 200, API_MESSAGES.vocabulary.categoriesListed, categories);
 };
 

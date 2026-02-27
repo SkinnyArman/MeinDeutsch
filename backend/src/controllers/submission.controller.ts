@@ -24,8 +24,23 @@ const listSchema = z.object({
 
 export const listSubmissionsController = async (req: Request, res: Response): Promise<void> => {
   const query = listSchema.parse(req.query);
-  const logs = await submissionRepository.listAnswerLogs({ userId: req.auth.userId, limit: query.limit, offset: query.offset });
-  sendSuccess(res, 200, API_MESSAGES.submission.listed, logs);
+  const [items, total] = await Promise.all([
+    submissionRepository.listAnswerLogs({ userId: req.auth.userId, limit: query.limit, offset: query.offset }),
+    submissionRepository.countAnswerLogs(req.auth.userId)
+  ]);
+  const limit = query.limit;
+  const offset = query.offset;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const page = Math.floor(offset / limit) + 1;
+  sendSuccess(res, 200, API_MESSAGES.submission.listed, {
+    items,
+    total,
+    limit,
+    offset,
+    page,
+    totalPages,
+    hasMore: offset + items.length < total
+  });
 };
 
 const paramSchema = z.object({
