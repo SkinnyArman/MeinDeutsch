@@ -22,7 +22,11 @@ export const requireAuth = (req: Request, _res: Response, next: NextFunction): v
     throw new AppError(401, "AUTH_MISSING_TOKEN", API_MESSAGES.errors.authMissingToken);
   }
 
-  const decoded = verifyAppToken(token);
-  req.auth = decoded;
-  next();
+  try {
+    const decoded = verifyAppToken(token);
+    req.auth = decoded;
+    next();
+  } catch {
+    throw new AppError(401, "AUTH_INVALID_SESSION", API_MESSAGES.errors.authInvalidSession);
+  }
 };

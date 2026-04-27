@@ -1,5 +1,6 @@
 export const AUTH_TOKEN_STORAGE_KEY = "meindeutsch_auth_token";
 export const AUTH_USER_STORAGE_KEY = "meindeutsch_auth_user";
+let isAuthRedirectInProgress = false;
 
 export interface SessionUser {
   id: number;
@@ -52,8 +53,9 @@ export const authFetch = async (input: RequestInfo | URL, init: RequestInit = {}
   const response = await fetch(input, { ...init, headers });
   if (response.status === 401) {
     clearSession();
-    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-      window.location.href = "/login";
+    if (typeof window !== "undefined" && window.location.pathname !== "/login" && !isAuthRedirectInProgress) {
+      isAuthRedirectInProgress = true;
+      window.location.replace("/login");
     }
   }
   return response;
