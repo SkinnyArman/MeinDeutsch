@@ -27,12 +27,47 @@ const signToken = (user: UserRecord): string =>
     { expiresIn: "7d", issuer: "meindeutsch-backend", audience: "meindeutsch-frontend" }
   );
 
+export const isGoogleUpstreamFailure = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const maybe = error as {
+    code?: unknown;
+    response?: { status?: unknown; config?: { url?: unknown } };
+    config?: { url?: unknown };
+    message?: unknown;
+  };
+
+  const status = maybe.response?.status;
+  const url = typeof maybe.response?.config?.url === "string"
+    ? maybe.response?.config?.url
+    : (typeof maybe.config?.url === "string" ? maybe.config.url : "");
+  const message = typeof maybe.message === "string" ? maybe.message.toLowerCase() : "";
+
+  return (
+    status === 403 ||
+    url.includes("googleapis.com/oauth2/v1/certs") ||
+    message.includes("getaddrinfo") ||
+    message.includes("econnreset") ||
+    message.includes("etimedout")
+  );
+};
+
 export const authService = {
   async signInWithGoogle(idToken: string): Promise<{ token: string; user: UserRecord }> {
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: env.GOOGLE_CLIENT_ID
-    });
+    let ticket;
+    try {
+      ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: env.GOOGLE_CLIENT_ID
+      });
+    } catch (error) {
+      if (isGoogleUpstreamFailure(error)) {
+        throw new AppError(503, "AUTH_GOOGLE_UPSTREAM_UNAVAILABLE", API_MESSAGES.errors.authGoogleUpstreamUnavailable);
+      }
+      throw new AppError(401, "AUTH_INVALID_GOOGLE_TOKEN", API_MESSAGES.errors.authInvalidGoogleToken);
+    }
     const payload = ticket.getPayload();
 
     if (!payload?.sub || !payload.email || !payload.email_verified) {

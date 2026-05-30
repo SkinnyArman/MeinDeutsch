@@ -50,6 +50,7 @@ export const API_MESSAGES = {
     aiExpressionReviewAssessmentFailed: "AI expression review assessment failed",
     authMissingToken: "Authentication token is required",
     authInvalidGoogleToken: "Google sign-in failed",
+    authGoogleUpstreamUnavailable: "Google sign-in is blocked by your network (403). Please try turning on a VPN and sign in again.",
     authEmailNotAllowed: "This email is not allowed to sign in",
     authInvalidSession: "Invalid or expired session",
     topicNotFound: "Topic not found",
