@@ -3,7 +3,7 @@ import type { ExpressionPromptRecord } from "@/types/ApiTypes";
 import { fetchJson } from "@/libs/http";
 import { API_PATHS } from "@/config/api";
 
-export type AlltagCategory = "random" | "work" | "bus" | "home" | "slang" | "concert" | "school" | "sprichwort";
+export type AlltagCategory = string;
 
 export const useAlltagGeneratePromptMutation = () => {
   return useMutation({

@@ -8,6 +8,7 @@ import AppContainer from "./AppContainer.vue";
 import {
   type AlltagCategory,
   useAlltagAttemptMutation,
+  useAlltagCategoriesQuery,
   useAlltagHistoryInfiniteQuery,
   useAlltagNextPromptMutation
 } from "@/queries/alltag";
@@ -28,6 +29,7 @@ const form = reactive({
 });
 
 const historyQuery = useAlltagHistoryInfiniteQuery();
+const categoriesQuery = useAlltagCategoriesQuery();
 const nextPromptMutation = useAlltagNextPromptMutation();
 const attemptMutation = useAlltagAttemptMutation();
 const isPromptLoading = computed(() => nextPromptMutation.isPending.value);
@@ -37,16 +39,13 @@ const hasMoreHistory = computed(() => Boolean(historyQuery.hasNextPage.value));
 const hasFeedback = computed(() => Boolean(latestAttempt.value?.feedback?.trim()));
 const hasNativeLike = computed(() => Boolean(latestAttempt.value?.nativeLikeVersion?.trim()));
 const hasAlternatives = computed(() => (latestAttempt.value?.alternatives?.length ?? 0) > 0);
-const alltagCategories = computed<Array<{ value: AlltagCategory; label: string }>>(() => [
-  { value: "random", label: t.alltag.categoryRandom() },
-  { value: "work", label: t.alltag.categoryWork() },
-  { value: "bus", label: t.alltag.categoryBus() },
-  { value: "home", label: t.alltag.categoryHome() },
-  { value: "slang", label: t.alltag.categorySlang() },
-  { value: "concert", label: t.alltag.categoryConcert() },
-  { value: "school", label: t.alltag.categorySchool() },
-  { value: "sprichwort", label: t.alltag.categorySprichwort() }
-]);
+const alltagCategories = computed<Array<{ value: AlltagCategory; label: string }>>(() => {
+  const apiCategories = categoriesQuery.data.value ?? [];
+  if (apiCategories.length > 0) {
+    return apiCategories.map((category) => ({ value: category.id, label: category.label }));
+  }
+  return [{ value: "random", label: t.alltag.categoryRandom() }];
+});
 
 const previousAttemptScores = (attemptHistory: ExpressionAttemptHistoryPoint[], currentId: number): number[] => {
   return attemptHistory
@@ -67,6 +66,9 @@ const previousAnswers = (attemptHistory: ExpressionAttemptHistoryPoint[], curren
 };
 
 watchEffect(() => {
+  if (categoriesQuery.error.value) {
+    notice.value = { type: "error", text: categoriesQuery.error.value.message };
+  }
   if (historyQuery.error.value) {
     notice.value = { type: "error", text: historyQuery.error.value.message };
   }
@@ -196,6 +198,10 @@ const scoreBadgeTone = (score: number): string => {
 
 onMounted(() => {
   void (async () => {
+    await categoriesQuery.refetch();
+    if (!alltagCategories.value.some((category) => category.value === selectedCategory.value)) {
+      selectedCategory.value = alltagCategories.value[0]?.value ?? "random";
+    }
     await ensurePromptForCategory(selectedCategory.value);
   })();
 

@@ -1,4 +1,5 @@
 export { useAlltagHistoryInfiniteQuery } from "./useAlltagHistory";
+export { useAlltagCategoriesQuery } from "./useAlltagCategories";
 export { useAlltagGeneratePromptMutation } from "./useAlltagPrompt";
 export type { AlltagCategory } from "./useAlltagPrompt";
 export { useAlltagPromptPoolMutation } from "./useAlltagPromptPool";

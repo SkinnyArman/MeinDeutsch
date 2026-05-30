@@ -24,6 +24,7 @@ export interface ExpressionReviewAssessmentRecord {
 
 const EXPRESSION_POOL_GENERATION_SIZE = 20;
 const EXPRESSION_MIN_UNSEEN_BUFFER = 6;
+const EXPRESSION_AVOID_LIST_SIZE = 80;
 
 export const expressionService = {
   async generatePrompt(userId: number, category: ExpressionGenerationCategory): Promise<ExpressionPromptRecord> {
@@ -89,17 +90,28 @@ export const expressionService = {
     for (const category of input.categories) {
       const prompts: ExpressionPromptRecord[] = [];
       const seenIds = new Set<number>();
+      const avoidTexts = new Set(
+        (
+          await expressionRepository.listRecentPromptTextsByCategory({
+            category,
+            limit: EXPRESSION_AVOID_LIST_SIZE
+          })
+        ).map((text) => text.trim().toLowerCase())
+      );
       let attempts = 0;
       const maxAttempts = input.countPerCategory * 8;
       while (prompts.length < input.countPerCategory && attempts < maxAttempts) {
         attempts += 1;
-        const generated = await generateEverydayExpression(category);
+        const generated = await generateEverydayExpression(category, {
+          avoidEnglishTexts: Array.from(avoidTexts)
+        });
         const created = await expressionRepository.createPrompt({
           userId: input.userId,
           englishText: generated.englishText,
           generatedContext: generated.generatedContext,
           generationCategory: category
         });
+        avoidTexts.add(created.englishText.trim().toLowerCase());
         if (seenIds.has(created.id)) {
           continue;
         }

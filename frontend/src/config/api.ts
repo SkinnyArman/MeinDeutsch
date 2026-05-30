@@ -38,6 +38,7 @@ export const API_PATHS = {
   expressionsGenerate: "/api/expressions/generate",
   expressionsPool: "/api/expressions/pool",
   expressionsNext: "/api/expressions/next",
+  expressionsCategories: "/api/expressions/categories",
   expressionsAttempt: "/api/expressions/attempt",
   expressionsHistory: "/api/expressions/history",
   expressionsReview: "/api/expressions/review",

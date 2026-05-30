@@ -136,6 +136,31 @@ export const expressionRepository = {
     }
   },
 
+  async listRecentPromptTextsByCategory(input: {
+    category: string;
+    limit: number;
+  }): Promise<string[]> {
+    const repo = appDataSource.getRepository(ExpressionPrompt);
+    try {
+      const rows = await repo
+        .createQueryBuilder("prompt")
+        .select(["prompt.englishText"])
+        .where("prompt.generationCategory = :category", { category: input.category })
+        .orderBy("prompt.createdAt", "DESC")
+        .take(input.limit)
+        .getMany();
+      return rows.map((row) => row.englishText).filter((text) => text.trim().length > 0);
+    } catch {
+      const rows = await repo
+        .createQueryBuilder("prompt")
+        .select(["prompt.englishText"])
+        .orderBy("prompt.createdAt", "DESC")
+        .take(input.limit)
+        .getMany();
+      return rows.map((row) => row.englishText).filter((text) => text.trim().length > 0);
+    }
+  },
+
   async markPromptViewed(input: { userId: number; promptId: number }): Promise<void> {
     const repo = appDataSource.getRepository(ExpressionPromptView);
     const existing = await repo.findOne({

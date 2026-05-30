@@ -112,6 +112,11 @@ export interface ExpressionPromptPoolPayload {
   categories: string[];
 }
 
+export interface ExpressionCategoryRecord {
+  id: string;
+  label: string;
+}
+
 export interface ExpressionAttemptRecord {
   id: number;
   promptId: number;

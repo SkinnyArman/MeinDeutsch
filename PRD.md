@@ -49,10 +49,12 @@ Build a personal German learning MVP where:
     - System stores next due date and interval using lightweight SM-2 style scheduling.
 - New feature: `Alltagssprache`
   - AI generates one common English everyday sentence/expression by category.
-  - Categories include: random, work, bus/U-Bahn, home, slang, concert, school, sprichwort.
+  - Categories are dynamic from backend configuration (frontend reads from API).
+  - Current categories include: random, work, transport (bus/U-Bahn), home, slang, school/uni, doctor's office, cinema, concert, food, travel, sprichwort.
   - Page auto-loads a prompt on open and on category switch (no manual generate click).
-  - Prompt pools are pre-generated on backend (default target: 5 per category).
+  - Prompt pools are pre-generated on backend (default target: 20 per category) with unseen-buffer refill.
   - Prompt delivery is shared-pool + per-user seen tracking (users draw from same pool but see different unseen items).
+  - Generation prompt uses a backend config source for expression types and contexts (not hardcoded in prompt text).
   - Backend deduplicates prompts by normalized English text + category to avoid duplicate pool entries.
   - A `Next` action moves to the next unseen prompt in the selected category.
   - User writes the German equivalent.
@@ -219,6 +221,11 @@ Output (strict JSON):
 Input: optional `category`
 Output:
 - `englishText` (common everyday sentence/expression)
+
+### Alltagssprache category list
+Input: none
+Output:
+- `[{ id, label }]`
 
 ### Alltagssprache prompt pool generation
 Input: `categories[]` + optional `countPerCategory`

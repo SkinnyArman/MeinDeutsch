@@ -2,10 +2,20 @@ import OpenAI from "openai";
 import { logger } from "../config/logger.js";
 import { env } from "../config/env.js";
 import { API_MESSAGES } from "../constants/api-messages.js";
+import {
+  EXPRESSION_CATEGORIES,
+  EXPRESSION_CATEGORY_BY_ID,
+  EXPRESSION_GENERATION_CATEGORIES,
+  EXPRESSION_TARGET_CONTEXTS,
+  EXPRESSION_TARGET_TYPES,
+  type ExpressionGenerationCategory
+} from "../constants/expression-generation.config.js";
 import { MISTAKE_TYPES, type AnalysisResult, type AssessmentContext, type SubmissionAssessmentInput } from "../types/submission.types.js";
 import { AppError } from "../utils/app-error.js";
 
 const openai = env.OPENAI_API_KEY ? new OpenAI({ apiKey: env.OPENAI_API_KEY }) : null;
+export { EXPRESSION_GENERATION_CATEGORIES };
+export type { ExpressionGenerationCategory };
 
 const ANALYSIS_FIELD_CEFR_LEVEL = `"cefrLevel": "A1|A2|B1|B2|C1|C2"`;
 const ANALYSIS_FIELD_CORRECTED_TEXT = `"correctedText": "string"`;
@@ -60,107 +70,38 @@ Rules:
 - Keep it tied only to the provided topic.
 - Respect custom prompt constraints exactly.`;
 
+const EXPRESSION_TYPES_LIST = EXPRESSION_TARGET_TYPES.join(", ");
+const EXPRESSION_CONTEXTS_LIST = EXPRESSION_TARGET_CONTEXTS.join(", ");
+const EXPRESSION_CATEGORIES_LIST = EXPRESSION_CATEGORIES.map((category) => `${category.id}: ${category.label}`).join("; ");
+
 const EXPRESSION_GENERATION_PROMPT = `Generate exactly one very common everyday English sentence or expression.
 Rules:
 - Output strict JSON only.
 - Target B2/B2+/C1 difficulty.
 - Keep it practical and naturally spoken (roughly 5-14 words).
 - Prefer natural spoken daily usage (not literary).
-- Vary heavily across requests:
-  - expression types: idiom, proverb/saying, casual reaction, social phrase, opinion phrase, complaint, encouragement, planning phrase, casual profanity.
-  - contexts: friendship, family, dating, food, travel, money, stress, emotions, health, study, work, time pressure, conflict, success/failure, university, cinema, public transport (bus/u-bahn/train), doctor's office, with parents, with little kids, concerts/live events, grocery shopping, landlord/neighbor interactions.
+- Available expression types: ${EXPRESSION_TYPES_LIST}
+- Available contexts: ${EXPRESSION_CONTEXTS_LIST}
+- Categories: ${EXPRESSION_CATEGORIES_LIST}
+- Vary heavily across requests and across contexts/types.
 - Include idioms/proverbs regularly (examples of desired style: "Break a leg", "Better late than never", "Call it a day", "It's not my cup of tea" and so on).
 - Include fixed expressions/sayings from real daily situations, not only generic project/work phrases.
 - Avoid very basic beginner phrases (e.g. "How are you?", "Where are you from?", "What is your name?").
 - Casual everyday profanity is allowed in moderation when natural (frustration, surprise, emphasis).
 - Keep profanity realistic and commonly spoken, not extreme.
+- Strict anti-repetition: do not output any sentence that is identical or near-identical to entries provided in "Avoid list".
+- If the first candidate is too similar to avoid-list items, generate a different one instead.
 - Return generatedContext as a short lowercase label like "idiom_social", "proverb_time", "casual_emotion", "planning_travel".
 - No explanation text, only JSON.`;
-
-export const EXPRESSION_GENERATION_CATEGORIES = [
-  "random",
-  "work",
-  "bus",
-  "home",
-  "slang",
-  "concert",
-  "school",
-  "sprichwort"
-] as const;
-
-export type ExpressionGenerationCategory = (typeof EXPRESSION_GENERATION_CATEGORIES)[number];
-
-const EXPRESSION_TARGET_TYPES = [
-  "idiom",
-  "proverb",
-  "casual_reaction",
-  "social_phrase",
-  "opinion_phrase",
-  "complaint",
-  "encouragement",
-  "planning_phrase",
-  "casual_profanity"
-] as const;
-
-const EXPRESSION_TARGET_CONTEXTS = [
-  "friendship",
-  "family",
-  "dating",
-  "food",
-  "travel",
-  "money",
-  "stress",
-  "emotions",
-  "health",
-  "study",
-  "university",
-  "work",
-  "cinema",
-  "public_transport",
-  "doctor_office",
-  "parents",
-  "little_kids",
-  "concerts",
-  "grocery_shopping",
-  "neighbors_landlord",
-  "time_pressure",
-  "conflict",
-  "success_failure"
-] as const;
-
-const EXPRESSION_CATEGORY_CONTEXTS: Record<Exclude<ExpressionGenerationCategory, "random">, readonly string[]> = {
-  work: ["work", "time_pressure", "stress", "conflict"],
-  bus: ["public_transport", "travel", "time_pressure"],
-  home: ["home", "family", "parents", "little_kids"],
-  slang: ["friendship", "dating", "emotions", "casual_profanity"],
-  concert: ["concerts", "friendship", "emotions"],
-  school: ["school", "study", "university", "time_pressure"],
-  sprichwort: ["success_failure", "time_pressure", "conflict", "proverb"]
-} as const;
-
-const EXPRESSION_CATEGORY_TYPES: Record<Exclude<ExpressionGenerationCategory, "random">, readonly string[]> = {
-  work: ["planning_phrase", "opinion_phrase", "complaint", "encouragement"],
-  bus: ["social_phrase", "casual_reaction", "complaint", "planning_phrase"],
-  home: ["social_phrase", "opinion_phrase", "casual_reaction", "encouragement"],
-  slang: ["casual_reaction", "casual_profanity", "opinion_phrase", "complaint"],
-  concert: ["casual_reaction", "social_phrase", "encouragement", "opinion_phrase"],
-  school: ["planning_phrase", "complaint", "encouragement", "opinion_phrase"],
-  sprichwort: ["proverb", "idiom"]
-} as const;
 
 const pickRandom = <T>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)] as T;
 
 export const resolveExpressionGenerationTargets = (
   category: ExpressionGenerationCategory
 ): { targetType: string; targetContext: string } => {
-  const categoryContexts =
-    category === "random"
-      ? EXPRESSION_TARGET_CONTEXTS
-      : (EXPRESSION_CATEGORY_CONTEXTS[category] as readonly string[]);
-  const categoryTypes =
-    category === "random"
-      ? EXPRESSION_TARGET_TYPES
-      : (EXPRESSION_CATEGORY_TYPES[category] as readonly string[]);
+  const config = EXPRESSION_CATEGORY_BY_ID[category];
+  const categoryContexts = config?.targetContexts?.length ? config.targetContexts : [...EXPRESSION_TARGET_CONTEXTS];
+  const categoryTypes = config?.targetTypes?.length ? config.targetTypes : [...EXPRESSION_TARGET_TYPES];
 
   return {
     targetType: pickRandom(categoryTypes),
@@ -270,7 +211,8 @@ export const generateQuestion = async (input: {
 };
 
 export const generateEverydayExpression = async (
-  category: ExpressionGenerationCategory = "random"
+  category: ExpressionGenerationCategory = "random",
+  options?: { avoidEnglishTexts?: string[] }
 ): Promise<{ englishText: string; generatedContext: string | null }> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
@@ -281,6 +223,10 @@ export const generateEverydayExpression = async (
 
   try {
     const { targetType, targetContext } = resolveExpressionGenerationTargets(category);
+    const avoidList = (options?.avoidEnglishTexts ?? [])
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .slice(0, 50);
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
       instructions: EXPRESSION_GENERATION_PROMPT,
@@ -289,7 +235,8 @@ export const generateEverydayExpression = async (
         `Selected category: ${category}`,
         `Target expression type: ${targetType}`,
         `Target context: ${targetContext}`,
-        "Use the selected category as a hard constraint and target type/context as strong preferences."
+        "Use the selected category as a hard constraint and target type/context as strong preferences.",
+        `Avoid list (must not repeat): ${avoidList.length > 0 ? avoidList.join(" | ") : "none"}`
       ].join("\n"),
       text: {
         format: {

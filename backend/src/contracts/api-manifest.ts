@@ -173,6 +173,14 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     requestFields: []
   },
   {
+    id: "list-expression-categories",
+    method: "GET",
+    path: "/api/expressions/categories",
+    title: "List Alltagssprache Categories",
+    description: "Returns dynamic Alltagssprache generation categories configured in backend.",
+    requestFields: []
+  },
+  {
     id: "generate-expression",
     method: "POST",
     path: "/api/expressions/generate",
@@ -184,7 +192,7 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
         label: "Category",
         type: "text",
         required: false,
-        placeholder: "random | work | bus | home | slang | concert | school | sprichwort"
+        placeholder: "Use value from GET /api/expressions/categories"
       }
     ]
   },
@@ -200,7 +208,7 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
         label: "Categories (JSON array)",
         type: "textarea",
         required: false,
-        placeholder: "[\"random\", \"work\", \"bus\"]"
+        placeholder: "[\"random\", \"work\", \"transport\"]"
       },
       {
         name: "countPerCategory",
@@ -223,7 +231,7 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
         label: "Category",
         type: "text",
         required: false,
-        placeholder: "random | work | bus | home | slang | concert | school | sprichwort"
+        placeholder: "Use value from GET /api/expressions/categories"
       }
     ]
   },

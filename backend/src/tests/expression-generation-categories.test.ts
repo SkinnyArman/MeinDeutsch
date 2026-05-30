@@ -7,7 +7,7 @@ import {
 } from "../ai/analysis.client.js";
 
 test("expression categories include requested options", () => {
-  const required = ["random", "work", "bus", "home", "slang", "concert", "school", "sprichwort"];
+  const required = ["random", "work", "transport", "home", "slang", "concert", "school", "sprichwort"];
   for (const category of required) {
     assert.equal(EXPRESSION_GENERATION_CATEGORIES.includes(category as never), true);
   }

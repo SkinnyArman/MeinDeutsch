@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  listExpressionCategoriesController,
   assessExpressionReviewAttemptController,
   assessExpressionAttemptController,
   generateExpressionController,
@@ -15,6 +16,7 @@ export const expressionRouter = Router();
 expressionRouter.post("/generate", asyncHandler(generateExpressionController));
 expressionRouter.post("/pool", asyncHandler(generateExpressionPoolController));
 expressionRouter.post("/next", asyncHandler(nextExpressionController));
+expressionRouter.get("/categories", asyncHandler(listExpressionCategoriesController));
 expressionRouter.post("/attempt", asyncHandler(assessExpressionAttemptController));
 expressionRouter.get("/history", asyncHandler(listExpressionHistoryController));
 expressionRouter.get("/review", asyncHandler(listExpressionReviewController));

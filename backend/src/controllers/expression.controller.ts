@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { API_MESSAGES } from "../constants/api-messages.js";
 import { EXPRESSION_GENERATION_CATEGORIES } from "../ai/analysis.client.js";
+import { EXPRESSION_CATEGORIES } from "../constants/expression-generation.config.js";
 import { expressionService } from "../services/expression.service.js";
 import { sendSuccess } from "../utils/http-response.js";
 
@@ -27,17 +28,28 @@ const reviewAttemptSchema = z.object({
   userAnswerText: z.string().trim().min(1)
 });
 
+const categorySchema = z
+  .string()
+  .trim()
+  .default("random")
+  .refine((value) => EXPRESSION_GENERATION_CATEGORIES.includes(value), {
+    message: "Invalid expression category"
+  });
+
 const generateExpressionSchema = z.object({
-  category: z.enum(EXPRESSION_GENERATION_CATEGORIES).default("random")
+  category: categorySchema
 });
 const generateExpressionPoolSchema = z.object({
-  categories: z.array(z.enum(EXPRESSION_GENERATION_CATEGORIES)).min(1).optional(),
+  categories: z.array(categorySchema).min(1).optional(),
   countPerCategory: z.coerce.number().int().min(1).max(10).default(5)
 });
 
 export const generateExpressionController = async (req: Request, res: Response): Promise<void> => {
   const payload = generateExpressionSchema.parse(req.body ?? {});
-  const prompt = await expressionService.generatePrompt(req.auth.userId, payload.category);
+  const prompt = await expressionService.generatePrompt(
+    req.auth.userId,
+    payload.category as (typeof EXPRESSION_GENERATION_CATEGORIES)[number]
+  );
   sendSuccess(res, 201, API_MESSAGES.expression.generated, prompt);
 };
 
@@ -45,7 +57,7 @@ export const nextExpressionController = async (req: Request, res: Response): Pro
   const payload = generateExpressionSchema.parse(req.body ?? {});
   const prompt = await expressionService.getNextPrompt({
     userId: req.auth.userId,
-    category: payload.category
+    category: payload.category as (typeof EXPRESSION_GENERATION_CATEGORIES)[number]
   });
   sendSuccess(res, 200, API_MESSAGES.expression.generated, prompt);
 };
@@ -55,7 +67,7 @@ export const generateExpressionPoolController = async (req: Request, res: Respon
   const uniqueCategories = Array.from(new Set(payload.categories ?? [...EXPRESSION_GENERATION_CATEGORIES]));
   const result = await expressionService.generatePromptPool({
     userId: req.auth.userId,
-    categories: uniqueCategories,
+    categories: uniqueCategories as (typeof EXPRESSION_GENERATION_CATEGORIES)[number][],
     countPerCategory: payload.countPerCategory
   });
   sendSuccess(res, 201, API_MESSAGES.expression.generated, result);
@@ -99,4 +111,16 @@ export const assessExpressionReviewAttemptController = async (req: Request, res:
     userAnswerText: payload.userAnswerText
   });
   sendSuccess(res, 200, API_MESSAGES.expression.reviewAssessed, result);
+};
+
+export const listExpressionCategoriesController = async (_req: Request, res: Response): Promise<void> => {
+  sendSuccess(
+    res,
+    200,
+    API_MESSAGES.expression.categoriesListed,
+    EXPRESSION_CATEGORIES.map((category) => ({
+      id: category.id,
+      label: category.label
+    }))
+  );
 };
