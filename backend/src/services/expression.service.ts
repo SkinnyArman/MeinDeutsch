@@ -22,12 +22,15 @@ export interface ExpressionReviewAssessmentRecord {
   feedback: string;
 }
 
+const EXPRESSION_POOL_GENERATION_SIZE = 20;
+const EXPRESSION_MIN_UNSEEN_BUFFER = 6;
+
 export const expressionService = {
   async generatePrompt(userId: number, category: ExpressionGenerationCategory): Promise<ExpressionPromptRecord> {
     const prompts = await this.generatePromptPool({
       userId,
       categories: [category],
-      countPerCategory: 5
+      countPerCategory: EXPRESSION_POOL_GENERATION_SIZE
     });
     const first = prompts.promptsByCategory[category]?.[0] ?? null;
     if (!first) {
@@ -39,19 +42,25 @@ export const expressionService = {
     let unseen = await expressionRepository.listUnseenPromptsByCategory({
       userId: input.userId,
       category: input.category,
-      limit: 1
+      limit: EXPRESSION_MIN_UNSEEN_BUFFER
     });
 
     if (unseen.length === 0) {
       await this.generatePromptPool({
         userId: input.userId,
         categories: [input.category],
-        countPerCategory: 5
+        countPerCategory: EXPRESSION_POOL_GENERATION_SIZE
       });
       unseen = await expressionRepository.listUnseenPromptsByCategory({
         userId: input.userId,
         category: input.category,
-        limit: 1
+        limit: EXPRESSION_MIN_UNSEEN_BUFFER
+      });
+    } else if (unseen.length < EXPRESSION_MIN_UNSEEN_BUFFER) {
+      await this.generatePromptPool({
+        userId: input.userId,
+        categories: [input.category],
+        countPerCategory: EXPRESSION_POOL_GENERATION_SIZE
       });
     }
 
