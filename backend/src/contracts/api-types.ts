@@ -99,7 +99,14 @@ export interface ExpressionPromptRecord {
   id: number;
   englishText: string;
   generatedContext: string | null;
+  generationCategory: string;
   createdAt: string;
+}
+
+export interface ExpressionPromptPoolPayload {
+  promptsByCategory: Record<string, ExpressionPromptRecord[]>;
+  countPerCategory: number;
+  categories: string[];
 }
 
 export interface ExpressionAttemptRecord {

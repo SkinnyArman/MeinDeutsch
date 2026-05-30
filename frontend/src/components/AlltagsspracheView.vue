@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watchEffect } from "vue";
+import { computed, onMounted, reactive, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
-import { CheckCircle2, ChevronDown, ChevronUp, CircleHelp, Globe, History, Loader2, MessageSquareText, Plus, Send, Sparkles } from "lucide-vue-next";
+import { CheckCircle2, ChevronDown, ChevronUp, CircleHelp, Globe, History, Loader2, MessageSquareText, Send, Sparkles } from "lucide-vue-next";
 import type { ExpressionAttemptHistoryPoint, ExpressionAttemptRecord, ExpressionPromptRecord } from "@/types/ApiTypes";
 import AppContainer from "./AppContainer.vue";
 import {
+  type AlltagCategory,
   useAlltagAttemptMutation,
-  useAlltagGeneratePromptMutation,
-  useAlltagHistoryInfiniteQuery
+  useAlltagHistoryInfiniteQuery,
+  useAlltagNextPromptMutation
 } from "@/queries/alltag";
 import { ALLTAG_IDK_ANSWER } from "@/constants/app";
 
@@ -20,20 +21,32 @@ const prompt = ref<ExpressionPromptRecord | null>(null);
 const latestAttempt = ref<ExpressionAttemptRecord | null>(null);
 const expandedHistoryId = ref<number | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
+const selectedCategory = ref<AlltagCategory>("random");
 
 const form = reactive({
   userAnswerText: ""
 });
 
 const historyQuery = useAlltagHistoryInfiniteQuery();
-const generateMutation = useAlltagGeneratePromptMutation();
+const nextPromptMutation = useAlltagNextPromptMutation();
 const attemptMutation = useAlltagAttemptMutation();
+const isPromptLoading = computed(() => nextPromptMutation.isPending.value);
 
 const historyItems = computed(() => historyQuery.data.value?.pages.flatMap((page) => page.items) ?? []);
 const hasMoreHistory = computed(() => Boolean(historyQuery.hasNextPage.value));
 const hasFeedback = computed(() => Boolean(latestAttempt.value?.feedback?.trim()));
 const hasNativeLike = computed(() => Boolean(latestAttempt.value?.nativeLikeVersion?.trim()));
 const hasAlternatives = computed(() => (latestAttempt.value?.alternatives?.length ?? 0) > 0);
+const alltagCategories = computed<Array<{ value: AlltagCategory; label: string }>>(() => [
+  { value: "random", label: t.alltag.categoryRandom() },
+  { value: "work", label: t.alltag.categoryWork() },
+  { value: "bus", label: t.alltag.categoryBus() },
+  { value: "home", label: t.alltag.categoryHome() },
+  { value: "slang", label: t.alltag.categorySlang() },
+  { value: "concert", label: t.alltag.categoryConcert() },
+  { value: "school", label: t.alltag.categorySchool() },
+  { value: "sprichwort", label: t.alltag.categorySprichwort() }
+]);
 
 const previousAttemptScores = (attemptHistory: ExpressionAttemptHistoryPoint[], currentId: number): number[] => {
   return attemptHistory
@@ -57,19 +70,23 @@ watchEffect(() => {
   if (historyQuery.error.value) {
     notice.value = { type: "error", text: historyQuery.error.value.message };
   }
-  if (generateMutation.error.value) {
-    notice.value = { type: "error", text: generateMutation.error.value.message };
+  if (nextPromptMutation.error.value) {
+    notice.value = { type: "error", text: nextPromptMutation.error.value.message };
   }
   if (attemptMutation.error.value) {
     notice.value = { type: "error", text: attemptMutation.error.value.message };
   }
 });
 
-const handleGenerate = async () => {
-  const data = await generateMutation.mutateAsync();
-  prompt.value = data;
+const ensurePromptForCategory = async (category: AlltagCategory): Promise<void> => {
+  const generated = await nextPromptMutation.mutateAsync({ category });
+  prompt.value = generated;
+};
+
+const handleNext = async (): Promise<void> => {
   latestAttempt.value = null;
   form.userAnswerText = "";
+  await ensurePromptForCategory(selectedCategory.value);
 };
 
 const submitAttempt = async (userAnswerText: string) => {
@@ -178,6 +195,10 @@ const scoreBadgeTone = (score: number): string => {
 };
 
 onMounted(() => {
+  void (async () => {
+    await ensurePromptForCategory(selectedCategory.value);
+  })();
+
   const observer = new IntersectionObserver((entries) => {
     if (entries[0]?.isIntersecting && hasMoreHistory.value && !historyQuery.isFetchingNextPage.value) {
       void historyQuery.fetchNextPage();
@@ -187,6 +208,12 @@ onMounted(() => {
   if (loadMoreSentinel.value) {
     observer.observe(loadMoreSentinel.value);
   }
+});
+
+watch(selectedCategory, async (nextCategory) => {
+  latestAttempt.value = null;
+  form.userAnswerText = "";
+  await ensurePromptForCategory(nextCategory);
 });
 </script>
 
@@ -199,6 +226,18 @@ onMounted(() => {
           <p class="mt-1 text-sm text-[var(--muted)]">{{ t.alltag.subtitle() }}</p>
         </div>
         <div class="flex items-center gap-2">
+          <select
+            v-model="selectedCategory"
+            class="h-8 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-xs text-[var(--text)] outline-none focus:border-[var(--accent)]"
+          >
+            <option
+              v-for="category in alltagCategories"
+              :key="category.value"
+              :value="category.value"
+            >
+              {{ category.label }}
+            </option>
+          </select>
           <button
             class="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
             type="button"
@@ -209,12 +248,12 @@ onMounted(() => {
           </button>
           <button
             class="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
-            :disabled="generateMutation.isPending.value"
-            @click="handleGenerate"
+            type="button"
+            :disabled="isPromptLoading"
+            @click="handleNext"
           >
-            <Loader2 v-if="generateMutation.isPending.value" class="h-3.5 w-3.5 animate-spin" />
-            <Plus v-else class="h-3.5 w-3.5" />
-            {{ generateMutation.isPending.value ? t.alltag.generating() : t.alltag.newExpression() }}
+            <Loader2 v-if="isPromptLoading" class="h-3.5 w-3.5 animate-spin" />
+            <span v-else>{{ t.common.next() }}</span>
           </button>
         </div>
       </div>
@@ -232,11 +271,12 @@ onMounted(() => {
 
       <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
         <div class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-          <Globe class="h-3.5 w-3.5" />
+          <Loader2 v-if="isPromptLoading" class="h-3.5 w-3.5 animate-spin" />
+          <Globe v-else class="h-3.5 w-3.5" />
           <span>{{ t.alltag.expressInGerman() }}</span>
         </div>
         <p class="mt-3 font-serif text-2xl leading-relaxed">
-          {{ prompt?.englishText ? `"${prompt.englishText}"` : t.alltag.newExpression() }}
+          {{ prompt?.englishText ? `"${prompt.englishText}"` : t.common.loading() }}
         </p>
       </div>
 

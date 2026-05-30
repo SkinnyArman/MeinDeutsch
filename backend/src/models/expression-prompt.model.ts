@@ -14,6 +14,9 @@ export class ExpressionPrompt {
   @Column({ name: "generated_context", type: "text", nullable: true })
   generatedContext!: string | null;
 
+  @Column({ name: "generation_category", type: "text", default: "random" })
+  generationCategory!: string;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }
@@ -22,5 +25,6 @@ export interface ExpressionPromptRecord {
   id: number;
   englishText: string;
   generatedContext: string | null;
+  generationCategory: string;
   createdAt: string;
 }

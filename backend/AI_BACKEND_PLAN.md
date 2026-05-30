@@ -44,6 +44,11 @@ Use this checklist and mark done items as `- [x]`.
 
 ## 6) Alltagssprache (Implemented)
 - [x] `POST /api/expressions/generate` for B2+ everyday expressions
+- [x] Category-based generation (`random`, `work`, `bus`, `home`, `slang`, `concert`, `school`, `sprichwort`)
+- [x] `POST /api/expressions/pool` for pre-generating cached prompts by category
+- [x] `POST /api/expressions/next` for per-user unseen prompt delivery from shared backend pool
+- [x] Frontend auto-loads prompt on page open and category switch (no manual generate required)
+- [x] Frontend `Next` action consumes next unseen prompt via backend
 - [x] `POST /api/expressions/attempt` with naturalness scoring (0-100)
 - [x] Persist native-like version and alternatives
 - [x] `GET /api/expressions/history` with pagination metadata

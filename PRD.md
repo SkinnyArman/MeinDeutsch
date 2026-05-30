@@ -48,7 +48,13 @@ Build a personal German learning MVP where:
     - User gives memory points per word (1 Again, 2 Hard, 3 Good, 4 Easy).
     - System stores next due date and interval using lightweight SM-2 style scheduling.
 - New feature: `Alltagssprache`
-  - AI generates one common English everyday sentence/expression.
+  - AI generates one common English everyday sentence/expression by category.
+  - Categories include: random, work, bus/U-Bahn, home, slang, concert, school, sprichwort.
+  - Page auto-loads a prompt on open and on category switch (no manual generate click).
+  - Prompt pools are pre-generated on backend (default target: 5 per category).
+  - Prompt delivery is shared-pool + per-user seen tracking (users draw from same pool but see different unseen items).
+  - Backend deduplicates prompts by normalized English text + category to avoid duplicate pool entries.
+  - A `Next` action moves to the next unseen prompt in the selected category.
   - User writes the German equivalent.
   - AI evaluates naturalness as a score (0-100).
   - AI returns native-like German phrasing and alternatives.
@@ -182,6 +188,8 @@ Build a personal German learning MVP where:
 - `GET /api/vocabulary?category=...`
 - `POST /api/vocabulary/:id/review`
 - `POST /api/expressions/generate`
+- `POST /api/expressions/pool`
+- `POST /api/expressions/next`
 - `POST /api/expressions/attempt`
 - `GET /api/expressions/history`
 - `GET /api/expressions/review`
@@ -208,9 +216,16 @@ Output (strict JSON):
 - `tips[]`
 
 ### Alltagssprache generation
-Input: none (or optional domain hint)
+Input: optional `category`
 Output:
 - `englishText` (common everyday sentence/expression)
+
+### Alltagssprache prompt pool generation
+Input: `categories[]` + optional `countPerCategory`
+Output:
+- `promptsByCategory`
+- `countPerCategory`
+- `categories`
 
 ### Alltagssprache assessment
 Input: `englishText` + user German answer

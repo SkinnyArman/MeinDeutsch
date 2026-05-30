@@ -177,8 +177,55 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     method: "POST",
     path: "/api/expressions/generate",
     title: "Generate Alltagssprache Expression",
-    description: "Generates one common English everyday sentence/expression.",
-    requestFields: []
+    description: "Generates one English everyday sentence/expression for a selected category.",
+    requestFields: [
+      {
+        name: "category",
+        label: "Category",
+        type: "text",
+        required: false,
+        placeholder: "random | work | bus | home | slang | concert | school | sprichwort"
+      }
+    ]
+  },
+  {
+    id: "generate-expression-pool",
+    method: "POST",
+    path: "/api/expressions/pool",
+    title: "Generate Alltagssprache Prompt Pool",
+    description: "Pre-generates multiple prompts per selected category for client-side caching.",
+    requestFields: [
+      {
+        name: "categories",
+        label: "Categories (JSON array)",
+        type: "textarea",
+        required: false,
+        placeholder: "[\"random\", \"work\", \"bus\"]"
+      },
+      {
+        name: "countPerCategory",
+        label: "Count Per Category",
+        type: "number",
+        required: false,
+        placeholder: "5"
+      }
+    ]
+  },
+  {
+    id: "next-expression",
+    method: "POST",
+    path: "/api/expressions/next",
+    title: "Get Next Alltagssprache Prompt",
+    description: "Returns next unseen prompt for the user from shared category pool; generates only when pool is exhausted.",
+    requestFields: [
+      {
+        name: "category",
+        label: "Category",
+        type: "text",
+        required: false,
+        placeholder: "random | work | bus | home | slang | concert | school | sprichwort"
+      }
+    ]
   },
   {
     id: "assess-expression",

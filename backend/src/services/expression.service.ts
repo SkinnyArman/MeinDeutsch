@@ -1,4 +1,9 @@
-import { assessExpressionAttempt, assessExpressionReviewAttempt, generateEverydayExpression } from "../ai/analysis.client.js";
+import {
+  assessExpressionAttempt,
+  assessExpressionReviewAttempt,
+  generateEverydayExpression,
+  type ExpressionGenerationCategory
+} from "../ai/analysis.client.js";
 import { API_MESSAGES } from "../constants/api-messages.js";
 import type { ExpressionAttemptRecord } from "../models/expression-attempt.model.js";
 import type { ExpressionPromptRecord } from "../models/expression-prompt.model.js";
@@ -18,13 +23,88 @@ export interface ExpressionReviewAssessmentRecord {
 }
 
 export const expressionService = {
-  async generatePrompt(userId: number): Promise<ExpressionPromptRecord> {
-    const generated = await generateEverydayExpression();
-    return expressionRepository.createPrompt({
+  async generatePrompt(userId: number, category: ExpressionGenerationCategory): Promise<ExpressionPromptRecord> {
+    const prompts = await this.generatePromptPool({
       userId,
-      englishText: generated.englishText,
-      generatedContext: generated.generatedContext
+      categories: [category],
+      countPerCategory: 5
     });
+    const first = prompts.promptsByCategory[category]?.[0] ?? null;
+    if (!first) {
+      throw new AppError(500, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
+    }
+    return first;
+  },
+  async getNextPrompt(input: { userId: number; category: ExpressionGenerationCategory }): Promise<ExpressionPromptRecord> {
+    let unseen = await expressionRepository.listUnseenPromptsByCategory({
+      userId: input.userId,
+      category: input.category,
+      limit: 1
+    });
+
+    if (unseen.length === 0) {
+      await this.generatePromptPool({
+        userId: input.userId,
+        categories: [input.category],
+        countPerCategory: 5
+      });
+      unseen = await expressionRepository.listUnseenPromptsByCategory({
+        userId: input.userId,
+        category: input.category,
+        limit: 1
+      });
+    }
+
+    let nextPrompt = unseen[0];
+    if (!nextPrompt) {
+      const fallbackPool = await expressionRepository.listPromptsByCategory({
+        category: input.category,
+        limit: 1
+      });
+      nextPrompt = fallbackPool[0];
+    }
+    if (!nextPrompt) {
+      throw new AppError(500, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
+    }
+
+    await expressionRepository.markPromptViewed({ userId: input.userId, promptId: nextPrompt.id });
+    return nextPrompt;
+  },
+  async generatePromptPool(input: {
+    userId: number;
+    categories: ExpressionGenerationCategory[];
+    countPerCategory: number;
+  }): Promise<{ promptsByCategory: Record<string, ExpressionPromptRecord[]>; countPerCategory: number; categories: string[] }> {
+    const promptsByCategory: Record<string, ExpressionPromptRecord[]> = {};
+
+    for (const category of input.categories) {
+      const prompts: ExpressionPromptRecord[] = [];
+      const seenIds = new Set<number>();
+      let attempts = 0;
+      const maxAttempts = input.countPerCategory * 8;
+      while (prompts.length < input.countPerCategory && attempts < maxAttempts) {
+        attempts += 1;
+        const generated = await generateEverydayExpression(category);
+        const created = await expressionRepository.createPrompt({
+          userId: input.userId,
+          englishText: generated.englishText,
+          generatedContext: generated.generatedContext,
+          generationCategory: category
+        });
+        if (seenIds.has(created.id)) {
+          continue;
+        }
+        seenIds.add(created.id);
+        prompts.push(created);
+      }
+      promptsByCategory[category] = prompts;
+    }
+
+    return {
+      promptsByCategory,
+      countPerCategory: input.countPerCategory,
+      categories: input.categories
+    };
   },
 
   async assessAttempt(input: {
@@ -33,10 +113,13 @@ export const expressionService = {
     userAnswerText: string;
   }): Promise<ExpressionAttemptRecord> {
     const prompt = await expressionRepository.findPromptById({
-      userId: input.userId,
       promptId: input.promptId
     });
     if (!prompt) {
+      throw new AppError(404, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
+    }
+    const hasViewed = await expressionRepository.hasUserViewedPrompt({ userId: input.userId, promptId: input.promptId });
+    if (!hasViewed) {
       throw new AppError(404, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
     }
 
@@ -177,8 +260,10 @@ export const expressionService = {
     const reviewPrompt = await expressionRepository.createPrompt({
       userId: input.userId,
       englishText: item.englishText,
-      generatedContext: "review_retry"
+      generatedContext: "review_retry",
+      generationCategory: "review"
     });
+    await expressionRepository.markPromptViewed({ userId: input.userId, promptId: reviewPrompt.id });
     await expressionRepository.createAttempt({
       userId: input.userId,
       promptId: reviewPrompt.id,

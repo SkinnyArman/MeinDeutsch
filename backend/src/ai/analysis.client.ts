@@ -77,6 +77,19 @@ Rules:
 - Return generatedContext as a short lowercase label like "idiom_social", "proverb_time", "casual_emotion", "planning_travel".
 - No explanation text, only JSON.`;
 
+export const EXPRESSION_GENERATION_CATEGORIES = [
+  "random",
+  "work",
+  "bus",
+  "home",
+  "slang",
+  "concert",
+  "school",
+  "sprichwort"
+] as const;
+
+export type ExpressionGenerationCategory = (typeof EXPRESSION_GENERATION_CATEGORIES)[number];
+
 const EXPRESSION_TARGET_TYPES = [
   "idiom",
   "proverb",
@@ -115,7 +128,45 @@ const EXPRESSION_TARGET_CONTEXTS = [
   "success_failure"
 ] as const;
 
+const EXPRESSION_CATEGORY_CONTEXTS: Record<Exclude<ExpressionGenerationCategory, "random">, readonly string[]> = {
+  work: ["work", "time_pressure", "stress", "conflict"],
+  bus: ["public_transport", "travel", "time_pressure"],
+  home: ["home", "family", "parents", "little_kids"],
+  slang: ["friendship", "dating", "emotions", "casual_profanity"],
+  concert: ["concerts", "friendship", "emotions"],
+  school: ["school", "study", "university", "time_pressure"],
+  sprichwort: ["success_failure", "time_pressure", "conflict", "proverb"]
+} as const;
+
+const EXPRESSION_CATEGORY_TYPES: Record<Exclude<ExpressionGenerationCategory, "random">, readonly string[]> = {
+  work: ["planning_phrase", "opinion_phrase", "complaint", "encouragement"],
+  bus: ["social_phrase", "casual_reaction", "complaint", "planning_phrase"],
+  home: ["social_phrase", "opinion_phrase", "casual_reaction", "encouragement"],
+  slang: ["casual_reaction", "casual_profanity", "opinion_phrase", "complaint"],
+  concert: ["casual_reaction", "social_phrase", "encouragement", "opinion_phrase"],
+  school: ["planning_phrase", "complaint", "encouragement", "opinion_phrase"],
+  sprichwort: ["proverb", "idiom"]
+} as const;
+
 const pickRandom = <T>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)] as T;
+
+export const resolveExpressionGenerationTargets = (
+  category: ExpressionGenerationCategory
+): { targetType: string; targetContext: string } => {
+  const categoryContexts =
+    category === "random"
+      ? EXPRESSION_TARGET_CONTEXTS
+      : (EXPRESSION_CATEGORY_CONTEXTS[category] as readonly string[]);
+  const categoryTypes =
+    category === "random"
+      ? EXPRESSION_TARGET_TYPES
+      : (EXPRESSION_CATEGORY_TYPES[category] as readonly string[]);
+
+  return {
+    targetType: pickRandom(categoryTypes),
+    targetContext: pickRandom(categoryContexts)
+  };
+};
 
 const EXPRESSION_ASSESSMENT_PROMPT = `You are a German expression coach.
 Given an English expression and the user's German attempt, return strict JSON only:
@@ -218,7 +269,9 @@ export const generateQuestion = async (input: {
   }
 };
 
-export const generateEverydayExpression = async (): Promise<{ englishText: string; generatedContext: string | null }> => {
+export const generateEverydayExpression = async (
+  category: ExpressionGenerationCategory = "random"
+): Promise<{ englishText: string; generatedContext: string | null }> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
       provider: "openai",
@@ -227,16 +280,16 @@ export const generateEverydayExpression = async (): Promise<{ englishText: strin
   }
 
   try {
-    const targetType = pickRandom(EXPRESSION_TARGET_TYPES);
-    const targetContext = pickRandom(EXPRESSION_TARGET_CONTEXTS);
+    const { targetType, targetContext } = resolveExpressionGenerationTargets(category);
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
       instructions: EXPRESSION_GENERATION_PROMPT,
       input: [
         "Generate one common everyday English sentence/expression.",
+        `Selected category: ${category}`,
         `Target expression type: ${targetType}`,
         `Target context: ${targetContext}`,
-        "Use the target type/context as a strong preference to maximize variety."
+        "Use the selected category as a hard constraint and target type/context as strong preferences."
       ].join("\n"),
       text: {
         format: {
