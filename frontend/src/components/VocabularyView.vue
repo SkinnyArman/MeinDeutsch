@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from "vue";
 import { useLanguage } from "@/libs/i18n";
+import { useRouter } from "vue-router";
 import {
   BookOpen,
   Briefcase,
@@ -18,11 +19,12 @@ import AppContainer from "./AppContainer.vue";
 import {
   useVocabularyAllQuery,
   useVocabularyCategoriesQuery,
+  useVocabularyDueQuery,
   useVocabularyListQuery,
-  useVocabularyReviewMutation
 } from "@/queries/vocabulary";
 
 const { t } = useLanguage();
+const router = useRouter();
 const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
 
 const page = ref(1);
@@ -36,12 +38,7 @@ const wordsQuery = useVocabularyListQuery({
   pageSize: pageSize.value
 });
 const allWordsQuery = useVocabularyAllQuery();
-
-const reviewMutation = useVocabularyReviewMutation({
-  category: () => selectedCategory.value,
-  page: () => page.value,
-  pageSize: () => pageSize.value
-});
+const dueQuery = useVocabularyDueQuery(1);
 
 watchEffect(() => {
   if (!selectedCategory.value && categoriesQuery.data.value?.length) {
@@ -59,8 +56,8 @@ watchEffect(() => {
   if (allWordsQuery.error.value) {
     notice.value = { type: "error", text: allWordsQuery.error.value.message };
   }
-  if (reviewMutation.error.value) {
-    notice.value = { type: "error", text: reviewMutation.error.value.message };
+  if (dueQuery.error.value) {
+    notice.value = { type: "error", text: dueQuery.error.value.message };
   }
 });
 
@@ -69,7 +66,7 @@ const totalPages = computed(() => wordsQuery.data.value?.totalPages ?? 1);
 
 const allWords = computed(() => allWordsQuery.data.value?.items ?? []);
 const totalWords = computed(() => allWords.value.length);
-const dueNowCount = computed(() => allWords.value.filter((item) => dueState(item) === "due").length);
+const dueNowCount = computed(() => dueQuery.data.value?.dueCount ?? 0);
 const dueSoonCount = computed(() => allWords.value.filter((item) => dueState(item) === "soon").length);
 
 const categoryCountMap = computed<Record<string, number>>(() => {
@@ -79,15 +76,6 @@ const categoryCountMap = computed<Record<string, number>>(() => {
   }
   return acc;
 });
-
-const ratingLabels = computed<Record<1 | 2 | 3 | 4, string>>(() => ({
-  1: t.vocab.rating.again(),
-  2: t.vocab.rating.hard(),
-  3: t.vocab.rating.good(),
-  4: t.vocab.rating.easy()
-}));
-
-const ratingScale = [1, 2, 3, 4] as const;
 
 const iconMap: Record<string, unknown> = {
   clock: Clock,
@@ -118,8 +106,6 @@ const dueState = (item: VocabularyItemRecord): "due" | "soon" | "later" => {
   return "later";
 };
 
-const isDueNow = (item: VocabularyItemRecord): boolean => dueState(item) === "due";
-
 const dueBadge = (item: VocabularyItemRecord): string => {
   const state = dueState(item);
   if (state === "due") {
@@ -135,16 +121,6 @@ const dueBadge = (item: VocabularyItemRecord): string => {
 const refreshAll = async (): Promise<void> => {
   await Promise.all([categoriesQuery.refetch(), allWordsQuery.refetch(), wordsQuery.refetch()]);
   notice.value = { type: "success", text: t.vocab.refreshed() };
-};
-
-const submitSrsRating = async (item: VocabularyItemRecord, rating: 1 | 2 | 3 | 4): Promise<void> => {
-  if (!isDueNow(item)) {
-    notice.value = { type: "error", text: t.vocab.notDue() };
-    return;
-  }
-
-  await reviewMutation.mutateAsync({ item, rating });
-  notice.value = { type: "success", text: t.vocab.reviewSaved({ word: item.word, rating: ratingLabels.value[rating] }) };
 };
 
 const goPrev = () => {
@@ -169,9 +145,21 @@ watchEffect(() => {
 <template>
   <AppContainer>
     <section class="w-full space-y-5">
-      <header>
-        <h2 class="font-serif text-3xl font-semibold tracking-tight">{{ t.vocab.title() }}</h2>
-        <p class="mt-1 text-xs text-[var(--muted)]">{{ t.vocab.subtitle() }}</p>
+      <header class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="font-serif text-3xl font-semibold tracking-tight">{{ t.vocab.title() }}</h2>
+          <p class="mt-1 text-xs text-[var(--muted)]">{{ t.vocab.subtitle() }}</p>
+        </div>
+        <button
+          class="inline-flex items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--accent)_38%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_12%,var(--panel))] px-3 py-2 text-xs font-semibold transition hover:border-[var(--accent)]"
+          @click="router.push('/vocabulary/review')"
+        >
+          <BookOpen class="h-4 w-4 text-[var(--accent)]" />
+          {{ t.vocab.startReview() }}
+          <span class="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] text-[var(--accent-contrast)]">
+            {{ dueNowCount }}
+          </span>
+        </button>
       </header>
 
       <p
@@ -284,17 +272,6 @@ watchEffect(() => {
               </p>
             </div>
 
-            <div class="mt-3 flex flex-wrap items-center gap-2 text-[10px]">
-              <button
-                v-for="rating in ratingScale"
-                :key="rating"
-                class="flex-1 rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 text-[10px] transition hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="reviewMutation.isPending.value || !isDueNow(item)"
-                @click="submitSrsRating(item, rating)"
-              >
-                {{ ratingLabels[rating] }}
-              </button>
-            </div>
           </article>
         </section>
       </div>

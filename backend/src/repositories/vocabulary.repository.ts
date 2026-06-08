@@ -1,5 +1,8 @@
+import type { EntityManager } from "typeorm";
+import type { VocabularyReviewRating } from "../contracts/api-types.js";
 import { appDataSource } from "../db/pool.js";
 import { VocabularyItem, type VocabularyItemRecord } from "../models/vocabulary-item.model.js";
+import { VocabularyReviewLog } from "../models/vocabulary-review-log.model.js";
 
 interface CreateVocabularyInput {
   userId: number;
@@ -114,8 +117,11 @@ export const vocabularyRepository = {
     return rows.map((row) => row.category);
   },
 
-  async findById(input: { userId: number; vocabularyId: number }): Promise<VocabularyItemRecord | null> {
-    const repo = appDataSource.getRepository(VocabularyItem);
+  async findById(
+    input: { userId: number; vocabularyId: number },
+    manager?: EntityManager
+  ): Promise<VocabularyItemRecord | null> {
+    const repo = (manager ?? appDataSource.manager).getRepository(VocabularyItem);
     const row = await repo.findOne({
       where: {
         id: String(input.vocabularyId),
@@ -123,6 +129,65 @@ export const vocabularyRepository = {
       }
     });
     return row ? toVocabularyRecord(row) : null;
+  },
+
+  async findByIdForUpdate(
+    input: { userId: number; vocabularyId: number },
+    manager: EntityManager
+  ): Promise<VocabularyItemRecord | null> {
+    const row = await manager
+      .getRepository(VocabularyItem)
+      .createQueryBuilder("vocab")
+      .setLock("pessimistic_write")
+      .where("vocab.id = :id", { id: String(input.vocabularyId) })
+      .andWhere("vocab.user_id = :userId", { userId: String(input.userId) })
+      .getOne();
+    return row ? toVocabularyRecord(row) : null;
+  },
+
+  async listDue(input: {
+    userId: number;
+    limit: number;
+    now: Date;
+  }): Promise<VocabularyItemRecord[]> {
+    const rows = await appDataSource
+      .getRepository(VocabularyItem)
+      .createQueryBuilder("vocab")
+      .where("vocab.user_id = :userId", { userId: String(input.userId) })
+      .andWhere("(vocab.srs_due_at IS NULL OR vocab.srs_due_at <= :now)", {
+        now: input.now.toISOString()
+      })
+      .orderBy("COALESCE(vocab.srs_due_at, vocab.created_at)", "ASC")
+      .addOrderBy("vocab.srs_lapse_count", "DESC")
+      .addOrderBy("vocab.id", "ASC")
+      .take(input.limit)
+      .getMany();
+    return rows.map(toVocabularyRecord);
+  },
+
+  async countDue(input: { userId: number; now: Date }): Promise<number> {
+    return appDataSource
+      .getRepository(VocabularyItem)
+      .createQueryBuilder("vocab")
+      .where("vocab.user_id = :userId", { userId: String(input.userId) })
+      .andWhere("(vocab.srs_due_at IS NULL OR vocab.srs_due_at <= :now)", {
+        now: input.now.toISOString()
+      })
+      .getCount();
+  },
+
+  async findNextDueAt(input: { userId: number; now: Date }): Promise<string | null> {
+    const row = await appDataSource
+      .getRepository(VocabularyItem)
+      .createQueryBuilder("vocab")
+      .select("MIN(vocab.srs_due_at)", "nextDueAt")
+      .where("vocab.user_id = :userId", { userId: String(input.userId) })
+      .andWhere("vocab.srs_due_at > :now", { now: input.now.toISOString() })
+      .getRawOne<{ nextDueAt: Date | string | null }>();
+    if (!row?.nextDueAt) {
+      return null;
+    }
+    return new Date(row.nextDueAt).toISOString();
   },
 
   async saveSrsState(input: {
@@ -134,8 +199,8 @@ export const vocabularyRepository = {
     rating: number;
     incrementLapse: boolean;
     reviewedAt: Date;
-  }): Promise<VocabularyItemRecord | null> {
-    const repo = appDataSource.getRepository(VocabularyItem);
+  }, manager?: EntityManager): Promise<VocabularyItemRecord | null> {
+    const repo = (manager ?? appDataSource.manager).getRepository(VocabularyItem);
     const row = await repo.findOne({
       where: {
         id: String(input.vocabularyId),
@@ -159,5 +224,32 @@ export const vocabularyRepository = {
 
     const saved = await repo.save(row);
     return toVocabularyRecord(saved);
+  },
+
+  async createReviewLog(input: {
+    userId: number;
+    vocabularyItemId: number;
+    rating: VocabularyReviewRating;
+    previousDueAt: string | null;
+    nextDueAt: Date;
+    previousIntervalDays: number;
+    nextIntervalDays: number;
+    previousEaseFactor: number;
+    nextEaseFactor: number;
+    reviewedAt: Date;
+  }, manager: EntityManager): Promise<void> {
+    const repo = manager.getRepository(VocabularyReviewLog);
+    await repo.save(repo.create({
+      userId: String(input.userId),
+      vocabularyItemId: String(input.vocabularyItemId),
+      rating: input.rating,
+      previousDueAt: input.previousDueAt ? new Date(input.previousDueAt) : null,
+      nextDueAt: input.nextDueAt,
+      previousIntervalDays: input.previousIntervalDays,
+      nextIntervalDays: input.nextIntervalDays,
+      previousEaseFactor: input.previousEaseFactor,
+      nextEaseFactor: input.nextEaseFactor,
+      reviewedAt: input.reviewedAt
+    }));
   }
 };

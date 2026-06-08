@@ -1,35 +1,54 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { computeNextSrsState } from "../logic/srs.logic.js";
+import { VOCABULARY_REVIEW_RATINGS } from "../contracts/api-types.js";
+import {
+  AGAIN_RELEARNING_MINUTES,
+  computeNextSrsState
+} from "../logic/srs.logic.js";
 
-test("SRS: first review with hard rating gives short interval", () => {
-  const next = computeNextSrsState(
-    {
-      srsIntervalDays: 0,
-      srsEaseFactor: 2.5,
-      srsReviewCount: 0
-    },
-    2
-  );
+test("SRS: new cards use distinct learning intervals", () => {
+  const current = {
+    srsIntervalDays: 0,
+    srsEaseFactor: 2.5,
+    srsReviewCount: 0
+  };
 
-  assert.equal(next.nextIntervalDays, 2);
-  assert.equal(next.incrementLapse, false);
-  assert.ok(next.nextEaseFactor >= 1.3);
+  const hard = computeNextSrsState(current, VOCABULARY_REVIEW_RATINGS.HARD);
+  const good = computeNextSrsState(current, VOCABULARY_REVIEW_RATINGS.GOOD);
+  const easy = computeNextSrsState(current, VOCABULARY_REVIEW_RATINGS.EASY);
+
+  assert.equal(hard.nextIntervalDays, 1);
+  assert.equal(good.nextIntervalDays, 3);
+  assert.equal(easy.nextIntervalDays, 7);
 });
 
-test("SRS: again rating resets interval and increments lapse", () => {
+test("SRS: again rating schedules a short relearning step", () => {
   const next = computeNextSrsState(
     {
       srsIntervalDays: 10,
       srsEaseFactor: 2.3,
       srsReviewCount: 7
     },
-    1
+    VOCABULARY_REVIEW_RATINGS.AGAIN
   );
 
-  assert.equal(next.nextIntervalDays, 1);
+  assert.equal(next.nextIntervalDays, 0);
+  assert.equal(next.nextDelayMinutes, AGAIN_RELEARNING_MINUTES);
   assert.equal(next.incrementLapse, true);
+});
+
+test("SRS: again on a new card is not counted as a lapse", () => {
+  const next = computeNextSrsState(
+    {
+      srsIntervalDays: 0,
+      srsEaseFactor: 2.5,
+      srsReviewCount: 0
+    },
+    VOCABULARY_REVIEW_RATINGS.AGAIN
+  );
+
+  assert.equal(next.incrementLapse, false);
 });
 
 test("SRS: easy rating grows interval for learned cards", () => {
@@ -39,7 +58,7 @@ test("SRS: easy rating grows interval for learned cards", () => {
       srsEaseFactor: 2.5,
       srsReviewCount: 5
     },
-    4
+    VOCABULARY_REVIEW_RATINGS.EASY
   );
 
   assert.ok(next.nextIntervalDays >= 20);

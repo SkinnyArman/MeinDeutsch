@@ -1,6 +1,10 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { API_MESSAGES } from "../constants/api-messages.js";
+import {
+  VOCABULARY_REVIEW_RATINGS,
+  type VocabularyReviewRating
+} from "../contracts/api-types.js";
 import { vocabularyService } from "../services/vocabulary.service.js";
 import { vocabularyRepository } from "../repositories/vocabulary.repository.js";
 import { sendSuccess } from "../utils/http-response.js";
@@ -26,7 +30,15 @@ const reviewVocabularyParamSchema = z.object({
 });
 
 const reviewVocabularySchema = z.object({
-  rating: z.coerce.number().int().min(1).max(4)
+  rating: z.coerce.number().int().refine(
+    (value): value is VocabularyReviewRating =>
+      Object.values(VOCABULARY_REVIEW_RATINGS).includes(value as VocabularyReviewRating),
+    { message: "Invalid vocabulary review rating" }
+  )
+});
+
+const dueVocabularyQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20)
 });
 
 export const saveVocabularyController = async (req: Request, res: Response): Promise<void> => {
@@ -71,13 +83,22 @@ export const listVocabularyCategoriesController = async (req: Request, res: Resp
   sendSuccess(res, 200, API_MESSAGES.vocabulary.categoriesListed, categories);
 };
 
+export const listDueVocabularyController = async (req: Request, res: Response): Promise<void> => {
+  const query = dueVocabularyQuerySchema.parse(req.query);
+  const queue = await vocabularyService.listDueReviewQueue({
+    userId: req.auth.userId,
+    limit: query.limit
+  });
+  sendSuccess(res, 200, API_MESSAGES.vocabulary.dueListed, queue);
+};
+
 export const reviewVocabularyController = async (req: Request, res: Response): Promise<void> => {
   const { id } = reviewVocabularyParamSchema.parse(req.params);
   const payload = reviewVocabularySchema.parse(req.body);
   const entry = await vocabularyService.reviewWord({
     userId: req.auth.userId,
     vocabularyId: id,
-    rating: payload.rating
+    rating: payload.rating as VocabularyReviewRating
   });
   sendSuccess(res, 200, API_MESSAGES.vocabulary.reviewed, entry);
 };

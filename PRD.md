@@ -47,7 +47,11 @@ Build a personal German learning MVP where:
   - Vocabulary page with category-based browsing.
   - Basic SRS scoring:
     - User gives memory points per word (1 Again, 2 Hard, 3 Good, 4 Easy).
-    - System stores next due date and interval using lightweight SM-2 style scheduling.
+    - Focused review session hides meanings/examples until the learner reveals the answer.
+    - Backend returns a user-scoped due queue and the next scheduled review time.
+    - `Again` creates a 10-minute relearning step; new-card intervals are 1/3/7 days for Hard/Good/Easy.
+    - Learned-card intervals grow from the existing interval and ease factor.
+    - Every rating is stored in an immutable review history for auditing and future SRS tuning.
 - New feature: `Alltagssprache`
   - AI generates one common English everyday sentence/expression by category.
   - Categories are dynamic from backend configuration (frontend reads from API).
@@ -58,6 +62,7 @@ Build a personal German learning MVP where:
   - Prompt delivery is shared-pool + per-user seen tracking (users draw from same pool but see different unseen items).
   - Generation prompt uses a backend config source for expression types and contexts (not hardcoded in prompt text).
   - Backend deduplicates prompts by normalized English text + category to avoid duplicate pool entries.
+  - PostgreSQL enforces prompt uniqueness, so concurrent generators cannot insert duplicates.
   - A `Next` action moves to the next unseen prompt in the selected category.
   - User writes the German equivalent.
   - AI evaluates naturalness as a score (0-100).
@@ -138,6 +143,15 @@ Build a personal German learning MVP where:
 - srs_last_reviewed_at
 - created_at
 
+### vocabulary_review_logs
+- user_id
+- vocabulary_item_id
+- rating
+- previous_due_at / next_due_at
+- previous_interval_days / next_interval_days
+- previous_ease_factor / next_ease_factor
+- reviewed_at
+
 ### expression_prompts
 - user_id (optional creator reference; prompts belong to the shared pool)
 - id
@@ -190,6 +204,7 @@ Build a personal German learning MVP where:
 - `POST /api/vocabulary`
 - `GET /api/vocabulary/categories`
 - `GET /api/vocabulary?category=...`
+- `GET /api/vocabulary/review/due`
 - `POST /api/vocabulary/:id/review`
 - `POST /api/expressions/generate`
 - `POST /api/expressions/pool`
@@ -211,6 +226,9 @@ All responses use the unified API envelope.
 - User-owned records use non-null `user_id` foreign keys to `users`.
 - Daily Talk persistence is atomic: answer log, knowledge item, mistake aggregates, and streak update commit together or roll back together.
 - Alltagssprache serves existing prompts without waiting for bulk AI generation; low pools refill in a bounded background queue.
+- Expression prompt deduplication is enforced by a normalized database unique index.
+- Vocabulary ratings use row locks, preventing double-clicks or concurrent requests from advancing a card twice.
+- Database-backed tests cover prompt races, vocabulary due isolation, concurrent reviews, and review-log persistence.
 
 ---
 

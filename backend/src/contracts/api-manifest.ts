@@ -173,6 +173,14 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     requestFields: []
   },
   {
+    id: "list-due-vocabulary",
+    method: "GET",
+    path: "/api/vocabulary/review/due?limit=...",
+    title: "List Due Vocabulary",
+    description: "Returns the focused vocabulary review queue, due count, and next scheduled review.",
+    requestFields: []
+  },
+  {
     id: "list-expression-categories",
     method: "GET",
     path: "/api/expressions/categories",

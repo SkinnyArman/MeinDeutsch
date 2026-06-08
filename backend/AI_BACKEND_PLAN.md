@@ -53,6 +53,7 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Pool refill tuning: generate larger batches (`20`) and proactively refill when unseen buffer drops below `6`
 - [x] Serve existing prompts immediately and refill pools through a bounded background queue
 - [x] Anti-repetition generation: backend passes recent category prompts as avoid-list to AI
+- [x] Enforce normalized prompt uniqueness in PostgreSQL for concurrent generators
 - [x] Frontend auto-loads prompt on page open and category switch (no manual generate required)
 - [x] Frontend `Next` action consumes next unseen prompt via backend
 - [x] `POST /api/expressions/attempt` with naturalness scoring (0-100)
@@ -70,6 +71,11 @@ Use this checklist and mark done items as `- [x]`.
 - [x] SRS ratings (`1 Again`, `2 Hard`, `3 Good`, `4 Easy`)
 - [x] Due-date scheduling with lightweight SM-2 style logic
 - [x] Backend due-guard (reject reviews before due time)
+- [x] Add user-scoped due queue endpoint (`GET /api/vocabulary/review/due`)
+- [x] Add focused recall/reveal/rate review page
+- [x] Add 10-minute relearning step for `Again`
+- [x] Make ratings transaction-safe with row locking
+- [x] Persist immutable vocabulary review history
 
 ## 8) Auth + User Isolation (Implemented)
 - [x] Google auth (`POST /api/auth/google`)
@@ -84,6 +90,7 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Add service-level tests for user scoping guarantees
 - [x] Make Daily Talk persistence atomic across answer, KB, mistake stats, and streak writes
 - [x] Add transaction and expression-pool service tests
+- [x] Add PostgreSQL-backed concurrency, due-queue isolation, and review-history tests
 - [ ] Add integration tests for topic -> question -> submission pipeline
 - [ ] Add contract tests for AI JSON schema (`errors`, `cefrLevel`, `correctedText`, `contextualWordSuggestions`, `tips`)
 - [ ] Add retry/backoff for transient AI failures

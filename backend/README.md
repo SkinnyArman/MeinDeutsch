@@ -43,6 +43,18 @@ Daily Talk persistence is transactional. The answer log, knowledge item, mistake
 
 Alltagssprache prompt delivery does not wait for bulk pool generation. Existing prompts are returned immediately, while category refills run in a deduplicated, concurrency-limited background queue.
 
+Expression prompt uniqueness is enforced by PostgreSQL using normalized English text plus category. Repository inserts use `ON CONFLICT`, so parallel pool workers resolve to the same prompt instead of racing.
+
+Vocabulary review:
+- `GET /api/vocabulary/review/due` returns the authenticated user's due queue, total due count, and next review time.
+- The frontend review session asks for recall before revealing definitions and examples.
+- `Again` schedules a 10-minute relearning step; Hard/Good/Easy schedule longer intervals.
+- Ratings lock the vocabulary row in a transaction and append an immutable `vocabulary_review_logs` record.
+
+## Tests
+
+`npm test` requires the configured PostgreSQL database. In addition to unit tests, it creates temporary users and records to verify real database constraints, concurrency behavior, due-card isolation, and transactional review writes. Test data is removed afterward.
+
 AI behavior:
 - `AI_FALLBACK_ENABLED=false` (default): OpenAI failures return an API error response.
 - `AI_FALLBACK_ENABLED=true`: API uses local fallback analysis when OpenAI fails.

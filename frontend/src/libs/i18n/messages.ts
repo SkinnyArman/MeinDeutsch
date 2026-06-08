@@ -102,11 +102,27 @@ export const messages = {
       daysBadge: "{days}d",
       notDue: "This card is not due yet.",
       reviewSaved: "Review saved: {word} -> {rating}",
+      startReview: "Review due",
       rating: {
         again: "Again",
         hard: "Hard",
         good: "Good",
         easy: "Easy"
+      },
+      review: {
+        title: "Vocabulary Review",
+        subtitle: "Recall first, reveal the answer, then rate honestly.",
+        back: "Back to vocabulary",
+        remaining: "due now",
+        recallPrompt: "What does this mean, and how would you use it?",
+        showAnswer: "Show answer",
+        ratePrompt: "How well did you remember it?",
+        progress: "{count} reviewed",
+        completeTitle: "You're caught up",
+        completed: "You reviewed {count} cards in this session.",
+        noneDue: "There are no cards due right now.",
+        next: "Next review: {time}",
+        noScheduled: "No review scheduled"
       }
     },
     alltag: {

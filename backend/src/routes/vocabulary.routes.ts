@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   listVocabularyCategoriesController,
   listVocabularyController,
+  listDueVocabularyController,
   reviewVocabularyController,
   saveVocabularyController
 } from "../controllers/vocabulary.controller.js";
@@ -11,5 +12,6 @@ export const vocabularyRouter = Router();
 
 vocabularyRouter.post("/", asyncHandler(saveVocabularyController));
 vocabularyRouter.get("/categories", asyncHandler(listVocabularyCategoriesController));
+vocabularyRouter.get("/review/due", asyncHandler(listDueVocabularyController));
 vocabularyRouter.post("/:id/review", asyncHandler(reviewVocabularyController));
 vocabularyRouter.get("/", asyncHandler(listVocabularyController));

@@ -7,6 +7,9 @@ import {
 import { ExpressionPrompt, type ExpressionPromptRecord } from "../models/expression-prompt.model.js";
 import { ExpressionPromptView } from "../models/expression-prompt-view.model.js";
 
+export const normalizeExpressionPromptText = (text: string): string =>
+  text.trim().toLowerCase().replace(/\s+/g, " ");
+
 const toPromptRecord = (entity: ExpressionPrompt): ExpressionPromptRecord => ({
   id: Number(entity.id),
   englishText: entity.englishText,
@@ -31,12 +34,12 @@ const toAttemptRecord = (entity: ExpressionAttempt): ExpressionAttemptRecord => 
 export const expressionRepository = {
   async findPromptByTextAndCategory(input: { englishText: string; generationCategory: string }): Promise<ExpressionPromptRecord | null> {
     const repo = appDataSource.getRepository(ExpressionPrompt);
-    const row = await repo
-      .createQueryBuilder("prompt")
-      .where("LOWER(prompt.englishText) = LOWER(:englishText)", { englishText: input.englishText.trim() })
-      .andWhere("prompt.generationCategory = :generationCategory", { generationCategory: input.generationCategory })
-      .orderBy("prompt.createdAt", "DESC")
-      .getOne();
+    const row = await repo.findOne({
+      where: {
+        normalizedEnglishText: normalizeExpressionPromptText(input.englishText),
+        generationCategory: input.generationCategory
+      }
+    });
     return row ? toPromptRecord(row) : null;
   },
 
@@ -47,21 +50,27 @@ export const expressionRepository = {
     generationCategory: string;
   }): Promise<ExpressionPromptRecord> {
     const repo = appDataSource.getRepository(ExpressionPrompt);
-    const existing = await this.findPromptByTextAndCategory({
-      englishText: input.englishText,
+    const normalizedEnglishText = normalizeExpressionPromptText(input.englishText);
+    await repo
+      .createQueryBuilder()
+      .insert()
+      .into(ExpressionPrompt)
+      .values({
+        userId: input.userId != null ? String(input.userId) : null,
+        englishText: input.englishText.trim(),
+        normalizedEnglishText,
+        generatedContext: input.generatedContext ?? null,
+        generationCategory: input.generationCategory
+      })
+      .orIgnore()
+      .returning("*")
+      .execute();
+
+    const existing = await repo.findOneByOrFail({
+      normalizedEnglishText,
       generationCategory: input.generationCategory
     });
-    if (existing) {
-      return existing;
-    }
-    const created = repo.create({
-      userId: input.userId != null ? String(input.userId) : null,
-      englishText: input.englishText,
-      generatedContext: input.generatedContext ?? null,
-      generationCategory: input.generationCategory
-    });
-    const saved = await repo.save(created);
-    return toPromptRecord(saved);
+    return toPromptRecord(existing);
   },
 
   async findPromptById(input: { promptId: number }): Promise<ExpressionPromptRecord | null> {
@@ -183,22 +192,17 @@ export const expressionRepository = {
 
   async markPromptViewed(input: { userId: number; promptId: number }): Promise<void> {
     const repo = appDataSource.getRepository(ExpressionPromptView);
-    const existing = await repo.findOne({
-      where: {
+    await repo
+      .createQueryBuilder()
+      .insert()
+      .into(ExpressionPromptView)
+      .values({
         userId: String(input.userId),
-        promptId: String(input.promptId)
-      }
-    });
-    if (existing) {
-      existing.createdAt = new Date();
-      await repo.save(existing);
-      return;
-    }
-    const created = repo.create({
-      userId: String(input.userId),
-      promptId: String(input.promptId)
-    });
-    await repo.save(created);
+        promptId: String(input.promptId),
+        createdAt: new Date()
+      })
+      .orUpdate(["created_at"], ["user_id", "prompt_id"])
+      .execute();
   },
 
   async hasUserViewedPrompt(input: { userId: number; promptId: number }): Promise<boolean> {

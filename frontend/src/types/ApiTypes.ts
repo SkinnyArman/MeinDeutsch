@@ -93,6 +93,23 @@ export interface VocabularyCategoryRecord {
   icon: string;
 }
 
+export const VOCABULARY_REVIEW_RATINGS = {
+  AGAIN: 1,
+  HARD: 2,
+  GOOD: 3,
+  EASY: 4
+} as const;
+
+export type VocabularyReviewRating =
+  (typeof VOCABULARY_REVIEW_RATINGS)[keyof typeof VOCABULARY_REVIEW_RATINGS];
+
+export interface VocabularyReviewQueuePayload {
+  items: VocabularyItemRecord[];
+  dueCount: number;
+  nextDueAt: string | null;
+  generatedAt: string;
+}
+
 export interface SavedVocabularyPayload {
   entry: VocabularyItemRecord;
   created: boolean;

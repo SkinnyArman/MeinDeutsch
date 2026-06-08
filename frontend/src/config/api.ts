@@ -34,6 +34,7 @@ export const API_PATHS = {
   questionsGenerate: "/api/questions/generate",
   vocabulary: "/api/vocabulary",
   vocabularyCategories: "/api/vocabulary/categories",
+  vocabularyDue: "/api/vocabulary/review/due",
   vocabularyReview: (id: number) => `/api/vocabulary/${id}/review`,
   expressionsGenerate: "/api/expressions/generate",
   expressionsPool: "/api/expressions/pool",

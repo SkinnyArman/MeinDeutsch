@@ -1,7 +1,12 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "./user.model.js";
 
 @Entity({ name: "expression_prompts" })
+@Index(
+  "uq_expression_prompts_category_normalized_text",
+  ["generationCategory", "normalizedEnglishText"],
+  { unique: true }
+)
 export class ExpressionPrompt {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
@@ -15,6 +20,9 @@ export class ExpressionPrompt {
 
   @Column({ name: "english_text", type: "text" })
   englishText!: string;
+
+  @Column({ name: "normalized_english_text", type: "text" })
+  normalizedEnglishText!: string;
 
   @Column({ name: "generated_context", type: "text", nullable: true })
   generatedContext!: string | null;

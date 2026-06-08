@@ -1,5 +1,10 @@
+import { appDataSource } from "../db/pool.js";
 import { vocabularyRepository } from "../repositories/vocabulary.repository.js";
 import type { VocabularyItemRecord } from "../models/vocabulary-item.model.js";
+import type {
+  VocabularyReviewQueuePayload,
+  VocabularyReviewRating
+} from "../contracts/api-types.js";
 import { AppError } from "../utils/app-error.js";
 import { API_MESSAGES } from "../constants/api-messages.js";
 import { categoryToIcon } from "../constants/vocabulary-icons.js";
@@ -59,45 +64,83 @@ export const vocabularyService = {
     return categories.map((name) => ({ name, icon: categoryToIcon(name) }));
   },
 
-  async reviewWord(input: { userId: number; vocabularyId: number; rating: number }): Promise<VocabularyItemRecord> {
-    const existing = await vocabularyRepository.findById({
-      userId: input.userId,
-      vocabularyId: input.vocabularyId
-    });
-
-    if (!existing) {
-      throw new AppError(404, "VOCABULARY_NOT_FOUND", API_MESSAGES.errors.vocabularyNotFound);
-    }
-
-    // Backend guard: reviews are only allowed when due now (or no due date yet).
-    if (existing.srsDueAt) {
-      const dueAtMs = new Date(existing.srsDueAt).getTime();
-      if (Number.isFinite(dueAtMs) && dueAtMs > Date.now()) {
-        throw new AppError(409, "VOCABULARY_NOT_DUE", API_MESSAGES.errors.vocabularyNotDue, {
-          dueAt: existing.srsDueAt
-        });
-      }
-    }
-
-    const now = new Date();
-    const nextSrsState = computeNextSrsState(existing, input.rating);
-    const nextIntervalDays = nextSrsState.nextIntervalDays;
-    const nextDueAt = new Date(now.getTime() + nextIntervalDays * 24 * 60 * 60 * 1000);
-    const updated = await vocabularyRepository.saveSrsState({
-      userId: input.userId,
-      vocabularyId: input.vocabularyId,
-      nextIntervalDays,
-      nextEaseFactor: nextSrsState.nextEaseFactor,
+  async listDueReviewQueue(input: {
+    userId: number;
+    limit?: number;
+    now?: Date;
+  }): Promise<VocabularyReviewQueuePayload> {
+    const now = input.now ?? new Date();
+    const limit = input.limit ?? 20;
+    const [items, dueCount, nextDueAt] = await Promise.all([
+      vocabularyRepository.listDue({ userId: input.userId, limit, now }),
+      vocabularyRepository.countDue({ userId: input.userId, now }),
+      vocabularyRepository.findNextDueAt({ userId: input.userId, now })
+    ]);
+    return {
+      items,
+      dueCount,
       nextDueAt,
-      rating: input.rating,
-      incrementLapse: nextSrsState.incrementLapse,
-      reviewedAt: now
+      generatedAt: now.toISOString()
+    };
+  },
+
+  async reviewWord(input: {
+    userId: number;
+    vocabularyId: number;
+    rating: VocabularyReviewRating;
+    now?: Date;
+  }): Promise<VocabularyItemRecord> {
+    return appDataSource.transaction(async (manager) => {
+      const existing = await vocabularyRepository.findByIdForUpdate({
+        userId: input.userId,
+        vocabularyId: input.vocabularyId
+      }, manager);
+
+      if (!existing) {
+        throw new AppError(404, "VOCABULARY_NOT_FOUND", API_MESSAGES.errors.vocabularyNotFound);
+      }
+
+      const now = input.now ?? new Date();
+      if (existing.srsDueAt) {
+        const dueAtMs = new Date(existing.srsDueAt).getTime();
+        if (Number.isFinite(dueAtMs) && dueAtMs > now.getTime()) {
+          throw new AppError(409, "VOCABULARY_NOT_DUE", API_MESSAGES.errors.vocabularyNotDue, {
+            dueAt: existing.srsDueAt
+          });
+        }
+      }
+
+      const nextSrsState = computeNextSrsState(existing, input.rating);
+      const nextDueAt = new Date(now.getTime() + nextSrsState.nextDelayMinutes * 60 * 1000);
+      const updated = await vocabularyRepository.saveSrsState({
+        userId: input.userId,
+        vocabularyId: input.vocabularyId,
+        nextIntervalDays: nextSrsState.nextIntervalDays,
+        nextEaseFactor: nextSrsState.nextEaseFactor,
+        nextDueAt,
+        rating: input.rating,
+        incrementLapse: nextSrsState.incrementLapse,
+        reviewedAt: now
+      }, manager);
+
+      if (!updated) {
+        throw new AppError(404, "VOCABULARY_NOT_FOUND", API_MESSAGES.errors.vocabularyNotFound);
+      }
+
+      await vocabularyRepository.createReviewLog({
+        userId: input.userId,
+        vocabularyItemId: input.vocabularyId,
+        rating: input.rating,
+        previousDueAt: existing.srsDueAt,
+        nextDueAt,
+        previousIntervalDays: existing.srsIntervalDays,
+        nextIntervalDays: nextSrsState.nextIntervalDays,
+        previousEaseFactor: existing.srsEaseFactor,
+        nextEaseFactor: nextSrsState.nextEaseFactor,
+        reviewedAt: now
+      }, manager);
+
+      return updated;
     });
-
-    if (!updated) {
-      throw new AppError(404, "VOCABULARY_NOT_FOUND", API_MESSAGES.errors.vocabularyNotFound);
-    }
-
-    return updated;
   }
 };

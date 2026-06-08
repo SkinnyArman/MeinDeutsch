@@ -30,6 +30,7 @@ export const API_MESSAGES = {
     saved: "Vocabulary item saved successfully",
     listed: "Vocabulary items fetched successfully",
     categoriesListed: "Vocabulary categories fetched successfully",
+    dueListed: "Due vocabulary items fetched successfully",
     reviewed: "Vocabulary review saved successfully"
   },
   expression: {
