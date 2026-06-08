@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
+import { User } from "./user.model.js";
 
 @Entity({ name: "streak_status" })
 @Unique("uq_streak_user_feature", ["userId", "featureKey"])
@@ -6,8 +7,13 @@ export class StreakStatus {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ name: "user_id", type: "bigint", nullable: true })
-  userId!: string | null;
+  @Index()
+  @Column({ name: "user_id", type: "bigint" })
+  userId!: string;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user!: User;
 
   @Column({ name: "feature_key", type: "text" })
   featureKey!: string;

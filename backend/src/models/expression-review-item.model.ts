@@ -1,4 +1,14 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn
+} from "typeorm";
+import { User } from "./user.model.js";
 
 export interface ExpressionReviewScorePoint {
   score: number;
@@ -10,8 +20,13 @@ export class ExpressionReviewItem {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ name: "user_id", type: "bigint", nullable: true })
-  userId!: string | null;
+  @Index()
+  @Column({ name: "user_id", type: "bigint" })
+  userId!: string;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user!: User;
 
   @Column({ name: "english_text", type: "text" })
   englishText!: string;

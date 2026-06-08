@@ -12,6 +12,7 @@ import {
   computeReviewTransition,
   shouldEnqueueForReview
 } from "../logic/expression-review.logic.js";
+import { logger } from "../config/logger.js";
 import { expressionReviewRepository } from "../repositories/expression-review.repository.js";
 import { expressionRepository } from "../repositories/expression.repository.js";
 import { AppError } from "../utils/app-error.js";
@@ -25,13 +26,120 @@ export interface ExpressionReviewAssessmentRecord {
 const EXPRESSION_POOL_GENERATION_SIZE = 20;
 const EXPRESSION_MIN_UNSEEN_BUFFER = 6;
 const EXPRESSION_AVOID_LIST_SIZE = 80;
+const EXPRESSION_MAX_CONCURRENT_REFILLS = 2;
+const scheduledPoolRefills = new Set<ExpressionGenerationCategory>();
+const pendingPoolRefills: Array<{ userId: number; category: ExpressionGenerationCategory }> = [];
+let activePoolRefillCount = 0;
+
+interface GeneratePromptPoolInput {
+  userId: number;
+  categories: ExpressionGenerationCategory[];
+  countPerCategory: number;
+}
+
+interface GeneratedPromptPool {
+  promptsByCategory: Record<string, ExpressionPromptRecord[]>;
+  countPerCategory: number;
+  categories: string[];
+}
+
+const generatePromptPool = async (input: GeneratePromptPoolInput): Promise<GeneratedPromptPool> => {
+  const promptsByCategory: Record<string, ExpressionPromptRecord[]> = {};
+
+  for (const category of input.categories) {
+    const prompts: ExpressionPromptRecord[] = [];
+    const seenIds = new Set<number>();
+    const avoidTexts = new Set(
+      (
+        await expressionRepository.listRecentPromptTextsByCategory({
+          category,
+          limit: EXPRESSION_AVOID_LIST_SIZE
+        })
+      ).map((text) => text.trim().toLowerCase())
+    );
+    let attempts = 0;
+    const maxAttempts = input.countPerCategory * 8;
+    while (prompts.length < input.countPerCategory && attempts < maxAttempts) {
+      attempts += 1;
+      const generated = await generateEverydayExpression(category, {
+        avoidEnglishTexts: Array.from(avoidTexts)
+      });
+      const created = await expressionRepository.createPrompt({
+        userId: input.userId,
+        englishText: generated.englishText,
+        generatedContext: generated.generatedContext,
+        generationCategory: category
+      });
+      avoidTexts.add(created.englishText.trim().toLowerCase());
+      if (seenIds.has(created.id)) {
+        continue;
+      }
+      seenIds.add(created.id);
+      prompts.push(created);
+    }
+    promptsByCategory[category] = prompts;
+  }
+
+  return {
+    promptsByCategory,
+    countPerCategory: input.countPerCategory,
+    categories: input.categories
+  };
+};
+
+const drainPoolRefillQueue = (): void => {
+  while (activePoolRefillCount < EXPRESSION_MAX_CONCURRENT_REFILLS && pendingPoolRefills.length > 0) {
+    const next = pendingPoolRefills.shift();
+    if (!next) {
+      return;
+    }
+
+    activePoolRefillCount += 1;
+    setImmediate(() => {
+      void generatePromptPool({
+        userId: next.userId,
+        categories: [next.category],
+        countPerCategory: EXPRESSION_POOL_GENERATION_SIZE
+      })
+        .catch((error: unknown) => {
+          logger.error("Expression pool background refill failed", {
+            category: next.category,
+            error: error instanceof Error ? error.message : error
+          });
+        })
+        .finally(() => {
+          activePoolRefillCount -= 1;
+          scheduledPoolRefills.delete(next.category);
+          drainPoolRefillQueue();
+        });
+    });
+  }
+};
+
+export const scheduleExpressionPoolRefill = (input: {
+  userId: number;
+  category: ExpressionGenerationCategory;
+}): boolean => {
+  if (scheduledPoolRefills.has(input.category)) {
+    return false;
+  }
+
+  scheduledPoolRefills.add(input.category);
+  pendingPoolRefills.push(input);
+  drainPoolRefillQueue();
+  return true;
+};
+
+export const expressionPoolRefillScheduler = {
+  schedule: scheduleExpressionPoolRefill
+};
 
 export const expressionService = {
   async generatePrompt(userId: number, category: ExpressionGenerationCategory): Promise<ExpressionPromptRecord> {
-    const prompts = await this.generatePromptPool({
+    const prompts = await generatePromptPool({
       userId,
       categories: [category],
-      countPerCategory: EXPRESSION_POOL_GENERATION_SIZE
+      countPerCategory: 1
     });
     const first = prompts.promptsByCategory[category]?.[0] ?? null;
     if (!first) {
@@ -40,92 +148,43 @@ export const expressionService = {
     return first;
   },
   async getNextPrompt(input: { userId: number; category: ExpressionGenerationCategory }): Promise<ExpressionPromptRecord> {
-    let unseen = await expressionRepository.listUnseenPromptsByCategory({
+    const unseen = await expressionRepository.listUnseenPromptsByCategory({
       userId: input.userId,
       category: input.category,
       limit: EXPRESSION_MIN_UNSEEN_BUFFER
     });
 
-    if (unseen.length === 0) {
-      await this.generatePromptPool({
+    let nextPrompt: ExpressionPromptRecord | null = unseen[0] ?? null;
+    if (!nextPrompt) {
+      nextPrompt = await expressionRepository.findLeastRecentlyViewedPrompt({
         userId: input.userId,
-        categories: [input.category],
-        countPerCategory: EXPRESSION_POOL_GENERATION_SIZE
-      });
-      unseen = await expressionRepository.listUnseenPromptsByCategory({
-        userId: input.userId,
-        category: input.category,
-        limit: EXPRESSION_MIN_UNSEEN_BUFFER
-      });
-    } else if (unseen.length < EXPRESSION_MIN_UNSEEN_BUFFER) {
-      await this.generatePromptPool({
-        userId: input.userId,
-        categories: [input.category],
-        countPerCategory: EXPRESSION_POOL_GENERATION_SIZE
+        category: input.category
       });
     }
 
-    let nextPrompt = unseen[0];
     if (!nextPrompt) {
-      const fallbackPool = await expressionRepository.listPromptsByCategory({
-        category: input.category,
-        limit: 1
+      const generated = await generatePromptPool({
+        userId: input.userId,
+        categories: [input.category],
+        countPerCategory: 1
       });
-      nextPrompt = fallbackPool[0];
+      nextPrompt = generated.promptsByCategory[input.category]?.[0] ?? null;
     }
+
     if (!nextPrompt) {
       throw new AppError(500, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
     }
 
     await expressionRepository.markPromptViewed({ userId: input.userId, promptId: nextPrompt.id });
-    return nextPrompt;
-  },
-  async generatePromptPool(input: {
-    userId: number;
-    categories: ExpressionGenerationCategory[];
-    countPerCategory: number;
-  }): Promise<{ promptsByCategory: Record<string, ExpressionPromptRecord[]>; countPerCategory: number; categories: string[] }> {
-    const promptsByCategory: Record<string, ExpressionPromptRecord[]> = {};
 
-    for (const category of input.categories) {
-      const prompts: ExpressionPromptRecord[] = [];
-      const seenIds = new Set<number>();
-      const avoidTexts = new Set(
-        (
-          await expressionRepository.listRecentPromptTextsByCategory({
-            category,
-            limit: EXPRESSION_AVOID_LIST_SIZE
-          })
-        ).map((text) => text.trim().toLowerCase())
-      );
-      let attempts = 0;
-      const maxAttempts = input.countPerCategory * 8;
-      while (prompts.length < input.countPerCategory && attempts < maxAttempts) {
-        attempts += 1;
-        const generated = await generateEverydayExpression(category, {
-          avoidEnglishTexts: Array.from(avoidTexts)
-        });
-        const created = await expressionRepository.createPrompt({
-          userId: input.userId,
-          englishText: generated.englishText,
-          generatedContext: generated.generatedContext,
-          generationCategory: category
-        });
-        avoidTexts.add(created.englishText.trim().toLowerCase());
-        if (seenIds.has(created.id)) {
-          continue;
-        }
-        seenIds.add(created.id);
-        prompts.push(created);
-      }
-      promptsByCategory[category] = prompts;
+    if (unseen.length < EXPRESSION_MIN_UNSEEN_BUFFER) {
+      expressionPoolRefillScheduler.schedule(input);
     }
 
-    return {
-      promptsByCategory,
-      countPerCategory: input.countPerCategory,
-      categories: input.categories
-    };
+    return nextPrompt;
+  },
+  async generatePromptPool(input: GeneratePromptPoolInput): Promise<GeneratedPromptPool> {
+    return generatePromptPool(input);
   },
 
   async assessAttempt(input: {

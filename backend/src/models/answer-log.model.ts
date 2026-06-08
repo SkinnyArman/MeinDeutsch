@@ -1,14 +1,20 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import type { AnalysisError, ContextualWordSuggestion } from "../types/submission.types.js";
 import { Question } from "./question.model.js";
+import { User } from "./user.model.js";
 
 @Entity({ name: "answer_logs" })
 export class AnswerLog {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ name: "user_id", type: "bigint", nullable: true })
-  userId!: string | null;
+  @Index()
+  @Column({ name: "user_id", type: "bigint" })
+  userId!: string;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user!: User;
 
   @Column({ name: "prompt", type: "text" })
   questionText!: string;

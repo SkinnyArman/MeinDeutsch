@@ -1,3 +1,4 @@
+import type { EntityManager } from "typeorm";
 import type { DailyTalkStreakRecord } from "../models/streak-status.model.js";
 import { streakRepository } from "../repositories/streak.repository.js";
 
@@ -6,7 +7,11 @@ export const streakService = {
     return streakRepository.getDailyTalkStatus(userId, now);
   },
 
-  async recordDailyTalkCompletion(userId: number, now = new Date()): Promise<DailyTalkStreakRecord> {
-    return streakRepository.recordDailyTalkCompletion(userId, now);
+  async recordDailyTalkCompletion(
+    userId: number,
+    now = new Date(),
+    manager?: EntityManager
+  ): Promise<DailyTalkStreakRecord> {
+    return streakRepository.recordDailyTalkCompletion(userId, now, manager);
   }
 };

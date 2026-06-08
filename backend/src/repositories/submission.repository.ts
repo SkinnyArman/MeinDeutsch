@@ -1,3 +1,4 @@
+import type { EntityManager } from "typeorm";
 import { appDataSource } from "../db/pool.js";
 import { AnswerLog, type AnswerLogRecord } from "../models/answer-log.model.js";
 import { Question } from "../models/question.model.js";
@@ -48,8 +49,12 @@ const toAnswerLogRecordWithTopic = (row: {
 });
 
 export const submissionRepository = {
-  async insertAnswerLog(input: PersistedSubmission, analysis: AnalysisResult): Promise<AnswerLogRecord> {
-    const repo = appDataSource.getRepository(AnswerLog);
+  async insertAnswerLog(
+    input: PersistedSubmission,
+    analysis: AnalysisResult,
+    manager?: EntityManager
+  ): Promise<AnswerLogRecord> {
+    const repo = (manager ?? appDataSource.manager).getRepository(AnswerLog);
 
     const created = repo.create({
       userId: String(input.userId),
@@ -68,7 +73,7 @@ export const submissionRepository = {
     return toAnswerLogRecord(saved);
   },
 
-  async upsertMistakeStats(userId: number, analysis: AnalysisResult): Promise<void> {
+  async upsertMistakeStats(userId: number, analysis: AnalysisResult, manager?: EntityManager): Promise<void> {
     const grouped = analysis.errors.reduce<Record<MistakeType, { count: number; totalSeverity: number }>>(
       (acc, err) => {
         if (!acc[err.type]) {
@@ -82,8 +87,8 @@ export const submissionRepository = {
       {} as Record<MistakeType, { count: number; totalSeverity: number }>
     );
 
-    await appDataSource.transaction(async (manager) => {
-      const repo = manager.getRepository(MistakeStat);
+    const persist = async (transactionManager: EntityManager): Promise<void> => {
+      const repo = transactionManager.getRepository(MistakeStat);
 
       for (const [mistakeType, data] of Object.entries(grouped) as [MistakeType, { count: number; totalSeverity: number }][]) {
         const avgSeverity = data.totalSeverity / data.count;
@@ -109,7 +114,14 @@ export const submissionRepository = {
         existing.severityScore = weightedSeverity;
         await repo.save(existing);
       }
-    });
+    };
+
+    if (manager) {
+      await persist(manager);
+      return;
+    }
+
+    await appDataSource.transaction(persist);
   },
 
   async getAssessmentContext(userId: number): Promise<AssessmentContext> {

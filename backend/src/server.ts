@@ -2,12 +2,10 @@ import { app } from "./app.js";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { appDataSource } from "./db/pool.js";
-import { ensureSchemaCompat } from "./db/schema-compat.js";
 
 const start = async (): Promise<void> => {
   await appDataSource.initialize();
-  await ensureSchemaCompat();
-  logger.info("Database connection initialized");
+  logger.info("Database connection initialized and migrations applied");
 
   const server = app.listen(env.PORT, () => {
     logger.info(`Server listening on port ${env.PORT}`);

@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
 import { Question } from "./question.model.js";
+import { User } from "./user.model.js";
 
 @Entity({ name: "topics" })
 @Unique("uq_topics_user_name", ["userId", "name"])
@@ -7,8 +8,13 @@ export class Topic {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ name: "user_id", type: "bigint", nullable: true })
-  userId!: string | null;
+  @Index()
+  @Column({ name: "user_id", type: "bigint" })
+  userId!: string;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user!: User;
 
   @Column({ type: "text" })
   name!: string;

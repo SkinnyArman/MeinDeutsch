@@ -1,3 +1,4 @@
+import type { EntityManager } from "typeorm";
 import { appDataSource } from "../db/pool.js";
 import { type AnalysisResult } from "../types/submission.types.js";
 import { KnowledgeItem, type KnowledgeItemRecord } from "../models/knowledge-item.model.js";
@@ -50,8 +51,11 @@ const buildTextChunk = (input: CreateKnowledgeInput): string => {
 };
 
 export const knowledgeRepository = {
-  async createFromSubmission(input: CreateKnowledgeInput): Promise<KnowledgeItemRecord> {
-    const repo = appDataSource.getRepository(KnowledgeItem);
+  async createFromSubmission(
+    input: CreateKnowledgeInput,
+    manager?: EntityManager
+  ): Promise<KnowledgeItemRecord> {
+    const repo = (manager ?? appDataSource.manager).getRepository(KnowledgeItem);
 
     const created = repo.create({
       userId: String(input.userId),

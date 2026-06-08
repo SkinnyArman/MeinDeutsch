@@ -21,6 +21,7 @@ Build a personal German learning MVP where:
 - Google-only sign-in/sign-up.
 - Email whitelist for allowed accounts.
 - User-specific data isolation across topics, questions, submissions, streaks, knowledge, and vocabulary.
+- Database-enforced ownership: every user-owned row requires a valid user foreign key and cascades on user deletion.
 - Topic management (manual add/list).
 - AI question generation per topic.
 - Text answer submission.
@@ -52,7 +53,8 @@ Build a personal German learning MVP where:
   - Categories are dynamic from backend configuration (frontend reads from API).
   - Current categories include: random, work, transport (bus/U-Bahn), home, slang, school/uni, doctor's office, cinema, concert, food, travel, sprichwort.
   - Page auto-loads a prompt on open and on category switch (no manual generate click).
-  - Prompt pools are pre-generated on backend (default target: 20 per category) with unseen-buffer refill.
+  - Prompt pools are pre-generated on backend (default target: 20 per category) with non-blocking unseen-buffer refill.
+  - Background pool refills are deduplicated per category and globally concurrency-limited.
   - Prompt delivery is shared-pool + per-user seen tracking (users draw from same pool but see different unseen items).
   - Generation prompt uses a backend config source for expression types and contexts (not hardcoded in prompt text).
   - Backend deduplicates prompts by normalized English text + category to avoid duplicate pool entries.
@@ -137,7 +139,7 @@ Build a personal German learning MVP where:
 - created_at
 
 ### expression_prompts
-- user_id
+- user_id (optional creator reference; prompts belong to the shared pool)
 - id
 - english_text
 - generated_context (optional)
@@ -202,7 +204,17 @@ All responses use the unified API envelope.
 
 ---
 
-## 5. AI Responsibilities (MVP)
+## 5. Reliability And Data Integrity
+
+- PostgreSQL schema changes are managed through committed TypeORM migrations; runtime schema synchronization is disabled.
+- Backend startup automatically applies pending migrations before accepting requests.
+- User-owned records use non-null `user_id` foreign keys to `users`.
+- Daily Talk persistence is atomic: answer log, knowledge item, mistake aggregates, and streak update commit together or roll back together.
+- Alltagssprache serves existing prompts without waiting for bulk AI generation; low pools refill in a bounded background queue.
+
+---
+
+## 6. AI Responsibilities (MVP)
 
 ### Question generation
 Input: topic (+ optional CEFR target)
@@ -250,7 +262,7 @@ Output (strict JSON):
 
 ---
 
-## 6. Knowledge Base + RAG Direction
+## 7. Knowledge Base + RAG Direction
 
 MVP stores clean records first.
 Next step uses those records for retrieval:

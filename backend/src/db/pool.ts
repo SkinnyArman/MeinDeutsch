@@ -13,6 +13,7 @@ import { StreakStatus } from "../models/streak-status.model.js";
 import { Topic } from "../models/topic.model.js";
 import { User } from "../models/user.model.js";
 import { VocabularyItem } from "../models/vocabulary-item.model.js";
+import { InitialSchemaAndUserOwnership1780880000000 } from "./migrations/1780880000000-InitialSchemaAndUserOwnership.js";
 
 export const appDataSource = new DataSource({
   type: "postgres",
@@ -31,6 +32,8 @@ export const appDataSource = new DataSource({
     ExpressionAttempt,
     ExpressionReviewItem
   ],
-  synchronize: env.NODE_ENV !== "production",
+  migrations: [InitialSchemaAndUserOwnership1780880000000],
+  migrationsRun: true,
+  synchronize: false,
   logging: false
 });

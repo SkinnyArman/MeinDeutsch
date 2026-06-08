@@ -28,7 +28,20 @@ npm install
 npm run dev
 ```
 
-In development, TypeORM runs with `synchronize: true` and creates/updates tables from entities automatically.
+TypeORM schema synchronization is disabled in every environment. Backend startup automatically applies committed migrations before accepting requests.
+
+Migration commands are also available for deployment and maintenance:
+
+```bash
+npm run migration:run
+npm run migration:revert
+```
+
+User-owned tables enforce non-null foreign keys to `users`. The shared Alltagssprache prompt pool is the exception: a prompt may keep an optional creator reference, while views, attempts, and review records remain user-owned.
+
+Daily Talk persistence is transactional. The answer log, knowledge item, mistake aggregates, and streak update either all commit or all roll back.
+
+Alltagssprache prompt delivery does not wait for bulk pool generation. Existing prompts are returned immediately, while category refills run in a deduplicated, concurrency-limited background queue.
 
 AI behavior:
 - `AI_FALLBACK_ENABLED=false` (default): OpenAI failures return an API error response.

@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { ExpressionPrompt } from "./expression-prompt.model.js";
+import { User } from "./user.model.js";
 
 export interface ExpressionAttemptHistoryPoint {
   id: number;
@@ -13,8 +14,13 @@ export class ExpressionAttempt {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ name: "user_id", type: "bigint", nullable: true })
-  userId!: string | null;
+  @Index()
+  @Column({ name: "user_id", type: "bigint" })
+  userId!: string;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user!: User;
 
   @Column({ name: "prompt_id", type: "bigint" })
   promptId!: string;

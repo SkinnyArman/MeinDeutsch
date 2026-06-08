@@ -5,6 +5,7 @@ Use this checklist and mark done items as `- [x]`.
 ## 0) Baseline
 - [x] Express + TypeScript backend scaffolded
 - [x] TypeORM + PostgreSQL connected
+- [x] Replace TypeORM runtime synchronization with committed migrations
 - [x] Unified API response envelope
 - [x] Submission endpoint wired
 
@@ -50,6 +51,7 @@ Use this checklist and mark done items as `- [x]`.
 - [x] `POST /api/expressions/pool` for pre-generating cached prompts by category
 - [x] `POST /api/expressions/next` for per-user unseen prompt delivery from shared backend pool
 - [x] Pool refill tuning: generate larger batches (`20`) and proactively refill when unseen buffer drops below `6`
+- [x] Serve existing prompts immediately and refill pools through a bounded background queue
 - [x] Anti-repetition generation: backend passes recent category prompts as avoid-list to AI
 - [x] Frontend auto-loads prompt on page open and category switch (no manual generate required)
 - [x] Frontend `Next` action consumes next unseen prompt via backend
@@ -74,11 +76,14 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Whitelist-based account access
 - [x] Protected `GET /api/auth/me`
 - [x] User-scoped repository filters across major features
+- [x] Enforce non-null user ownership and user foreign keys at database level
 
 ## 9) Reliability
 - [x] Add backend unit tests for SRS logic
 - [x] Add backend unit tests for Alltag review transition logic
 - [x] Add service-level tests for user scoping guarantees
+- [x] Make Daily Talk persistence atomic across answer, KB, mistake stats, and streak writes
+- [x] Add transaction and expression-pool service tests
 - [ ] Add integration tests for topic -> question -> submission pipeline
 - [ ] Add contract tests for AI JSON schema (`errors`, `cefrLevel`, `correctedText`, `contextualWordSuggestions`, `tips`)
 - [ ] Add retry/backoff for transient AI failures

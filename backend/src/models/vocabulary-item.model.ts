@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { User } from "./user.model.js";
 
 @Entity({ name: "vocabulary_items" })
 @Unique("uq_vocabulary_user_word_category", ["userId", "normalizedWord", "category"])
@@ -6,8 +7,13 @@ export class VocabularyItem {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ name: "user_id", type: "bigint", nullable: true })
-  userId!: string | null;
+  @Index()
+  @Column({ name: "user_id", type: "bigint" })
+  userId!: string;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user!: User;
 
   @Column({ type: "text" })
   word!: string;

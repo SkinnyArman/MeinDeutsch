@@ -1,13 +1,58 @@
 import { API_MESSAGES } from "../constants/api-messages.js";
 import type { AnswerLogRecord } from "../models/answer-log.model.js";
-import type { AnalysisError, SubmissionInput } from "../types/submission.types.js";
+import type { AnalysisError, AnalysisResult, SubmissionInput } from "../types/submission.types.js";
 import { analyzeSubmission } from "../ai/analysis.client.js";
 import { env } from "../config/env.js";
+import { appDataSource } from "../db/pool.js";
 import { knowledgeRepository } from "../repositories/knowledge.repository.js";
 import { questionRepository } from "../repositories/question.repository.js";
 import { submissionRepository } from "../repositories/submission.repository.js";
 import { streakService } from "./streak.service.js";
 import { AppError } from "../utils/app-error.js";
+
+interface PersistAnalyzedSubmissionInput {
+  userId: number;
+  questionId: number;
+  questionText: string;
+  topicId?: number;
+  topicName?: string;
+  answerText: string;
+  modelUsed: string;
+  analysis: AnalysisResult;
+}
+
+export const persistAnalyzedSubmission = async (
+  input: PersistAnalyzedSubmissionInput
+): Promise<AnswerLogRecord> => {
+  return appDataSource.transaction(async (manager) => {
+    const answerLog = await submissionRepository.insertAnswerLog(
+      {
+        userId: input.userId,
+        questionId: input.questionId,
+        questionText: input.questionText,
+        answerText: input.answerText,
+        modelUsed: input.modelUsed
+      },
+      input.analysis,
+      manager
+    );
+
+    await knowledgeRepository.createFromSubmission({
+      userId: input.userId,
+      topicId: input.topicId,
+      topicName: input.topicName,
+      questionId: input.questionId,
+      questionText: input.questionText,
+      answerLogId: answerLog.id,
+      answerText: input.answerText,
+      analysis: input.analysis
+    }, manager);
+
+    await submissionRepository.upsertMistakeStats(input.userId, input.analysis, manager);
+    await streakService.recordDailyTalkCompletion(input.userId, new Date(), manager);
+    return answerLog;
+  });
+};
 
 export const submissionService = {
   async processTextSubmission(input: SubmissionInput, userId: number): Promise<AnswerLogRecord> {
@@ -32,31 +77,16 @@ export const submissionService = {
     analysis.errors = alignErrorRanges(input.answerText, analysis.correctedText, analysis.errors);
     analysis.errors = filterInvalidErrors(input.answerText, analysis.correctedText, analysis.errors);
 
-    const answerLog = await submissionRepository.insertAnswerLog(
-      {
-        userId,
-        questionId: input.questionId,
-        questionText,
-        answerText: input.answerText,
-        modelUsed
-      },
-      analysis
-    );
-
-    await knowledgeRepository.createFromSubmission({
+    return persistAnalyzedSubmission({
       userId,
-      topicId,
-      topicName,
       questionId: input.questionId,
       questionText,
-      answerLogId: answerLog.id,
+      topicId,
+      topicName,
       answerText: input.answerText,
+      modelUsed,
       analysis
     });
-
-    await submissionRepository.upsertMistakeStats(userId, analysis);
-    await streakService.recordDailyTalkCompletion(userId);
-    return answerLog;
   }
 };
 

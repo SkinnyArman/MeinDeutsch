@@ -1,5 +1,6 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 import type { MistakeType } from "../types/submission.types.js";
+import { User } from "./user.model.js";
 
 @Entity({ name: "mistake_stats" })
 @Unique("uq_mistake_stats_user_type", ["userId", "mistakeType"])
@@ -7,8 +8,13 @@ export class MistakeStat {
   @PrimaryGeneratedColumn({ type: "bigint" })
   id!: string;
 
-  @Column({ name: "user_id", type: "bigint", nullable: true })
-  userId!: string | null;
+  @Index()
+  @Column({ name: "user_id", type: "bigint" })
+  userId!: string;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user!: User;
 
   @Column({ name: "mistake_type", type: "text" })
   mistakeType!: MistakeType;

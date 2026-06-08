@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { User } from "./user.model.js";
 
 @Entity({ name: "expression_prompts" })
 export class ExpressionPrompt {
@@ -7,6 +8,10 @@ export class ExpressionPrompt {
 
   @Column({ name: "user_id", type: "bigint", nullable: true })
   userId!: string | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "user_id" })
+  createdByUser!: User | null;
 
   @Column({ name: "english_text", type: "text" })
   englishText!: string;

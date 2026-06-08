@@ -8,6 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "check": "tsc --noEmit -p tsconfig.json",
+    "migration:run": "typeorm-ts-node-esm migration:run -d src/db/pool.ts",
+    "migration:revert": "typeorm-ts-node-esm migration:revert -d src/db/pool.ts",
     "lint": "echo \"No linter configured yet\"",
     "sync:types": "node scripts/sync-api-types.mjs",
     "seed:alltag-review": "tsx scripts/seed-alltag-review.ts"

@@ -136,6 +136,26 @@ export const expressionRepository = {
     }
   },
 
+  async findLeastRecentlyViewedPrompt(input: {
+    userId: number;
+    category: string;
+  }): Promise<ExpressionPromptRecord | null> {
+    const repo = appDataSource.getRepository(ExpressionPrompt);
+    const row = await repo
+      .createQueryBuilder("prompt")
+      .innerJoin(
+        ExpressionPromptView,
+        "viewed",
+        "viewed.promptId = prompt.id AND viewed.userId = :userId",
+        { userId: String(input.userId) }
+      )
+      .where("prompt.generationCategory = :category", { category: input.category })
+      .orderBy("viewed.createdAt", "ASC")
+      .addOrderBy("prompt.id", "ASC")
+      .getOne();
+    return row ? toPromptRecord(row) : null;
+  },
+
   async listRecentPromptTextsByCategory(input: {
     category: string;
     limit: number;
@@ -170,6 +190,8 @@ export const expressionRepository = {
       }
     });
     if (existing) {
+      existing.createdAt = new Date();
+      await repo.save(existing);
       return;
     }
     const created = repo.create({
