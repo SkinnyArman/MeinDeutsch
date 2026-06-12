@@ -1,5 +1,6 @@
 export { useDailyTalkTopicsQuery } from "./useDailyTalkTopics";
 export { useDailyTalkGenerateQuestionMutation } from "./useDailyTalkGenerateQuestion";
+export { useDailyTalkNextQuestionMutation } from "./useDailyTalkNextQuestion";
 export { useDailyTalkDetailQuery } from "./useDailyTalkDetail";
 export { useDailyTalkSavedVocabQuery } from "./useDailyTalkSavedVocab";
 export { useDailyTalkHistoryQuery } from "./useDailyTalkHistory";

@@ -204,6 +204,36 @@ on top. Format:
 - Anything left unfinished or discovered for the next session
 ```
 
+### 2026-06-12 — Daily Talk question pool, CEFR dropped from UI (Claude Code)
+- Daily Talk now works exactly like Alltagssprache: `POST /api/questions/next` draws an
+  unseen pre-generated question for the topic (falls back to least-recently-viewed, then
+  sync-generates), marks it viewed, and triggers a background refill (batch 8, buffer 3)
+  with an avoid-list against repeats. Migration `AddQuestionViewTracking` added
+  `questions.viewed_at` + index.
+- The pool refill machinery is now SHARED: `src/utils/refill-queue.ts`
+  (`createRefillQueue` — per-key dedup + concurrency cap). Both `expression.service.ts`
+  and `question.service.ts` use it; don't reimplement queues.
+- CEFR removed from the Daily Talk UI entirely: questions target B1+–C1 (template +
+  random pool target weighted to B2); the learner's ANSWER is what gets CEFR-graded.
+  `POST /api/questions/generate` still accepts `cefrTarget` for API tools.
+- Tests: `question-pool.service.test.ts` mirrors the expression pool tests (scheduler is
+  mockable via `questionPoolRefillScheduler`). All 31 backend tests pass.
+- Verified live: two pool draws in <120ms with distinct questions; refill confirmed in DB.
+
+### 2026-06-12 — Daily Talk auto-question + default topics (Claude Code)
+- Daily Talk "new" now mirrors Alltagssprache: a question auto-generates on page open
+  and regenerates on topic/CEFR change (`watch` in `DailyTalkNewView.vue`); the CEFR
+  free-text input became a select (Auto/A1–C2, default B1); manual button is now a
+  secondary "New question" regenerate.
+- Default everyday topics: `backend/src/constants/default-topics.ts` (12 topics —
+  Nature, School, University, Work, Daily Routine, etc.). Seeded on new-user creation
+  in `auth.service.ts` (non-blocking on failure) via `topicService.seedDefaultTopics`,
+  which uses `topicRepository.createMissingByName` (name-dedup, case-insensitive).
+  Backfill script: `npm run seed:topics` (idempotent, all users) — already run for the
+  existing account. Deleted defaults are NOT auto-recreated (deliberate).
+- Verified: both typechecks clean; Playwright screenshots confirm auto-generated B1
+  question on open at desktop + mobile.
+
 ### 2026-06-12 — Full frontend redesign + responsiveness (Claude Code)
 - New design language: Fraunces (display serif) + Inter via Google Fonts in `index.html`;
   shared component classes in `src/style.css` (`.card`, `.card-hero`, `.btn-primary`,

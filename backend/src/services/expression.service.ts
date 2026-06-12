@@ -16,6 +16,7 @@ import { logger } from "../config/logger.js";
 import { expressionReviewRepository } from "../repositories/expression-review.repository.js";
 import { expressionRepository } from "../repositories/expression.repository.js";
 import { AppError } from "../utils/app-error.js";
+import { createRefillQueue } from "../utils/refill-queue.js";
 
 export interface ExpressionReviewAssessmentRecord {
   reviewItem: ExpressionReviewItemRecord;
@@ -27,9 +28,6 @@ const EXPRESSION_POOL_GENERATION_SIZE = 20;
 const EXPRESSION_MIN_UNSEEN_BUFFER = 6;
 const EXPRESSION_AVOID_LIST_SIZE = 80;
 const EXPRESSION_MAX_CONCURRENT_REFILLS = 2;
-const scheduledPoolRefills = new Set<ExpressionGenerationCategory>();
-const pendingPoolRefills: Array<{ userId: number; category: ExpressionGenerationCategory }> = [];
-let activePoolRefillCount = 0;
 
 interface GeneratePromptPoolInput {
   userId: number;
@@ -87,47 +85,28 @@ const generatePromptPool = async (input: GeneratePromptPoolInput): Promise<Gener
   };
 };
 
-const drainPoolRefillQueue = (): void => {
-  while (activePoolRefillCount < EXPRESSION_MAX_CONCURRENT_REFILLS && pendingPoolRefills.length > 0) {
-    const next = pendingPoolRefills.shift();
-    if (!next) {
-      return;
-    }
-
-    activePoolRefillCount += 1;
-    setImmediate(() => {
-      void generatePromptPool({
-        userId: next.userId,
-        categories: [next.category],
-        countPerCategory: EXPRESSION_POOL_GENERATION_SIZE
-      })
-        .catch((error: unknown) => {
-          logger.error("Expression pool background refill failed", {
-            category: next.category,
-            error: error instanceof Error ? error.message : error
-          });
-        })
-        .finally(() => {
-          activePoolRefillCount -= 1;
-          scheduledPoolRefills.delete(next.category);
-          drainPoolRefillQueue();
-        });
+const poolRefillQueue = createRefillQueue<{ userId: number; category: ExpressionGenerationCategory }>({
+  maxConcurrent: EXPRESSION_MAX_CONCURRENT_REFILLS,
+  run: async (input) => {
+    await generatePromptPool({
+      userId: input.userId,
+      categories: [input.category],
+      countPerCategory: EXPRESSION_POOL_GENERATION_SIZE
+    });
+  },
+  onError: (input, error) => {
+    logger.error("Expression pool background refill failed", {
+      category: input.category,
+      error: error instanceof Error ? error.message : error
     });
   }
-};
+});
 
 export const scheduleExpressionPoolRefill = (input: {
   userId: number;
   category: ExpressionGenerationCategory;
 }): boolean => {
-  if (scheduledPoolRefills.has(input.category)) {
-    return false;
-  }
-
-  scheduledPoolRefills.add(input.category);
-  pendingPoolRefills.push(input);
-  drainPoolRefillQueue();
-  return true;
+  return poolRefillQueue.schedule(input.category, input);
 };
 
 export const expressionPoolRefillScheduler = {

@@ -20,6 +20,7 @@ Use this checklist and mark done items as `- [x]`.
 - [x] `POST /api/topics`
 - [x] `GET /api/topics`
 - [x] `POST /api/questions/generate` (AI-generated from topic)
+- [x] `POST /api/questions/next` (per-user unseen question from topic pool + background refill, shared refill-queue util)
 - [x] `GET /api/questions` (filter by topic)
 
 ## 3) Submission + Analysis Flow

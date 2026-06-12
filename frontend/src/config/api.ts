@@ -32,6 +32,7 @@ export const API_PATHS = {
   submissionDetail: (id: number) => `/api/submissions/${id}`,
   topics: "/api/topics",
   questionsGenerate: "/api/questions/generate",
+  questionsNext: "/api/questions/next",
   vocabulary: "/api/vocabulary",
   vocabularyCategories: "/api/vocabulary/categories",
   vocabularyDue: "/api/vocabulary/review/due",

@@ -1,8 +1,10 @@
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
+import { logger } from "../config/logger.js";
 import type { UserRecord } from "../models/user.model.js";
 import { userRepository } from "../repositories/user.repository.js";
+import { topicService } from "./topic.service.js";
 import { AppError } from "../utils/app-error.js";
 import { API_MESSAGES } from "../constants/api-messages.js";
 
@@ -87,6 +89,12 @@ export const authService = {
         displayName: payload.name ?? null,
         avatarUrl: payload.picture ?? null
       });
+      try {
+        await topicService.seedDefaultTopics(user.id);
+      } catch (error) {
+        // A failed seed should not block sign-in; topics can be added manually.
+        logger.error("Failed to seed default topics for new user", error);
+      }
     }
 
     return {

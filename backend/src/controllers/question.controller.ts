@@ -9,6 +9,10 @@ const generateSchema = z.object({
   cefrTarget: z.enum(["A1", "A2", "B1", "B2", "C1", "C2"]).optional()
 });
 
+const nextSchema = z.object({
+  topicId: z.coerce.number().int().positive()
+});
+
 const querySchema = z.object({
   topicId: z.coerce.number().int().positive().optional()
 });
@@ -17,6 +21,12 @@ export const generateQuestionController = async (req: Request, res: Response): P
   const payload = generateSchema.parse(req.body);
   const question = await questionService.generateAndStore({ ...payload, userId: req.auth.userId });
   sendSuccess(res, 201, API_MESSAGES.question.generated, question);
+};
+
+export const nextQuestionController = async (req: Request, res: Response): Promise<void> => {
+  const payload = nextSchema.parse(req.body);
+  const question = await questionService.getNextQuestion({ topicId: payload.topicId, userId: req.auth.userId });
+  sendSuccess(res, 200, API_MESSAGES.question.nextServed, question);
 };
 
 export const listQuestionsController = async (req: Request, res: Response): Promise<void> => {

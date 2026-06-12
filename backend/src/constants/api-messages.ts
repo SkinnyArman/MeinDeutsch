@@ -18,6 +18,7 @@ export const API_MESSAGES = {
   },
   question: {
     generated: "Question generated successfully",
+    nextServed: "Next question served successfully",
     listed: "Questions fetched successfully"
   },
   knowledge: {

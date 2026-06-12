@@ -160,6 +160,7 @@ export const generateQuestion = async (input: {
   topicDescription?: string | null;
   cefrTarget?: string;
   generationPrompt: string;
+  avoidQuestionTexts?: string[];
 }): Promise<{ questionText: string; cefrTarget: string | null }> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
@@ -167,6 +168,11 @@ export const generateQuestion = async (input: {
       reason: "OPENAI_API_KEY is missing"
     });
   }
+
+  const avoidList = (input.avoidQuestionTexts ?? [])
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 50);
 
   try {
     const completion = await openai.responses.create({
@@ -176,7 +182,8 @@ export const generateQuestion = async (input: {
         `Topic: ${input.topicName}`,
         `Topic description: ${input.topicDescription ?? "None"}`,
         `Target CEFR: ${input.cefrTarget ?? "Not specified"}`,
-        `Required generation prompt: ${input.generationPrompt}`
+        `Required generation prompt: ${input.generationPrompt}`,
+        `Avoid list (must not repeat): ${avoidList.length > 0 ? avoidList.join(" | ") : "none"}`
       ].join("\n"),
       text: {
         format: {

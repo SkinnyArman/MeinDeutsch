@@ -51,11 +51,9 @@ export const messages = {
     },
     dailyTalkNew: {
       title: "New Daily Talk",
-      subtitle: "Generate a question, answer, and review your feedback.",
+      subtitle: "Answer the question in German and review your feedback.",
       topic: "Topic",
-      cefrTarget: "CEFR target",
-      generate: "Generate question",
-      generating: "Generating...",
+      generating: "Loading...",
       question: "Question",
       questionPlaceholder: "Generate a question to start.",
       answerPrompt: "Write your answer",

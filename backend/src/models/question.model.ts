@@ -38,6 +38,9 @@ export class Question {
   @OneToMany(() => AnswerLog, (answerLog) => answerLog.question)
   answerLogs!: AnswerLog[];
 
+  @Column({ name: "viewed_at", type: "timestamptz", nullable: true })
+  viewedAt!: Date | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }

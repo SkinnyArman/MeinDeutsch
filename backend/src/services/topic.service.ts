@@ -1,4 +1,5 @@
 import { API_MESSAGES } from "../constants/api-messages.js";
+import { DEFAULT_TOPICS } from "../constants/default-topics.js";
 import type { TopicRecord } from "../models/topic.model.js";
 import { topicRepository } from "../repositories/topic.repository.js";
 import { AppError } from "../utils/app-error.js";
@@ -6,6 +7,10 @@ import { AppError } from "../utils/app-error.js";
 export const topicService = {
   async createTopic(input: { userId: number; name: string; description?: string | null }): Promise<TopicRecord> {
     return topicRepository.create(input);
+  },
+
+  async seedDefaultTopics(userId: number): Promise<TopicRecord[]> {
+    return topicRepository.createMissingByName(userId, DEFAULT_TOPICS);
   },
 
   async listTopics(userId: number): Promise<TopicRecord[]> {

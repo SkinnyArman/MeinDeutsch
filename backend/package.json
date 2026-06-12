@@ -12,7 +12,8 @@
     "migration:revert": "typeorm-ts-node-esm migration:revert -d src/db/pool.ts",
     "lint": "echo \"No linter configured yet\"",
     "sync:types": "node scripts/sync-api-types.mjs",
-    "seed:alltag-review": "tsx scripts/seed-alltag-review.ts"
+    "seed:alltag-review": "tsx scripts/seed-alltag-review.ts",
+    "seed:topics": "tsx scripts/seed-default-topics.ts"
   },
   "keywords": [],
   "author": "",

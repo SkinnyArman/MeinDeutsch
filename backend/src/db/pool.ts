@@ -18,6 +18,7 @@ import { InitialSchemaAndUserOwnership1780880000000 } from "./migrations/1780880
 import { EnforceExpressionPromptUniqueness1780881000000 } from "./migrations/1780881000000-EnforceExpressionPromptUniqueness.js";
 import { AddVocabularyDueIndex1780882000000 } from "./migrations/1780882000000-AddVocabularyDueIndex.js";
 import { AddVocabularyReviewHistory1780883000000 } from "./migrations/1780883000000-AddVocabularyReviewHistory.js";
+import { AddQuestionViewTracking1780884000000 } from "./migrations/1780884000000-AddQuestionViewTracking.js";
 
 export const appDataSource = new DataSource({
   type: "postgres",
@@ -41,7 +42,8 @@ export const appDataSource = new DataSource({
     InitialSchemaAndUserOwnership1780880000000,
     EnforceExpressionPromptUniqueness1780881000000,
     AddVocabularyDueIndex1780882000000,
-    AddVocabularyReviewHistory1780883000000
+    AddVocabularyReviewHistory1780883000000,
+    AddQuestionViewTracking1780884000000
   ],
   migrationsRun: true,
   synchronize: false,

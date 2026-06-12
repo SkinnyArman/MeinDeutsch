@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watchEffect } from "vue";
+import { computed, reactive, ref, watch, watchEffect } from "vue";
 import { useLanguage } from "@/libs/i18n";
-import { Loader2, Plus, Send, Sparkles, Tag } from "lucide-vue-next";
+import { Loader2, RefreshCw, Send, Sparkles, Tag } from "lucide-vue-next";
 import type { AnalysisError, AnswerLogRecord, QuestionRecord, TopicRecord } from "@/types/ApiTypes";
 import { DEFAULT_CATEGORY } from "@/constants/app";
 import AppContainer from "./AppContainer.vue";
 import HighlightedText from "./HighlightedText.vue";
 import {
-  useDailyTalkGenerateQuestionMutation,
+  useDailyTalkNextQuestionMutation,
   useDailyTalkSavedVocabQuery,
   useDailyTalkSaveWordMutation,
   useDailyTalkSubmitMutation,
@@ -22,7 +22,6 @@ type Notice = {
 const { t } = useLanguage();
 
 const selectedTopicId = ref<string>("");
-const selectedCefrTarget = ref<string>("");
 const generatedQuestion = ref<QuestionRecord | null>(null);
 const result = ref<AnswerLogRecord | null>(null);
 const notice = ref<Notice | null>(null);
@@ -153,7 +152,7 @@ const highlightedAnswerSegments = computed(() => {
 });
 
 const topicsQuery = useDailyTalkTopicsQuery();
-const generateMutation = useDailyTalkGenerateQuestionMutation();
+const nextQuestionMutation = useDailyTalkNextQuestionMutation();
 const submitMutation = useDailyTalkSubmitMutation();
 const savedWordsQuery = useDailyTalkSavedVocabQuery({
   answerLogId: () => result.value?.id ?? null
@@ -170,8 +169,8 @@ watchEffect(() => {
   if (topicsQuery.error.value) {
     notice.value = { type: "error", text: topicsQuery.error.value.message };
   }
-  if (generateMutation.error.value) {
-    notice.value = { type: "error", text: generateMutation.error.value.message };
+  if (nextQuestionMutation.error.value) {
+    notice.value = { type: "error", text: nextQuestionMutation.error.value.message };
   }
   if (submitMutation.error.value) {
     notice.value = { type: "error", text: submitMutation.error.value.message };
@@ -184,19 +183,28 @@ watchEffect(() => {
   }
 });
 
-const handleGenerateQuestion = async (): Promise<void> => {
+const handleNextQuestion = async (): Promise<void> => {
   if (!selectedTopicId.value) {
     notice.value = { type: "error", text: t.dailyTalkNew.pickTopic() };
     return;
   }
-  const data = await generateMutation.mutateAsync({
-    topicId: Number(selectedTopicId.value),
-    cefrTarget: selectedCefrTarget.value || undefined
+  const data = await nextQuestionMutation.mutateAsync({
+    topicId: Number(selectedTopicId.value)
   });
   generatedQuestion.value = data as QuestionRecord;
   result.value = null;
+  form.answerText = "";
   notice.value = null;
 };
+
+// Mirror Alltagssprache: a question loads from the pool on page open (once
+// topics resolve) and a new one is drawn when the topic changes.
+watch(selectedTopicId, () => {
+  if (!selectedTopicId.value) {
+    return;
+  }
+  void handleNextQuestion();
+});
 
 const handleSubmitAnswer = async (): Promise<void> => {
   if (!generatedQuestion.value) {
@@ -254,23 +262,26 @@ const handleSaveWord = async (payload: { word: string; description: string; exam
             </select>
           </div>
 
-          <div>
-            <label class="eyebrow">{{ t.dailyTalkNew.cefrTarget() }}</label>
-            <input v-model="selectedCefrTarget" class="input mt-2" type="text" placeholder="B1" />
-          </div>
-
-          <button class="btn-primary w-full" :disabled="generateMutation.isPending.value" @click="handleGenerateQuestion">
-            <Loader2 v-if="generateMutation.isPending.value" class="h-4 w-4 animate-spin" />
-            <Plus v-else class="h-4 w-4" />
-            {{ generateMutation.isPending.value ? t.dailyTalkNew.generating() : t.dailyTalkNew.generate() }}
+          <button class="btn-soft w-full" :disabled="nextQuestionMutation.isPending.value || !selectedTopicId" @click="handleNextQuestion">
+            <Loader2 v-if="nextQuestionMutation.isPending.value" class="h-4 w-4 animate-spin" />
+            <RefreshCw v-else class="h-4 w-4" />
+            {{ nextQuestionMutation.isPending.value ? t.dailyTalkNew.generating() : t.common.next() }}
           </button>
         </aside>
 
         <section class="space-y-4">
           <div class="card-hero p-5">
-            <p class="eyebrow">{{ t.dailyTalkNew.question() }}</p>
+            <span class="eyebrow">
+              <span class="eyebrow-icon">
+                <Loader2 v-if="nextQuestionMutation.isPending.value" class="h-3 w-3 animate-spin" />
+                <Sparkles v-else class="h-3 w-3" />
+              </span>
+              {{ t.dailyTalkNew.question() }}
+            </span>
             <p class="mt-3 font-serif text-xl leading-relaxed sm:text-2xl">
-              {{ generatedQuestion?.questionText || t.dailyTalkNew.questionPlaceholder() }}
+              {{ nextQuestionMutation.isPending.value
+                ? t.common.loading()
+                : generatedQuestion?.questionText || t.dailyTalkNew.questionPlaceholder() }}
             </p>
           </div>
 

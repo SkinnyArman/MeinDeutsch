@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { generateQuestionController, listQuestionsController } from "../controllers/question.controller.js";
+import { generateQuestionController, listQuestionsController, nextQuestionController } from "../controllers/question.controller.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
 export const questionRouter = Router();
 
 questionRouter.post("/generate", asyncHandler(generateQuestionController));
+questionRouter.post("/next", asyncHandler(nextQuestionController));
 questionRouter.get("/", asyncHandler(listQuestionsController));

@@ -21,6 +21,30 @@ export const topicRepository = {
     return toTopicRecord(saved);
   },
 
+  async createMissingByName(
+    userId: number,
+    topics: Array<{ name: string; description?: string | null }>
+  ): Promise<TopicRecord[]> {
+    const repo = appDataSource.getRepository(Topic);
+    const existing = await repo.find({ where: { userId: String(userId) } });
+    const existingNames = new Set(existing.map((topic) => topic.name.trim().toLowerCase()));
+
+    const missing = topics.filter((topic) => !existingNames.has(topic.name.trim().toLowerCase()));
+    if (missing.length === 0) {
+      return [];
+    }
+
+    const created = missing.map((topic) =>
+      repo.create({
+        userId: String(userId),
+        name: topic.name,
+        description: topic.description ?? null
+      })
+    );
+    const saved = await repo.save(created);
+    return saved.map(toTopicRecord);
+  },
+
   async list(userId: number): Promise<TopicRecord[]> {
     const repo = appDataSource.getRepository(Topic);
     const rows = await repo.find({ where: { userId: String(userId) }, order: { createdAt: "DESC" } });

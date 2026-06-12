@@ -104,6 +104,22 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     ]
   },
   {
+    id: "next-question",
+    method: "POST",
+    path: "/api/questions/next",
+    title: "Get Next Daily Talk Question",
+    description: "Returns next unseen question for the topic from the user's pool; generates only when the pool is exhausted.",
+    requestFields: [
+      {
+        name: "topicId",
+        label: "Topic ID",
+        type: "number",
+        required: true,
+        placeholder: "1"
+      }
+    ]
+  },
+  {
     id: "list-questions",
     method: "GET",
     path: "/api/questions",
