@@ -34,19 +34,44 @@ export interface CollocationReviewAssessmentRecord {
   feedback: string;
 }
 
+const GAP_PATTERN = /_{2,}/g;
+
+// Article/reflexive variants of the same collocation ("eine Entscheidung treffen"
+// vs "die Entscheidung treffen") must count as duplicates for the avoid list.
+const toDedupKey = (text: string): string =>
+  normalizeCollocationText(text)
+    .replace(/\b(der|die|das|den|dem|des|ein|eine|einen|einem|einer|eines|sich|etwas|jemandem|jemanden)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+// Reject generations where the cloze is structurally unusable: there must be
+// exactly one gap, and the answer must be plain words (no gap markers).
+const isValidGeneratedCloze = (generated: {
+  clozeSentence: string;
+  clozeAnswer: string;
+  germanText: string;
+}): boolean => {
+  const gaps = generated.clozeSentence.match(GAP_PATTERN) ?? [];
+  return (
+    gaps.length === 1 &&
+    generated.clozeAnswer.trim().length > 0 &&
+    !/_/.test(generated.clozeAnswer) &&
+    generated.germanText.trim().length > 0
+  );
+};
+
 const generatePromptPool = async (input: {
   userId: number;
   category: CollocationGenerationCategory;
   count: number;
 }): Promise<CollocationPromptRecord[]> => {
-  const avoidTexts = new Set(
-    (
-      await collocationRepository.listRecentPromptTextsByCategory({
-        category: input.category,
-        limit: COLLOCATION_AVOID_LIST_SIZE
-      })
-    ).map((text) => normalizeCollocationText(text))
-  );
+  // Avoid list spans ALL categories so the same collocation is not regenerated
+  // for a different category pool.
+  const recentTexts = await collocationRepository.listRecentPromptTexts({
+    limit: COLLOCATION_AVOID_LIST_SIZE
+  });
+  const avoidTexts = new Set(recentTexts.map((text) => normalizeCollocationText(text)));
+  const avoidKeys = new Set(recentTexts.map((text) => toDedupKey(text)));
 
   const prompts: CollocationPromptRecord[] = [];
   const seenIds = new Set<number>();
@@ -57,6 +82,12 @@ const generatePromptPool = async (input: {
     const generated = await generateCollocation(input.category, {
       avoidGermanTexts: Array.from(avoidTexts)
     });
+    if (!isValidGeneratedCloze(generated)) {
+      continue;
+    }
+    if (avoidKeys.has(toDedupKey(generated.germanText))) {
+      continue;
+    }
     const created = await collocationRepository.createPrompt({
       userId: input.userId,
       germanText: generated.germanText,
@@ -67,6 +98,7 @@ const generatePromptPool = async (input: {
       generationCategory: input.category
     });
     avoidTexts.add(normalizeCollocationText(generated.germanText));
+    avoidKeys.add(toDedupKey(generated.germanText));
     if (seenIds.has(created.id)) {
       continue;
     }
@@ -308,6 +340,31 @@ export const collocationService = {
     if (!updated) {
       throw new AppError(404, "COLLOCATION_REVIEW_ITEM_NOT_FOUND", API_MESSAGES.errors.collocationReviewItemNotFound);
     }
+
+    // Mirror review attempts into regular collocation history so the history
+    // card reflects the latest percentage across retries (same as Alltag).
+    const reviewPrompt = await collocationRepository.createPrompt({
+      userId: input.userId,
+      germanText: item.germanText,
+      englishText: item.englishText,
+      clozeSentence: item.clozeSentence,
+      clozeAnswer: item.baselineCorrectVersion,
+      collocationType: "review_retry",
+      generationCategory: "review"
+    });
+    await collocationRepository.markPromptViewed({ userId: input.userId, promptId: reviewPrompt.id });
+    await collocationRepository.createAttempt({
+      userId: input.userId,
+      promptId: reviewPrompt.id,
+      germanText: item.germanText,
+      englishText: item.englishText,
+      clozeSentence: item.clozeSentence,
+      userAnswerText: input.userAnswerText,
+      score: roundedScore,
+      feedback: reviewAssessment.feedback,
+      correctVersion: item.baselineCorrectVersion,
+      alternatives: item.baselineAlternatives
+    });
 
     return {
       reviewItem: updated,

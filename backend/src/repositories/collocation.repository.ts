@@ -142,6 +142,18 @@ export const collocationRepository = {
     return rows.map((row) => row.germanText).filter((text) => text.trim().length > 0);
   },
 
+  // Cross-category: a collocation generated for "work" must not be regenerated for "random".
+  async listRecentPromptTexts(input: { limit: number }): Promise<string[]> {
+    const repo = appDataSource.getRepository(CollocationPrompt);
+    const rows = await repo
+      .createQueryBuilder("prompt")
+      .select(["prompt.germanText"])
+      .orderBy("prompt.createdAt", "DESC")
+      .take(input.limit)
+      .getMany();
+    return rows.map((row) => row.germanText).filter((text) => text.trim().length > 0);
+  },
+
   async markPromptViewed(input: { userId: number; promptId: number }): Promise<void> {
     const repo = appDataSource.getRepository(CollocationPromptView);
     await repo

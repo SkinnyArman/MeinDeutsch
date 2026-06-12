@@ -204,6 +204,24 @@ on top. Format:
 - Anything left unfinished or discovered for the next session
 ```
 
+### 2026-06-12 — Bug fixes: Daily Talk 404, dynamic cloze gaps, review queue UX (Claude Code)
+- Daily Talk submit was POSTing `/api/submissions` (route is `/api/submissions/text`) →
+  "Route not found". Fixed via `API_PATHS.submissionsText`.
+- Kollokationen cloze gaps are now DYNAMIC: generation gaps only the hard collocate
+  (partner noun stays visible) with `clozeAnswer` = exactly the removed words; server-side
+  validity guard (`isValidGeneratedCloze`: exactly one gap, sane answer) rejects bad
+  generations; assessment accepts gap-only answers AND doesn't penalize typing the full
+  collocation. Purged 39 unattempted old-format prompts so pools regenerate.
+- Review pages (Kollokationen + Alltagssprache) now run a SESSION QUEUE: snapshot the due
+  list on load, answer → feedback → "Next card" button advances; previously the active
+  card was derived from the live query that mutates after each answer (cards "disappeared").
+- Collocation review attempts are now mirrored into history via synthetic `review`-category
+  prompts (same as Alltag), so the history percentage bumps across retries; verified 0→100.
+- Dedup hardening: generation avoid-list is now cross-category, and near-duplicate check
+  strips articles/reflexives (`toDedupKey`) so "eine/die Entscheidung treffen" can't both
+  enter the pool. NOTE: same English gloss with different German collocation (Entscheidung
+  treffen vs Entschluss fassen) is allowed on purpose.
+
 ### 2026-06-12 — NEW FEATURE: Dashboard + Daily Goal streak (Claude Code)
 - `/` is now a dashboard (was a redirect): daily-goal stepper (4 clickable steps), streak
   hero, per-feature cards (totals, due badges, score sparklines), 14-day stacked activity

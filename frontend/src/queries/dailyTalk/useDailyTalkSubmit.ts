@@ -6,7 +6,7 @@ import { API_PATHS } from "@/config/api";
 export const useDailyTalkSubmitMutation = () => {
   return useMutation({
     mutationFn: async (payload: { questionId: number; questionText: string; answerText: string }) => {
-      return (await fetchJson<AnswerLogRecord>(API_PATHS.submissions, {
+      return (await fetchJson<AnswerLogRecord>(API_PATHS.submissionsText, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

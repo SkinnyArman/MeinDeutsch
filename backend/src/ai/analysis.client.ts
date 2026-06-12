@@ -449,9 +449,13 @@ Rules:
   (e.g. "eine Entscheidung treffen" not "machen", "Schule besuchen" not "gehen zu", "ein Foto machen" not "nehmen").
 - germanText: the collocation in dictionary/base form (e.g. "Verantwortung übernehmen").
 - englishText: the natural English equivalent (e.g. "to take on responsibility"), NOT a word-for-word gloss of the German.
-- clozeSentence: one natural German sentence (B1-C1, 8-16 words) where the collocation appears INFLECTED and its words are CONTIGUOUS, with the full collocation replaced by "____".
-  The sentence context must make the gapped collocation recoverable together with the English hint.
-- clozeAnswer: exactly the words removed from clozeSentence (inflected as they appear in the sentence).
+- clozeSentence: one natural German sentence (B1-C1, 8-16 words) using the collocation INFLECTED, with a gap "____".
+- Gap rule: the gap covers ONLY the hard-to-guess collocate (usually the verb or adjective, inflected as it appears);
+  the partner noun stays VISIBLE in the sentence (e.g. "Sie haben die Entscheidung schnell ____." with clozeAnswer "getroffen").
+  Only gap the full collocation when the words are adjacent and removing just the collocate would read unnaturally.
+- clozeAnswer: EXACTLY the word(s) removed from clozeSentence and nothing more — replacing "____" with clozeAnswer must
+  reproduce the complete, grammatical sentence. Never include visible sentence words in clozeAnswer.
+- Exactly one gap ("____") per sentence.
 - collocationType: one of ${COLLOCATION_TYPES.join(", ")}.
 - Strict anti-repetition: never output a collocation identical or near-identical to entries in the avoid list (including inflection variants).
 - No explanations, only JSON.`;
@@ -466,6 +470,8 @@ Return strict JSON only:
   "alternatives": ["string"]
 }
 Scoring rules (0-100):
+- The learner only needs to supply the GAPPED words (the reference answer). Judge their answer against the gap, not the full collocation.
+- If the learner typed more than the gap (e.g. the full collocation while part of it is already visible in the sentence), do NOT penalize the extra words — judge whether the collocate choice and its form are right.
 - 95-100: conventional partner word(s), correct inflection for the gap. Also give 95-100 to an equally natural alternative collocate that fits the sentence.
 - 60-90: right partner word but wrong inflection/case/word order; explain the form error briefly.
 - 20-50: understandable but unconventional pairing (typical English transfer, e.g. "Entscheidung machen"); name the conventional partner word EXPLICITLY and contrast it with the learner's choice.
@@ -486,6 +492,7 @@ Return strict JSON only:
 }
 Rules:
 - score 0-100; use the reference cloze answer as the PRIMARY gold standard.
+- The learner only needs to supply the GAPPED words; if they typed the full collocation including words already visible in the sentence, do not penalize the extra words.
 - 95-100 only for the conventional partner word(s) with correct inflection (or an equally natural alternative).
 - Right partner word, wrong form: 60-90 with a one-sentence form note.
 - Wrong partner word: below 50; name the conventional partner explicitly.

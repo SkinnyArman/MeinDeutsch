@@ -211,6 +211,8 @@ export const messages = {
     },
     alltagReview: {
       title: "Review",
+      nextCard: "Next card",
+      sessionDone: "Review session complete",
       loadFailed: "Could not load review queue",
       submitFailed: "Could not submit review attempt",
       noDue: "No due items",
