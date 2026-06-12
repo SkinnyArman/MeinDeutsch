@@ -52,8 +52,14 @@ Build a personal German learning MVP where:
     - `Again` creates a 10-minute relearning step; new-card intervals are 1/3/7 days for Hard/Good/Easy.
     - Learned-card intervals grow from the existing interval and ease factor.
     - Every rating is stored in an immutable review history for auditing and future SRS tuning.
-- New feature: `Alltagssprache`
-  - AI generates one common English everyday sentence/expression by category.
+- New feature: `Alltagssprache` (situational speaking practice)
+  - Reframed from sentence-translation to situational production (research-backed: situation-specific
+    formulaic-language practice beats decontextualized translation). The prompt is a concrete German
+    micro-situation ("Ein Freund hat morgen eine Prüfung. Was wünschst du ihm?"); the learner produces
+    the natural German utterance. The English equivalent is a reveal-on-tap hint, not the task.
+  - Generation has a difficulty ceiling: simple A2-B1 scenario wording even when the target expression
+    is idiomatic; expected answers ~3-12 words, natural spoken register (not literary/abstract).
+  - AI scores whether the answer fits the SITUATION (not literal-translation equivalence).
   - Categories are dynamic from backend configuration (frontend reads from API).
   - Current categories include: random, work, transport (bus/U-Bahn), home, slang, school/uni, doctor's office, cinema, concert, food, travel, sprichwort.
   - Page auto-loads a prompt on open and on category switch (no manual generate click).
@@ -64,7 +70,7 @@ Build a personal German learning MVP where:
   - Backend deduplicates prompts by normalized English text + category to avoid duplicate pool entries.
   - PostgreSQL enforces prompt uniqueness, so concurrent generators cannot insert duplicates.
   - A `Next` action moves to the next unseen prompt in the selected category.
-  - User writes the German equivalent.
+  - User writes the natural German response to the situation.
   - AI evaluates naturalness as a score (0-100).
   - AI returns native-like German phrasing and alternatives.
   - Low scores are automatically added to a review queue.

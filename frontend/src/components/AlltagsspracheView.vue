@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
-import { CheckCircle2, ChevronDown, ChevronUp, CircleHelp, Globe, History, Loader2, MessageSquareText, Send, Sparkles } from "lucide-vue-next";
+import { CheckCircle2, ChevronDown, ChevronUp, CircleHelp, History, Lightbulb, Loader2, MessageCircleQuestion, MessageSquareText, Send, Sparkles } from "lucide-vue-next";
 import type { ExpressionAttemptHistoryPoint, ExpressionAttemptRecord, ExpressionPromptRecord } from "@/types/ApiTypes";
 import AppContainer from "./AppContainer.vue";
 import ScoreRing from "./ScoreRing.vue";
@@ -21,6 +21,7 @@ const notice = ref<{ type: "success" | "error"; text: string } | null>(null);
 
 const prompt = ref<ExpressionPromptRecord | null>(null);
 const latestAttempt = ref<ExpressionAttemptRecord | null>(null);
+const showHint = ref(false);
 const expandedHistoryId = ref<number | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
 const selectedCategory = ref<AlltagCategory>("random");
@@ -84,6 +85,7 @@ watchEffect(() => {
 const ensurePromptForCategory = async (category: AlltagCategory): Promise<void> => {
   const generated = await nextPromptMutation.mutateAsync({ category });
   prompt.value = generated;
+  showHint.value = false;
 };
 
 const handleNext = async (): Promise<void> => {
@@ -275,15 +277,36 @@ watch(selectedCategory, async (nextCategory) => {
           <span class="eyebrow">
             <span class="eyebrow-icon">
               <Loader2 v-if="isPromptLoading" class="h-3 w-3 animate-spin" />
-              <Globe v-else class="h-3 w-3" />
+              <MessageCircleQuestion v-else class="h-3 w-3" />
             </span>
-            {{ t.alltag.expressInGerman() }}
+            {{ t.alltag.situationPrompt() }}
           </span>
           <span v-if="prompt?.generationCategory" class="chip hidden sm:inline-flex">{{ prompt.generationCategory }}</span>
         </div>
+
+        <!-- Situational prompt leads; older prompts without a situation fall back to the English expression. -->
         <p class="mt-4 font-serif text-2xl leading-snug sm:text-3xl">
-          {{ prompt?.englishText ? `“${prompt.englishText}”` : t.common.loading() }}
+          <template v-if="isPromptLoading">{{ t.common.loading() }}</template>
+          <template v-else-if="prompt?.situationText">{{ prompt.situationText }}</template>
+          <template v-else>{{ prompt?.englishText ? `“${prompt.englishText}”` : t.common.loading() }}</template>
         </p>
+
+        <!-- English hint, hidden until requested, so the user produces from the situation first. -->
+        <div v-if="prompt?.situationText && prompt?.englishText" class="mt-4">
+          <button
+            v-if="!showHint"
+            type="button"
+            class="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--accent)]"
+            @click="showHint = true"
+          >
+            <Lightbulb class="h-3.5 w-3.5" />
+            {{ t.alltag.showHint() }}
+          </button>
+          <p v-else class="inline-flex items-center gap-2 rounded-lg bg-[var(--panel-soft)] px-3 py-1.5 text-sm text-[var(--muted)]">
+            <Lightbulb class="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
+            <span><span class="font-medium text-[var(--text)]">{{ prompt.englishText }}</span></span>
+          </p>
+        </div>
       </div>
 
       <div class="space-y-2">

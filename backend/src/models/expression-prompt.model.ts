@@ -27,6 +27,9 @@ export class ExpressionPrompt {
   @Column({ name: "generated_context", type: "text", nullable: true })
   generatedContext!: string | null;
 
+  @Column({ name: "situation_text", type: "text", nullable: true })
+  situationText!: string | null;
+
   @Column({ name: "generation_category", type: "text", default: "random" })
   generationCategory!: string;
 
@@ -37,6 +40,7 @@ export class ExpressionPrompt {
 export interface ExpressionPromptRecord {
   id: number;
   englishText: string;
+  situationText: string | null;
   generatedContext: string | null;
   generationCategory: string;
   createdAt: string;

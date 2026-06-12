@@ -13,6 +13,7 @@ export const normalizeExpressionPromptText = (text: string): string =>
 const toPromptRecord = (entity: ExpressionPrompt): ExpressionPromptRecord => ({
   id: Number(entity.id),
   englishText: entity.englishText,
+  situationText: entity.situationText ?? null,
   generatedContext: entity.generatedContext,
   generationCategory: entity.generationCategory,
   createdAt: entity.createdAt.toISOString()
@@ -46,6 +47,7 @@ export const expressionRepository = {
   async createPrompt(input: {
     userId?: number | null;
     englishText: string;
+    situationText?: string | null;
     generatedContext?: string | null;
     generationCategory: string;
   }): Promise<ExpressionPromptRecord> {
@@ -59,6 +61,7 @@ export const expressionRepository = {
         userId: input.userId != null ? String(input.userId) : null,
         englishText: input.englishText.trim(),
         normalizedEnglishText,
+        situationText: input.situationText ?? null,
         generatedContext: input.generatedContext ?? null,
         generationCategory: input.generationCategory
       })
@@ -159,7 +162,9 @@ export const expressionRepository = {
         { userId: String(input.userId) }
       )
       .where("prompt.generationCategory = :category", { category: input.category })
-      .orderBy("viewed.createdAt", "ASC")
+      // Prefer recycling situational prompts over legacy ones with no situation.
+      .orderBy("(prompt.situation_text IS NULL)", "ASC")
+      .addOrderBy("viewed.createdAt", "ASC")
       .addOrderBy("prompt.id", "ASC")
       .getOne();
     return row ? toPromptRecord(row) : null;

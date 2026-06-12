@@ -80,19 +80,23 @@ const EXPRESSION_TYPES_LIST = EXPRESSION_TARGET_TYPES.join(", ");
 const EXPRESSION_CONTEXTS_LIST = EXPRESSION_TARGET_CONTEXTS.join(", ");
 const EXPRESSION_CATEGORIES_LIST = EXPRESSION_CATEGORIES.map((category) => `${category.id}: ${category.label}`).join("; ");
 
-const EXPRESSION_GENERATION_PROMPT = `Generate exactly one very common everyday English sentence or expression.
-Rules:
-- Output strict JSON only.
-- Target B2/B2+/C1 difficulty.
-- Keep it practical and naturally spoken (roughly 5-14 words).
-- Prefer natural spoken daily usage (not literary).
+const EXPRESSION_GENERATION_PROMPT = `You create ONE situational speaking prompt for a German learner.
+Given a concrete everyday situation (in German), the learner produces the natural German thing a native would actually say in that moment.
+Output strict JSON only with: situationText, englishText, generatedContext.
+Rules for situationText (the main prompt, in GERMAN):
+- A short, concrete, real-life micro-scenario of 1 sentence (max ~20 words) ending by implying what the learner should say.
+- Frame it as a situation, e.g. "Ein Freund hat morgen eine wichtige Prüfung. Was wünschst du ihm?" or "Du kommst zu spät zur Arbeit und entschuldigst dich kurz. Was sagst du?".
+- Keep the SCENARIO wording simple (A2-B1 reading level) even when the target expression itself is idiomatic. Do not write literary or abstract scenarios.
+- The situation must have a clear, natural spoken answer (an idiom, fixed phrase, social formula, reaction, or short everyday utterance).
+Rules for englishText (a HINT, in English):
+- The natural English version of what the learner should say (e.g. "Break a leg!", "Sorry I'm late."). This is shown only as an optional hint, so keep it to the utterance itself.
+Other rules:
+- The expected German answer should be roughly 3-12 words; natural spoken register, NOT literary.
 - Available expression types: ${EXPRESSION_TYPES_LIST}
 - Available contexts: ${EXPRESSION_CONTEXTS_LIST}
 - Categories: ${EXPRESSION_CATEGORIES_LIST}
-- Vary heavily across requests and across contexts/types.
-- Include idioms/proverbs regularly (examples of desired style: "Break a leg", "Better late than never", "Call it a day", "It's not my cup of tea" and so on).
-- Include fixed expressions/sayings from real daily situations, not only generic project/work phrases.
-- Avoid very basic beginner phrases (e.g. "How are you?", "Where are you from?", "What is your name?").
+- Vary heavily across requests and across contexts/types; include idioms/proverbs/fixed phrases regularly.
+- Avoid very basic beginner content (greetings, "What is your name?").
 - Casual everyday profanity is allowed in moderation when natural (frustration, surprise, emphasis).
 - Keep profanity realistic and commonly spoken, not extreme.
 - Strict anti-repetition: do not output any sentence that is identical or near-identical to entries provided in "Avoid list".
@@ -116,7 +120,8 @@ export const resolveExpressionGenerationTargets = (
 };
 
 const EXPRESSION_ASSESSMENT_PROMPT = `You are a German expression coach.
-Given an English expression and the user's German attempt, return strict JSON only:
+The learner is given an everyday SITUATION and must say the natural German thing a native would say in that moment.
+Given the situation, an English hint, and the learner's German attempt, return strict JSON only:
 {
   "naturalnessScore": number,
   "feedback": "string",
@@ -124,13 +129,12 @@ Given an English expression and the user's German attempt, return strict JSON on
   "alternatives": ["string"]
 }
 Rules:
-- naturalnessScore is 0-100.
-- 0 means incorrect or hard to understand.
-- 100 means fully correct, natural, and how natives would say it.
-- feedback should explain what is wrong/right concretely.
-- If the user's answer is fully correct and natural, return feedback as an empty string.
-- nativeLikeVersion must be a clean, natural German version.
-- alternatives can be empty but include useful variants when relevant.
+- Judge whether the attempt is what a native would naturally SAY in this situation — not whether it is a literal translation of the English hint.
+- Reward any natural, situationally appropriate response; do not punish a learner for phrasing it differently from the hint as long as it fits.
+- naturalnessScore is 0-100. 0 = wrong register/meaning or not something a native would say here; 100 = fully natural and idiomatic for this situation.
+- feedback should be concrete and about word choice/naturalness; empty string if fully correct and natural.
+- nativeLikeVersion must be a clean, natural German utterance for this situation.
+- alternatives can be empty but include other natural ways to say it when relevant.
 - No CEFR or extra fields.`;
 
 const EXPRESSION_REVIEW_ASSESSMENT_PROMPT = `You are a German expression coach in review mode.
@@ -226,7 +230,7 @@ export const generateQuestion = async (input: {
 export const generateEverydayExpression = async (
   category: ExpressionGenerationCategory = "random",
   options?: { avoidEnglishTexts?: string[] }
-): Promise<{ englishText: string; generatedContext: string | null }> => {
+): Promise<{ englishText: string; situationText: string | null; generatedContext: string | null }> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
       provider: "openai",
@@ -244,12 +248,12 @@ export const generateEverydayExpression = async (
       model: env.OPENAI_MODEL,
       instructions: EXPRESSION_GENERATION_PROMPT,
       input: [
-        "Generate one common everyday English sentence/expression.",
+        "Create one situational speaking prompt.",
         `Selected category: ${category}`,
         `Target expression type: ${targetType}`,
         `Target context: ${targetContext}`,
         "Use the selected category as a hard constraint and target type/context as strong preferences.",
-        `Avoid list (must not repeat): ${avoidList.length > 0 ? avoidList.join(" | ") : "none"}`
+        `Avoid list (do not repeat these English answers): ${avoidList.length > 0 ? avoidList.join(" | ") : "none"}`
       ].join("\n"),
       text: {
         format: {
@@ -259,8 +263,9 @@ export const generateEverydayExpression = async (
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["englishText", "generatedContext"],
+            required: ["situationText", "englishText", "generatedContext"],
             properties: {
+              situationText: { type: "string", minLength: 1 },
               englishText: { type: "string", minLength: 1 },
               generatedContext: { type: "string", minLength: 1 }
             }
@@ -268,22 +273,25 @@ export const generateEverydayExpression = async (
         }
       }
     });
-    return JSON.parse(completion.output_text) as { englishText: string; generatedContext: string | null };
+    return JSON.parse(completion.output_text) as {
+      englishText: string;
+      situationText: string | null;
+      generatedContext: string | null;
+    };
   } catch (error) {
     logger.error("OpenAI expression generation failed", error);
     if (env.AI_FALLBACK_ENABLED) {
       const fallbackExpressions = [
-        { englishText: "Break a leg.", generatedContext: "idiom_encouragement" },
-        { englishText: "Better late than never.", generatedContext: "proverb_time" },
-        { englishText: "It's not my cup of tea.", generatedContext: "idiom_opinion" },
-        { englishText: "Call it a day.", generatedContext: "idiom_work" },
-        { englishText: "I can't keep up with this pace.", generatedContext: "casual_stress" },
-        { englishText: "Let's not make a mountain out of a molehill.", generatedContext: "idiom_conflict" },
-        { englishText: "I'm so damn tired today.", generatedContext: "casual_profanity_emotion" }
+        { englishText: "Break a leg.", situationText: "Ein Freund hat morgen eine wichtige Prüfung. Was wünschst du ihm?", generatedContext: "idiom_encouragement" },
+        { englishText: "Better late than never.", situationText: "Ein Kollege liefert eine Aufgabe spät ab, aber immerhin fertig. Was sagst du?", generatedContext: "proverb_time" },
+        { englishText: "It's not my cup of tea.", situationText: "Jemand fragt, ob du gern Jazz hörst, aber du magst es nicht. Was antwortest du?", generatedContext: "idiom_opinion" },
+        { englishText: "Let's call it a day.", situationText: "Es ist spät und ihr habt im Büro genug geschafft. Was schlägst du vor?", generatedContext: "idiom_work" },
+        { englishText: "I'm so damn tired today.", situationText: "Du bist nach einem langen Tag total erschöpft und sagst es einem Freund. Was sagst du?", generatedContext: "casual_emotion" }
       ];
       const fallback = pickRandom(fallbackExpressions);
       return {
         englishText: fallback.englishText,
+        situationText: fallback.situationText,
         generatedContext: fallback.generatedContext
       };
     }
@@ -317,6 +325,7 @@ export interface ExpressionReviewAssessmentResult {
 
 export const assessExpressionAttempt = async (input: {
   englishText: string;
+  situationText?: string | null;
   userAnswerText: string;
 }): Promise<ExpressionAssessmentResult> => {
   if (!openai) {
@@ -330,7 +339,13 @@ export const assessExpressionAttempt = async (input: {
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
       instructions: EXPRESSION_ASSESSMENT_PROMPT,
-      input: `English expression: ${input.englishText}\nGerman attempt: ${input.userAnswerText}`,
+      input: [
+        input.situationText ? `Situation (German): ${input.situationText}` : null,
+        `English hint: ${input.englishText}`,
+        `German attempt: ${input.userAnswerText}`
+      ]
+        .filter(Boolean)
+        .join("\n"),
       text: {
         format: {
           type: "json_schema",

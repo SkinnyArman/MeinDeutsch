@@ -66,6 +66,7 @@ const generatePromptPool = async (input: GeneratePromptPoolInput): Promise<Gener
       const created = await expressionRepository.createPrompt({
         userId: input.userId,
         englishText: generated.englishText,
+        situationText: generated.situationText,
         generatedContext: generated.generatedContext,
         generationCategory: category
       });
@@ -186,6 +187,7 @@ export const expressionService = {
     const isSkipAnswer = isIDontKnowAnswer(input.userAnswerText);
     const assessment = await assessExpressionAttempt({
       englishText: prompt.englishText,
+      situationText: prompt.situationText,
       userAnswerText: input.userAnswerText
     });
     if (isSkipAnswer) {

@@ -115,6 +115,7 @@ export interface SavedVocabularyPayload {
 export interface ExpressionPromptRecord {
   id: number;
   englishText: string;
+  situationText: string | null;
   generatedContext: string | null;
   generationCategory: string;
   createdAt: string;

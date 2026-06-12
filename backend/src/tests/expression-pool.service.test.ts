@@ -11,6 +11,7 @@ import {
 const prompt = (id: number): ExpressionPromptRecord => ({
   id,
   englishText: `Prompt ${id}`,
+  situationText: `Situation ${id}`,
   generatedContext: null,
   generationCategory: "work",
   createdAt: "2026-06-08T00:00:00.000Z"

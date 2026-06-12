@@ -222,6 +222,26 @@ on top. Format:
   enter the pool. NOTE: same English gloss with different German collocation (Entscheidung
   treffen vs Entschluss fassen) is allowed on purpose.
 
+### 2026-06-12 — Alltagssprache reframed to situational production (Claude Code)
+- Product fix: the feature was generating abstract English sentences to translate; reframed
+  (research-backed — situational formulaic-language practice > decontextualized translation)
+  so the prompt is a concrete GERMAN micro-situation and the learner produces the natural
+  German utterance. English is now a reveal-on-tap HINT, not the task.
+- Backend: `expression_prompts.situation_text` (nullable, migration `AddExpressionSituation`);
+  generation prompt rewritten to emit `{situationText, englishText, generatedContext}` with a
+  difficulty ceiling (simple A2-B1 scenario wording, ~3-12 word spoken answers); assessment
+  prompt now judges fit-to-situation, not literal translation, and receives situationText.
+- Legacy prompts have `situation_text = NULL`; frontend falls back to showing englishText, and
+  the recycle query (`findLeastRecentlyViewedPrompt`) deprioritizes NULL-situation prompts so
+  old basic phrases ("How are you?") only resurface as a last resort. Purged 255 unattempted
+  legacy prompts; attempted ones kept (their FK cascades, would delete history).
+- Frontend `AlltagsspracheView`: hero leads with situation + "Show English hint" toggle
+  (`showHint`, reset on each new prompt). Review view unchanged (review items store englishText).
+- Verified live: slang situation "Ein Freund hat schon wieder deine Ideen geklaut. Was sagst du?"
+  → "Alter, das ist echt nicht cool!" scored 90 with situational feedback. 36 tests pass.
+- DECIDED: option "C" (recognition→production gradient, spaced across encounters) is a possible
+  future upgrade on top of this; not built yet.
+
 ### 2026-06-12 — Password sign-in fallback (Google 403 workaround) (Claude Code)
 - Google sign-in 403s when the network/region blocks Google (browser-side GSI and/or
   backend cert fetch to googleapis.com; VPN often only covers the browser). Added a
