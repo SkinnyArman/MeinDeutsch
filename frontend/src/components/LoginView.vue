@@ -122,24 +122,34 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-[var(--content-bg)] px-4">
-    <section class="w-full max-w-md rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[var(--surface-shadow)]">
-      <h1 class="font-serif text-2xl font-semibold">{{ t.login.title() }}</h1>
-      <p class="mt-2 text-sm text-[var(--muted)]">{{ t.login.subtitle() }}</p>
+  <main class="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-4">
+    <!-- Decorative gradient orbs -->
+    <div
+      class="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full opacity-30 blur-3xl"
+      style="background-image: linear-gradient(135deg, var(--accent), var(--accent-strong))"
+    />
+    <div
+      class="pointer-events-none absolute -bottom-40 -right-20 h-80 w-80 rounded-full opacity-20 blur-3xl"
+      style="background-image: linear-gradient(135deg, var(--accent-strong), var(--accent))"
+    />
 
-      <p
-        v-if="notice"
-        class="mt-4 rounded-lg border px-3 py-2 text-xs"
-        :class="notice.type === 'error'
-          ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-          : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
-        "
+    <section class="card relative w-full max-w-md animate-fade-up p-8 sm:p-10">
+      <div
+        class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-[0_8px_24px_color-mix(in_srgb,var(--accent)_45%,transparent)]"
+        style="background-image: linear-gradient(135deg, var(--accent), var(--accent-strong))"
       >
+        M
+      </div>
+      <h1 class="mt-6 text-center font-serif text-3xl font-semibold tracking-tight">MeinDeutsch</h1>
+      <p class="mt-2 text-center text-sm text-[var(--muted)]">{{ t.shell.tagline() }}</p>
+      <p class="mt-6 text-center text-sm text-[var(--muted)]">{{ t.login.subtitle() }}</p>
+
+      <p v-if="notice" class="mt-5" :class="notice.type === 'error' ? 'notice-error' : 'notice-success'">
         {{ notice.text }}
       </p>
 
-      <div class="mt-5 flex flex-col gap-3">
-        <div ref="googleButtonRoot" class="w-full" />
+      <div class="mt-6 flex flex-col items-center gap-3">
+        <div ref="googleButtonRoot" class="w-full [&>div]:flex [&>div]:justify-center" />
         <p v-if="loading" class="text-xs text-[var(--muted)]">{{ t.common.loading() }}</p>
       </div>
     </section>

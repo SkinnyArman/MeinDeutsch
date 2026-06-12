@@ -43,73 +43,63 @@ const goNext = () => {
 
 <template>
   <AppContainer>
-    <section class="space-y-5">
-      <header class="flex flex-wrap items-center justify-between gap-3">
+    <section class="animate-fade-up space-y-6">
+      <header class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 class="font-serif text-3xl font-semibold tracking-tight">{{ t.dailyTalk.title() }}</h2>
-          <p class="mt-1 text-xs text-[var(--muted)]">{{ t.dailyTalk.history() }}</p>
+          <h2 class="page-title">{{ t.dailyTalk.title() }}</h2>
+          <p class="page-subtitle">{{ t.dailyTalk.history() }}</p>
         </div>
-        <button
-          class="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
-          @click="router.push('/daily-talk/new')"
-        >
-          <Plus class="h-3.5 w-3.5" />
+        <button class="btn-primary" @click="router.push('/daily-talk/new')">
+          <Plus class="h-4 w-4" />
           {{ t.dailyTalk.newQuestion() }}
         </button>
       </header>
 
-      <p
-        v-if="notice"
-        class="rounded-lg border px-3 py-2 text-xs"
-        :class="notice.type === 'error'
-          ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-          : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
-        "
-      >
+      <p v-if="notice" :class="notice.type === 'error' ? 'notice-error' : 'notice-success'">
         {{ notice.text }}
       </p>
 
-      <div class="flex items-center justify-end gap-2 text-xs">
-        <button
-          class="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 transition hover:border-[var(--accent)] disabled:opacity-60"
-          :disabled="page <= 1"
-          @click="goPrev"
-        >
-          <ChevronLeft class="h-3.5 w-3.5" />
-          {{ t.common.previous() }}
-        </button>
-        <span class="text-[var(--muted)]">{{ t.common.page() }} {{ page }} {{ t.common.of() }} {{ totalPages }}</span>
-        <button
-          class="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 transition hover:border-[var(--accent)] disabled:opacity-60"
-          :disabled="page >= totalPages"
-          @click="goNext"
-        >
-          {{ t.common.next() }}
-          <ChevronRight class="h-3.5 w-3.5" />
-        </button>
+      <div
+        v-if="!history.length && !historyQuery.isFetching.value"
+        class="card flex flex-col items-center gap-3 border-dashed px-6 py-12 text-center"
+      >
+        <span class="eyebrow-icon h-10 w-10 rounded-xl">
+          <CalendarDays class="h-5 w-5" />
+        </span>
+        <p class="text-sm text-[var(--muted)]">{{ t.dailyTalk.noHistory() }}</p>
       </div>
 
-      <div v-if="!history.length && !historyQuery.isFetching.value" class="rounded-xl border border-dashed border-[var(--line)] bg-[var(--panel)] p-4 text-sm text-[var(--muted)]">
-        {{ t.dailyTalk.noHistory() }}
-      </div>
-
-      <div class="space-y-2">
-        <article
-          v-for="item in history"
-          :key="item.id"
-          class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)] transition hover:border-[var(--accent)]"
-        >
-          <button class="flex w-full items-start justify-between gap-3 text-left" type="button" @click="router.push(`/daily-talk/${item.id}`)">
+      <div class="space-y-2.5">
+        <article v-for="item in history" :key="item.id" class="card card-hover">
+          <button
+            class="flex w-full flex-col gap-2 p-4 text-left sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+            type="button"
+            @click="router.push(`/daily-talk/${item.id}`)"
+          >
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold">{{ item.questionText }}</p>
+              <p class="truncate text-[15px] font-semibold leading-snug">{{ item.questionText }}</p>
               <p class="mt-1 truncate text-xs text-[var(--muted)]">{{ item.answerText }}</p>
             </div>
-            <div class="flex items-center gap-2 text-[10px] text-[var(--muted)]">
-              <CalendarDays class="h-3.5 w-3.5" />
-              <span>{{ new Date(item.createdAt).toLocaleDateString() }}</span>
+            <div class="flex shrink-0 items-center gap-2">
+              <span v-if="item.topicName" class="chip hidden sm:inline-flex">{{ item.topicName }}</span>
+              <span class="chip-accent">{{ item.cefrLevel }}</span>
+              <span class="chip">
+                <CalendarDays class="h-3 w-3" />
+                {{ new Date(item.createdAt).toLocaleDateString() }}
+              </span>
             </div>
           </button>
         </article>
+      </div>
+
+      <div v-if="totalPages > 1" class="flex items-center justify-center gap-3 text-xs">
+        <button class="btn-icon h-8 w-8" :disabled="page <= 1" @click="goPrev">
+          <ChevronLeft class="h-4 w-4" />
+        </button>
+        <span class="font-medium text-[var(--muted)]">{{ t.common.page() }} {{ page }} {{ t.common.of() }} {{ totalPages }}</span>
+        <button class="btn-icon h-8 w-8" :disabled="page >= totalPages" @click="goNext">
+          <ChevronRight class="h-4 w-4" />
+        </button>
       </div>
     </section>
   </AppContainer>

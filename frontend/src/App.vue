@@ -5,6 +5,7 @@ import { useLanguage } from "@/libs/i18n";
 import { useQuery } from "@/libs/query";
 import {
   BookOpen,
+  CheckCircle2,
   Flame,
   Languages,
   LogOut,
@@ -33,30 +34,26 @@ let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 const navItems = computed(() => [
   {
-    key: "daily-talk",
+    key: "daily-talk" as ViewKey,
     title: t.dailyTalk.title(),
-    subtitle: t.dailyTalk.history(),
     path: "/daily-talk",
     icon: MessageCircle
   },
   {
-    key: "alltagssprache",
+    key: "alltagssprache" as ViewKey,
     title: t.alltag.title(),
-    subtitle: t.alltag.subtitle(),
     path: "/alltagssprache",
     icon: Languages
   },
   {
-    key: "vocabulary",
+    key: "vocabulary" as ViewKey,
     title: t.vocab.title(),
-    subtitle: t.vocab.subtitle(),
     path: "/vocabulary",
     icon: BookOpen
   },
   {
-    key: "settings",
+    key: "settings" as ViewKey,
     title: t.settings.title(),
-    subtitle: t.settings.title(),
     path: "/settings",
     icon: Settings
   }
@@ -87,7 +84,10 @@ const formatRemaining = (ms: number): string => {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  return `${hours}h ${minutes}m ${seconds}s`;
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m ${seconds}s`;
 };
 
 const streakQuery = useQuery({
@@ -104,7 +104,37 @@ const streakRemainingMs = computed(() => {
   return Math.max(0, new Date(endAt).getTime() - nowMs.value);
 });
 
-const streakTooltip = computed(() => t.dailyTalk.streakRemaining({ time: formatRemaining(streakRemainingMs.value) }));
+const streakCount = computed(() => streakQuery.data.value?.currentStreak ?? 0);
+const streakSafeToday = computed(() => Boolean(streakQuery.data.value?.hasCompletedToday));
+const streakStatusText = computed(() =>
+  streakSafeToday.value
+    ? t.shell.streakSafe()
+    : t.shell.streakAtRisk({ time: formatRemaining(streakRemainingMs.value) })
+);
+
+const firstName = computed(() => {
+  const name = sessionUser.value?.displayName?.trim();
+  if (!name) {
+    return "";
+  }
+  return name.split(/\s+/)[0];
+});
+
+const greeting = computed(() => {
+  // touch nowMs so the greeting flips when crossing the boundary
+  const hour = new Date(nowMs.value).getHours();
+  if (hour < 12) {
+    return t.shell.greetingMorning();
+  }
+  if (hour < 18) {
+    return t.shell.greetingAfternoon();
+  }
+  return t.shell.greetingEvening();
+});
+
+const todayLabel = computed(() =>
+  new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" }).format(new Date(nowMs.value))
+);
 
 watch(
   activeTheme,
@@ -133,7 +163,7 @@ onUnmounted(() => {
   }
 });
 
-const activeNavKey = computed(() => {
+const activeNavKey = computed<ViewKey | "">(() => {
   if (route.path === "/login") {
     return "";
   }
@@ -150,12 +180,13 @@ const activeNavKey = computed(() => {
 });
 
 const showMainLayout = computed(() => route.path !== "/login");
+
 const sidebarItemClass = (key: ViewKey): string => {
   const isActive = activeNavKey.value === key;
   if (isActive) {
-    return "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_18%,transparent)] text-[var(--sidebar-text)]";
+    return "border-[color-mix(in_srgb,var(--accent)_55%,transparent)] bg-[color-mix(in_srgb,var(--accent)_16%,transparent)] text-[var(--sidebar-text)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_25%,transparent)]";
   }
-  return "border-transparent bg-transparent text-[var(--sidebar-muted)] hover:border-[color-mix(in_srgb,var(--sidebar-muted)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--sidebar-text)_6%,transparent)]";
+  return "border-transparent bg-transparent text-[var(--sidebar-muted)] hover:bg-[color-mix(in_srgb,var(--sidebar-text)_7%,transparent)] hover:text-[var(--sidebar-text)]";
 };
 
 const toggleSidebar = (): void => {
@@ -174,69 +205,89 @@ const logout = async (): Promise<void> => {
 
   <main v-else class="h-[100dvh] overflow-hidden">
     <div class="flex h-full">
+      <!-- Desktop sidebar -->
       <aside
-        class="flex h-[100dvh] min-h-0 shrink-0 flex-col border-r border-[color-mix(in_srgb,var(--sidebar-muted)_22%,transparent)] bg-[var(--sidebar-bg)] text-[var(--sidebar-text)] transition-all duration-200"
-        :class="sidebarOpen ? 'w-64' : 'w-16'"
+        class="hidden h-[100dvh] min-h-0 shrink-0 flex-col border-r border-[color-mix(in_srgb,var(--sidebar-muted)_20%,transparent)] bg-[var(--sidebar-bg)] text-[var(--sidebar-text)] transition-all duration-200 lg:flex"
+        :class="sidebarOpen ? 'w-64' : 'w-[72px]'"
       >
-        <div class="px-3 pt-4">
-          <div class="flex items-center gap-2" :class="sidebarOpen ? '' : 'justify-center'">
-            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-semibold text-[var(--accent-contrast)]">
+        <div class="px-3 pt-5">
+          <div class="flex items-center gap-2.5" :class="sidebarOpen ? 'px-1' : 'justify-center'">
+            <div
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-[0_4px_14px_color-mix(in_srgb,var(--accent)_45%,transparent)]"
+              style="background-image: linear-gradient(135deg, var(--accent), var(--accent-strong))"
+            >
               M
             </div>
-            <h1 v-if="sidebarOpen" class="text-sm font-semibold tracking-tight">MeinDeutsch</h1>
-          </div>
-        </div>
-
-        <div class="px-3 pt-3">
-          <div
-            class="flex items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--sidebar-muted)_25%,transparent)] bg-[color-mix(in_srgb,var(--sidebar-text)_7%,transparent)] px-2.5 py-2"
-            :class="sidebarOpen ? '' : 'justify-center px-0'"
-            :title="streakTooltip"
-          >
-            <button class="inline-flex h-8 w-8 items-center justify-center rounded-md transition hover:bg-[color-mix(in_srgb,var(--sidebar-text)_8%,transparent)]" type="button" @click="streakQuery.refetch()">
-              <Flame class="h-5 w-5 text-amber-400 drop-shadow-sm" />
-            </button>
             <div v-if="sidebarOpen" class="min-w-0">
-              <p class="text-[11px] font-medium text-[var(--sidebar-text)]">
-                {{ streakQuery.isFetching.value ? t.common.loading() : t.dailyTalk.streakLabel({ count: streakQuery.data.value?.currentStreak ?? 0 }) }}
-              </p>
+              <h1 class="font-serif text-base font-semibold leading-tight tracking-tight">MeinDeutsch</h1>
+              <p class="truncate text-[10px] text-[var(--sidebar-muted)]">{{ t.shell.tagline() }}</p>
             </div>
-            <span
-              v-if="sidebarOpen"
-              class="ml-auto rounded-md border border-[color-mix(in_srgb,var(--sidebar-muted)_30%,transparent)] bg-[color-mix(in_srgb,var(--sidebar-text)_8%,transparent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--sidebar-muted)]"
-            >
-              {{ t.dailyTalk.levelPlaceholder() }}
-            </span>
           </div>
         </div>
 
-        <nav class="mt-4 min-h-0 flex-1 space-y-1 overflow-y-auto px-2">
+        <!-- Streak card -->
+        <div class="px-3 pt-4">
+          <div
+            class="rounded-xl border border-[color-mix(in_srgb,var(--sidebar-muted)_22%,transparent)] bg-[color-mix(in_srgb,var(--sidebar-text)_6%,transparent)]"
+            :class="sidebarOpen ? 'px-3 py-2.5' : 'flex justify-center px-0 py-2.5'"
+            :title="streakStatusText"
+          >
+            <div class="flex items-center gap-2.5">
+              <button
+                class="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,#f59e0b_18%,transparent)] transition hover:bg-[color-mix(in_srgb,#f59e0b_28%,transparent)]"
+                type="button"
+                @click="streakQuery.refetch()"
+              >
+                <Flame class="h-5 w-5 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]" />
+                <span
+                  v-if="streakSafeToday"
+                  class="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500"
+                >
+                  <CheckCircle2 class="h-3 w-3 text-white" />
+                </span>
+              </button>
+              <div v-if="sidebarOpen" class="min-w-0">
+                <p class="text-sm font-bold leading-tight">
+                  {{ streakQuery.isFetching.value && !streakQuery.data.value ? "…" : t.dailyTalk.streakLabel({ count: streakCount }) }}
+                </p>
+                <p class="mt-0.5 truncate text-[10px] leading-tight" :class="streakSafeToday ? 'text-emerald-400' : 'text-[var(--sidebar-muted)]'">
+                  {{ streakStatusText }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="mt-5 min-h-0 flex-1 space-y-1 overflow-y-auto px-2.5">
           <RouterLink
             v-for="item in navItems.filter((n) => n.key !== 'settings')"
             :key="item.key"
             :to="item.path"
-            class="flex items-center gap-2 rounded-md border px-2.5 py-2 text-sm transition"
+            class="flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition-all duration-150"
             :class="[sidebarItemClass(item.key), sidebarOpen ? '' : 'justify-center px-0']"
           >
-            <component :is="item.icon" class="h-4 w-4 shrink-0" />
-            <span v-if="sidebarOpen" class="truncate text-[13px] font-medium">{{ item.title }}</span>
+            <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" :class="activeNavKey === item.key ? 'text-[var(--accent)]' : ''" />
+            <span v-if="sidebarOpen" class="truncate text-[13px] font-semibold">{{ item.title }}</span>
           </RouterLink>
         </nav>
 
-        <div class="px-2 pb-3">
+        <div class="px-2.5 pb-2">
           <RouterLink
             to="/settings"
-            class="flex items-center gap-2 rounded-md border px-2.5 py-2 text-sm transition"
+            class="flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition-all duration-150"
             :class="[sidebarItemClass('settings'), sidebarOpen ? '' : 'justify-center px-0']"
           >
-            <Settings class="h-4 w-4 shrink-0" />
-            <span v-if="sidebarOpen" class="truncate text-[13px] font-medium">{{ t.settings.title() }}</span>
+            <Settings class="h-[18px] w-[18px] shrink-0" :class="activeNavKey === 'settings' ? 'text-[var(--accent)]' : ''" />
+            <span v-if="sidebarOpen" class="truncate text-[13px] font-semibold">{{ t.settings.title() }}</span>
           </RouterLink>
         </div>
 
-        <div class="mt-auto shrink-0 border-t border-[color-mix(in_srgb,var(--sidebar-muted)_22%,transparent)] p-3">
-          <div class="flex items-center gap-2" :class="sidebarOpen ? '' : 'justify-center'">
-            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--panel-soft)] text-[10px] font-semibold">
+        <div class="shrink-0 border-t border-[color-mix(in_srgb,var(--sidebar-muted)_20%,transparent)] p-3">
+          <div class="flex items-center gap-2.5" :class="sidebarOpen ? '' : 'justify-center'">
+            <div
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+              style="background-image: linear-gradient(135deg, var(--accent), var(--accent-strong))"
+            >
               {{ sessionUser?.displayName?.slice(0, 1)?.toUpperCase() ?? "U" }}
             </div>
             <div v-if="sidebarOpen" class="min-w-0 flex-1">
@@ -247,7 +298,8 @@ const logout = async (): Promise<void> => {
             </div>
             <button
               v-if="sidebarOpen"
-              class="rounded-md border border-[color-mix(in_srgb,var(--sidebar-muted)_30%,transparent)] p-1.5 text-[var(--sidebar-muted)] transition hover:border-[var(--accent)] hover:text-[var(--sidebar-text)]"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--sidebar-muted)_28%,transparent)] p-1.5 text-[var(--sidebar-muted)] transition hover:border-[var(--accent)] hover:text-[var(--sidebar-text)]"
+              :title="'Logout'"
               @click="logout"
             >
               <LogOut class="h-3.5 w-3.5" />
@@ -257,20 +309,93 @@ const logout = async (): Promise<void> => {
       </aside>
 
       <section id="app-scroll" class="min-w-0 flex-1 overflow-y-auto bg-[var(--content-bg)]">
-        <header class="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--content-bg)_94%,transparent)] px-4 backdrop-blur-sm">
-          <button
-            class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--panel)] transition hover:border-[var(--accent)]"
-            type="button"
-            @click="toggleSidebar"
-          >
+        <!-- Desktop header -->
+        <header
+          class="sticky top-0 z-20 hidden h-16 items-center gap-3 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--content-bg)_88%,transparent)] px-5 backdrop-blur-md lg:flex"
+        >
+          <button class="btn-icon h-8 w-8 rounded-lg" type="button" @click="toggleSidebar">
             <PanelLeft class="h-4 w-4" />
           </button>
-          <span class="h-5 w-px bg-[var(--line)]" />
+          <div class="min-w-0">
+            <p class="truncate font-serif text-[15px] font-semibold leading-tight">
+              {{ greeting }}<span v-if="firstName">, {{ firstName }}</span> 👋
+            </p>
+            <p class="text-[11px] capitalize text-[var(--muted)]">{{ todayLabel }}</p>
+          </div>
+          <div class="ml-auto">
+            <span
+              class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold"
+              :class="streakSafeToday
+                ? 'border-[color-mix(in_srgb,var(--status-good)_40%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_12%,var(--panel))] text-[var(--status-good)]'
+                : 'border-[color-mix(in_srgb,var(--status-warn)_40%,var(--line))] bg-[color-mix(in_srgb,var(--status-warn)_12%,var(--panel))] text-[var(--status-warn)]'"
+            >
+              <CheckCircle2 v-if="streakSafeToday" class="h-3.5 w-3.5" />
+              <Flame v-else class="h-3.5 w-3.5" />
+              {{ streakStatusText }}
+            </span>
+          </div>
         </header>
-        <div class="p-0">
+
+        <!-- Mobile top bar -->
+        <header
+          class="sticky top-0 z-20 flex h-14 items-center gap-2.5 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--content-bg)_88%,transparent)] px-4 backdrop-blur-md lg:hidden"
+        >
+          <div
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+            style="background-image: linear-gradient(135deg, var(--accent), var(--accent-strong))"
+          >
+            M
+          </div>
+          <p class="font-serif text-[15px] font-semibold tracking-tight">MeinDeutsch</p>
+          <div class="ml-auto flex items-center gap-2">
+            <span
+              class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold"
+              :class="streakSafeToday
+                ? 'border-[color-mix(in_srgb,var(--status-good)_40%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_12%,var(--panel))] text-[var(--status-good)]'
+                : 'border-[color-mix(in_srgb,var(--status-warn)_40%,var(--line))] bg-[color-mix(in_srgb,var(--status-warn)_12%,var(--panel))] text-[var(--status-warn)]'"
+              :title="streakStatusText"
+            >
+              <Flame class="h-3.5 w-3.5" />
+              {{ streakCount }}
+            </span>
+            <button
+              class="rounded-lg border border-[var(--line)] p-1.5 text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
+              :title="'Logout'"
+              @click="logout"
+            >
+              <LogOut class="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </header>
+
+        <div class="pb-24 lg:pb-0">
           <RouterView />
         </div>
       </section>
     </div>
+
+    <!-- Mobile bottom nav -->
+    <nav
+      class="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_92%,transparent)] backdrop-blur-md lg:hidden"
+      style="padding-bottom: env(safe-area-inset-bottom)"
+    >
+      <div class="mx-auto grid max-w-md grid-cols-4">
+        <RouterLink
+          v-for="item in navItems"
+          :key="`tab-${item.key}`"
+          :to="item.path"
+          class="flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition"
+          :class="activeNavKey === item.key ? 'text-[var(--accent-strong)]' : 'text-[var(--muted)]'"
+        >
+          <span
+            class="flex h-7 w-12 items-center justify-center rounded-full transition"
+            :class="activeNavKey === item.key ? 'bg-[color-mix(in_srgb,var(--accent)_16%,transparent)]' : ''"
+          >
+            <component :is="item.icon" class="h-[18px] w-[18px]" />
+          </span>
+          {{ item.title }}
+        </RouterLink>
+      </div>
+    </nav>
   </main>
 </template>

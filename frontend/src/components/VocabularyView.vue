@@ -144,135 +144,139 @@ watchEffect(() => {
 
 <template>
   <AppContainer>
-    <section class="w-full space-y-5">
-      <header class="flex flex-wrap items-start justify-between gap-3">
+    <section class="w-full animate-fade-up space-y-6">
+      <header class="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 class="font-serif text-3xl font-semibold tracking-tight">{{ t.vocab.title() }}</h2>
-          <p class="mt-1 text-xs text-[var(--muted)]">{{ t.vocab.subtitle() }}</p>
+          <h2 class="page-title">{{ t.vocab.title() }}</h2>
+          <p class="page-subtitle">{{ t.vocab.subtitle() }}</p>
         </div>
-        <button
-          class="inline-flex items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--accent)_38%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_12%,var(--panel))] px-3 py-2 text-xs font-semibold transition hover:border-[var(--accent)]"
-          @click="router.push('/vocabulary/review')"
-        >
-          <BookOpen class="h-4 w-4 text-[var(--accent)]" />
+        <button class="btn-primary" @click="router.push('/vocabulary/review')">
+          <BookOpen class="h-4 w-4" />
           {{ t.vocab.startReview() }}
-          <span class="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] text-[var(--accent-contrast)]">
+          <span class="rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-bold">
             {{ dueNowCount }}
           </span>
         </button>
       </header>
 
-      <p
-        v-if="notice"
-        class="rounded-lg border px-3 py-2 text-xs"
-        :class="notice.type === 'error'
-          ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-          : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
-        "
-      >
+      <p v-if="notice" :class="notice.type === 'error' ? 'notice-error' : 'notice-success'">
         {{ notice.text }}
       </p>
 
-      <div class="grid gap-5 md:grid-cols-[220px_1fr]">
-        <aside>
-          <div class="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-            <p>{{ t.vocab.categories() }}</p>
+      <!-- Compact stat strip -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="chip px-3 py-1.5">
+          <BookOpen class="h-3.5 w-3.5" />
+          {{ t.vocab.words({ count: totalWords }) }}
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--status-bad)_40%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_10%,var(--panel))] px-3 py-1.5 font-semibold text-[var(--status-bad)]">
+          {{ t.vocab.due({ count: dueNowCount }) }}
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--status-warn)_40%,var(--line))] bg-[color-mix(in_srgb,var(--status-warn)_10%,var(--panel))] px-3 py-1.5 font-semibold text-[var(--status-warn)]">
+          {{ t.vocab.soon({ count: dueSoonCount }) }}
+        </span>
+      </div>
+
+      <!-- Mobile: category chips -->
+      <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:hidden">
+        <button
+          v-for="category in categoriesQuery.data.value ?? []"
+          :key="`chip-${category.name}`"
+          class="shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold transition"
+          :class="selectedCategory === category.name
+            ? 'border-[color-mix(in_srgb,var(--accent)_45%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_14%,var(--panel))] text-[var(--accent-strong)]'
+            : 'border-[var(--line)] bg-[var(--panel)] text-[var(--muted)]'"
+          @click="selectedCategory = category.name"
+        >
+          {{ category.name }}
+          <span class="ml-1 opacity-60">{{ categoryCountMap[category.name] ?? 0 }}</span>
+        </button>
+      </div>
+
+      <div class="grid gap-6 md:grid-cols-[230px_1fr]">
+        <!-- Desktop: category sidebar -->
+        <aside class="hidden md:block">
+          <div class="mb-2.5 flex items-center justify-between">
+            <p class="eyebrow">{{ t.vocab.categories() }}</p>
             <button
-              class="rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 py-1 text-[10px] transition hover:border-[var(--accent)]"
+              class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)] transition hover:text-[var(--accent)]"
               :disabled="categoriesQuery.isFetching.value || wordsQuery.isFetching.value || allWordsQuery.isFetching.value"
               @click="refreshAll"
             >
               {{ categoriesQuery.isFetching.value || wordsQuery.isFetching.value || allWordsQuery.isFetching.value ? t.common.loading() : t.common.refresh() }}
             </button>
           </div>
-          <div v-if="!categoriesQuery.data.value?.length && !categoriesQuery.isFetching.value" class="rounded-xl border border-dashed border-[var(--line)] bg-[var(--panel)] p-3 text-xs text-[var(--muted)]">
+          <div v-if="!categoriesQuery.data.value?.length && !categoriesQuery.isFetching.value" class="card border-dashed p-3 text-xs text-[var(--muted)]">
             {{ t.vocab.noCategories() }}
           </div>
           <nav v-else class="space-y-1">
             <button
               v-for="category in categoriesQuery.data.value ?? []"
               :key="category.name"
-              class="flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-xs transition"
+              class="flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-xs font-medium transition-all duration-150"
               :class="selectedCategory === category.name
-                ? 'border-[color-mix(in_srgb,var(--accent)_35%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_14%,var(--panel-soft))]'
-                : 'border-transparent bg-transparent text-[var(--muted)] hover:border-[var(--line)] hover:bg-[var(--panel-soft)]'"
+                ? 'border-[color-mix(in_srgb,var(--accent)_40%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_12%,var(--panel))] text-[var(--text)]'
+                : 'border-transparent bg-transparent text-[var(--muted)] hover:bg-[var(--panel-soft)] hover:text-[var(--text)]'"
               @click="selectedCategory = category.name"
             >
-              <span class="flex min-w-0 items-center gap-2">
-                <component :is="categoryIcon(category.icon)" class="h-3.5 w-3.5 shrink-0" />
+              <span class="flex min-w-0 items-center gap-2.5">
+                <component
+                  :is="categoryIcon(category.icon)"
+                  class="h-4 w-4 shrink-0"
+                  :class="selectedCategory === category.name ? 'text-[var(--accent)]' : ''"
+                />
                 <span class="truncate">{{ category.name }}</span>
               </span>
-              <span class="text-[10px] opacity-65">{{ categoryCountMap[category.name] ?? 0 }}</span>
+              <span class="text-[10px] font-bold opacity-60">{{ categoryCountMap[category.name] ?? 0 }}</span>
             </button>
           </nav>
         </aside>
 
-        <section class="space-y-2">
-          <div class="flex items-center gap-4 px-1 text-xs">
-            <div class="inline-flex items-center gap-1 text-[var(--muted)]">
-              <BookOpen class="h-4 w-4" />
-              <span>{{ t.vocab.words({ count: totalWords }) }}</span>
-            </div>
-            <span class="h-4 w-px bg-[var(--line)]" />
-            <span class="rounded-full border border-[color-mix(in_srgb,var(--status-bad)_38%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_12%,var(--panel-soft))] px-2 py-0.5">
-              {{ t.vocab.due({ count: dueNowCount }) }}
-            </span>
-            <span class="rounded-full border border-[var(--line)] bg-[var(--panel)] px-2 py-0.5 text-[var(--muted)]">
-              {{ t.vocab.soon({ count: dueSoonCount }) }}
-            </span>
-          </div>
-
-          <div class="flex items-center justify-end gap-2 px-1 text-xs">
-            <button
-              class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 transition hover:border-[var(--accent)] disabled:opacity-60"
-              :disabled="wordsQuery.isFetching.value || page <= 1"
-              @click="goPrev"
-            >
-              {{ t.common.previous() }}
-            </button>
-            <span class="text-[var(--muted)]">{{ t.common.page() }} {{ page }} {{ t.common.of() }} {{ totalPages }}</span>
-            <button
-              class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 py-1 transition hover:border-[var(--accent)] disabled:opacity-60"
-              :disabled="wordsQuery.isFetching.value || page >= totalPages"
-              @click="goNext"
-            >
-              {{ t.common.next() }}
-            </button>
-          </div>
-
-          <div v-if="!words.length && !wordsQuery.isFetching.value" class="rounded-xl border border-dashed border-[var(--line)] bg-[var(--panel)] p-4 text-sm text-[var(--muted)]">
+        <section class="space-y-3">
+          <div v-if="!words.length && !wordsQuery.isFetching.value" class="card border-dashed p-5 text-sm text-[var(--muted)]">
             {{ t.vocab.noWords() }}
           </div>
 
-          <article
-            v-for="item in words"
-            :key="item.id"
-            class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]"
-          >
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <p class="text-base font-semibold">{{ item.word }}</p>
-                <p class="text-xs text-[var(--muted)]">{{ item.description }}</p>
+          <div class="space-y-3">
+            <article v-for="item in words" :key="item.id" class="card card-hover p-4">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="font-serif text-lg font-semibold leading-tight">{{ item.word }}</p>
+                  <p class="mt-1 text-xs leading-relaxed text-[var(--muted)]">{{ item.description }}</p>
+                </div>
+                <span
+                  class="shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold"
+                  :class="dueState(item) === 'due'
+                    ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_10%,transparent)] text-[var(--status-bad)]'
+                    : dueState(item) === 'soon'
+                      ? 'border-[color-mix(in_srgb,var(--status-warn)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-warn)_10%,transparent)] text-[var(--status-warn)]'
+                      : 'border-[var(--line)] text-[var(--muted)]'"
+                >
+                  {{ dueBadge(item) }}
+                </span>
               </div>
-              <span
-                class="rounded-full border px-2 py-0.5 text-[10px]"
-                :class="dueState(item) === 'due'
-                  ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] text-[var(--status-bad)]'
-                  : dueState(item) === 'soon'
-                    ? 'border-[color-mix(in_srgb,var(--accent)_45%,var(--line))] text-[var(--accent)]'
-                    : 'border-[var(--line)] text-[var(--muted)]'"
-              >
-                {{ dueBadge(item) }}
-              </span>
-            </div>
 
-            <div v-if="item.examples.length" class="mt-2 space-y-1">
-              <p v-for="(example, idx) in item.examples" :key="`ex-${item.id}-${idx}`" class="truncate border-l-2 border-[var(--line)] pl-2 text-[11px] italic text-[var(--muted)]">
-                {{ example }}
-              </p>
-            </div>
+              <div v-if="item.examples.length" class="mt-2.5 space-y-1.5">
+                <p
+                  v-for="(example, idx) in item.examples"
+                  :key="`ex-${item.id}-${idx}`"
+                  class="truncate border-l-2 border-[color-mix(in_srgb,var(--accent)_40%,var(--line))] pl-2.5 text-[11px] italic text-[var(--muted)]"
+                >
+                  {{ example }}
+                </p>
+              </div>
+            </article>
+          </div>
 
-          </article>
+          <div v-if="totalPages > 1" class="flex items-center justify-center gap-3 pt-1 text-xs">
+            <button class="btn-icon h-8 w-8" :disabled="wordsQuery.isFetching.value || page <= 1" @click="goPrev">
+              <span aria-hidden>‹</span>
+            </button>
+            <span class="font-medium text-[var(--muted)]">{{ t.common.page() }} {{ page }} {{ t.common.of() }} {{ totalPages }}</span>
+            <button class="btn-icon h-8 w-8" :disabled="wordsQuery.isFetching.value || page >= totalPages" @click="goNext">
+              <span aria-hidden>›</span>
+            </button>
+          </div>
         </section>
       </div>
     </section>

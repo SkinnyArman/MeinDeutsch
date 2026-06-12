@@ -29,6 +29,14 @@ const reviewedCount = ref(0);
 const currentItem = computed(() => dueQuery.data.value?.items[0] ?? null);
 const remainingCount = computed(() => dueQuery.data.value?.dueCount ?? 0);
 
+const sessionProgress = computed(() => {
+  const total = reviewedCount.value + remainingCount.value;
+  if (total === 0) {
+    return 100;
+  }
+  return Math.round((reviewedCount.value / total) * 100);
+});
+
 const ratingOptions = computed<Array<{
   value: VocabularyReviewRating;
   label: string;
@@ -84,61 +92,67 @@ const formatNextReview = (value: string | null | undefined): string => {
 
 <template>
   <AppContainer size="sm">
-    <section class="space-y-6">
-      <header class="flex items-start justify-between gap-4">
+    <section class="animate-fade-up space-y-6">
+      <header class="flex items-end justify-between gap-4">
         <div>
           <button
-            class="mb-3 inline-flex items-center gap-1.5 text-xs text-[var(--muted)] transition hover:text-[var(--text)]"
+            class="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--accent)]"
             @click="router.push('/vocabulary')"
           >
             <ArrowLeft class="h-3.5 w-3.5" />
             {{ t.vocab.review.back() }}
           </button>
-          <h2 class="font-serif text-3xl font-semibold tracking-tight">{{ t.vocab.review.title() }}</h2>
-          <p class="mt-1 text-xs text-[var(--muted)]">{{ t.vocab.review.subtitle() }}</p>
+          <h2 class="page-title">{{ t.vocab.review.title() }}</h2>
+          <p class="page-subtitle">{{ t.vocab.review.subtitle() }}</p>
         </div>
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-right shadow-[var(--surface-shadow)]">
-          <p class="text-lg font-semibold">{{ remainingCount }}</p>
-          <p class="text-[10px] uppercase tracking-wide text-[var(--muted)]">{{ t.vocab.review.remaining() }}</p>
+        <div class="card shrink-0 px-4 py-3 text-right">
+          <p class="font-serif text-2xl font-semibold leading-none">{{ remainingCount }}</p>
+          <p class="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.vocab.review.remaining() }}</p>
         </div>
       </header>
 
-      <p
-        v-if="reviewMutation.error.value || dueQuery.error.value"
-        class="rounded-lg border border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_12%,var(--panel))] px-3 py-2 text-xs"
-      >
+      <!-- Session progress -->
+      <div v-if="reviewedCount + remainingCount > 0" class="space-y-1.5">
+        <div class="flex items-center justify-between text-[11px] font-semibold text-[var(--muted)]">
+          <span>{{ t.vocab.review.progress({ count: reviewedCount }) }}</span>
+          <span>{{ sessionProgress }}%</span>
+        </div>
+        <div class="h-2 overflow-hidden rounded-full bg-[var(--panel-soft)]">
+          <div
+            class="h-full rounded-full transition-all duration-500"
+            style="background-image: linear-gradient(90deg, var(--accent), var(--accent-strong))"
+            :style="{ width: `${sessionProgress}%` }"
+          />
+        </div>
+      </div>
+
+      <p v-if="reviewMutation.error.value || dueQuery.error.value" class="notice-error">
         {{ reviewMutation.error.value?.message ?? dueQuery.error.value?.message }}
       </p>
 
-      <div
-        v-if="dueQuery.isFetching.value && !currentItem"
-        class="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-10 text-center text-sm text-[var(--muted)]"
-      >
+      <div v-if="dueQuery.isFetching.value && !currentItem" class="card p-10 text-center text-sm text-[var(--muted)]">
         {{ t.common.loading() }}
       </div>
 
       <div
         v-else-if="!currentItem"
-        class="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--status-good)_35%,var(--line))] bg-[var(--panel)] shadow-[var(--surface-shadow)]"
+        class="card animate-pop-in overflow-hidden border-[color-mix(in_srgb,var(--status-good)_35%,var(--line))]"
       >
-        <div class="flex flex-col items-center px-8 py-12 text-center">
-          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel-soft))]">
-            <CheckCircle2 class="h-7 w-7 text-[var(--status-good)]" />
+        <div class="flex flex-col items-center px-8 py-14 text-center">
+          <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel-soft))] shadow-[0_8px_24px_color-mix(in_srgb,var(--status-good)_25%,transparent)]">
+            <CheckCircle2 class="h-8 w-8 text-[var(--status-good)]" />
           </div>
-          <h3 class="mt-4 font-serif text-2xl font-semibold">{{ t.vocab.review.completeTitle() }}</h3>
+          <h3 class="mt-5 font-serif text-3xl font-semibold">{{ t.vocab.review.completeTitle() }}</h3>
           <p class="mt-2 max-w-sm text-sm leading-relaxed text-[var(--muted)]">
             {{ reviewedCount ? t.vocab.review.completed({ count: reviewedCount }) : t.vocab.review.noneDue() }}
           </p>
-          <p class="mt-4 rounded-full bg-[var(--panel-soft)] px-3 py-1.5 text-xs text-[var(--muted)]">
+          <p class="chip mt-5 px-3.5 py-1.5">
             {{ t.vocab.review.next({ time: formatNextReview(dueQuery.data.value?.nextDueAt) }) }}
           </p>
         </div>
       </div>
 
-      <article
-        v-else
-        class="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)] shadow-[var(--surface-shadow)]"
-      >
+      <article v-else class="card overflow-hidden">
         <div class="border-b border-[var(--line)] bg-[var(--panel-soft)] px-6 py-3">
           <div class="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
             <span class="inline-flex items-center gap-2">
@@ -149,23 +163,19 @@ const formatNextReview = (value: string | null | undefined): string => {
           </div>
         </div>
 
-        <div class="px-6 py-10 text-center sm:px-10">
+        <div class="px-5 py-10 text-center sm:px-10 sm:py-12">
           <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
             {{ t.vocab.review.recallPrompt() }}
           </p>
-          <h3 class="mt-4 font-serif text-4xl font-semibold tracking-tight">{{ currentItem.word }}</h3>
+          <h3 class="mt-5 font-serif text-4xl font-semibold tracking-tight sm:text-5xl">{{ currentItem.word }}</h3>
 
-          <button
-            v-if="!revealed"
-            class="mt-8 inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90"
-            @click="revealed = true"
-          >
+          <button v-if="!revealed" class="btn-primary mt-10" @click="revealed = true">
             <Eye class="h-4 w-4" />
             {{ t.vocab.review.showAnswer() }}
           </button>
 
-          <div v-else class="mt-8 animate-[fade-in_180ms_ease-out] text-left">
-            <div class="rounded-xl border border-[color-mix(in_srgb,var(--accent)_24%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_7%,var(--panel-soft))] p-4">
+          <div v-else class="mt-10 animate-fade-up text-left">
+            <div class="rounded-2xl border border-[color-mix(in_srgb,var(--accent)_24%,var(--line))] bg-[color-mix(in_srgb,var(--accent)_7%,var(--panel-soft))] p-5">
               <p class="text-sm leading-relaxed">{{ currentItem.description }}</p>
               <div v-if="currentItem.examples.length" class="mt-4 space-y-2">
                 <p
@@ -178,14 +188,14 @@ const formatNextReview = (value: string | null | undefined): string => {
               </div>
             </div>
 
-            <p class="mt-6 text-center text-xs font-medium text-[var(--muted)]">
+            <p class="mt-7 text-center text-xs font-medium text-[var(--muted)]">
               {{ t.vocab.review.ratePrompt() }}
             </p>
-            <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div class="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               <button
                 v-for="option in ratingOptions"
                 :key="option.value"
-                class="rounded-lg border px-3 py-2.5 text-xs font-semibold transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55"
+                class="rounded-xl border px-3 py-3 text-xs font-bold transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-55"
                 :class="option.className"
                 :disabled="reviewMutation.isPending.value"
                 @click="submitRating(option.value)"

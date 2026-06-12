@@ -5,6 +5,7 @@ import { useLanguage } from "@/libs/i18n";
 import { CheckCircle2, ChevronDown, ChevronUp, CircleHelp, Globe, History, Loader2, MessageSquareText, Send, Sparkles } from "lucide-vue-next";
 import type { ExpressionAttemptHistoryPoint, ExpressionAttemptRecord, ExpressionPromptRecord } from "@/types/ApiTypes";
 import AppContainer from "./AppContainer.vue";
+import ScoreRing from "./ScoreRing.vue";
 import {
   type AlltagCategory,
   useAlltagAttemptMutation,
@@ -170,6 +171,19 @@ const afterLeave = (el: Element): void => {
   node.style.overflow = "visible";
 };
 
+const scoreLabel = (score: number): string => {
+  if (score >= 85) {
+    return t.alltag.scoreExcellent();
+  }
+  if (score >= 65) {
+    return t.alltag.scoreGood();
+  }
+  if (score >= 45) {
+    return t.alltag.scoreAlmost();
+  }
+  return t.alltag.scoreKeepGoing();
+};
+
 const scoreTone = (score: number): string => {
   if (score >= 85) {
     return "text-[var(--status-good)]";
@@ -225,17 +239,14 @@ watch(selectedCategory, async (nextCategory) => {
 
 <template>
   <AppContainer size="sm">
-    <div class="space-y-6">
-      <div class="flex items-center justify-between">
+    <div class="animate-fade-up space-y-6">
+      <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 class="font-serif text-2xl font-bold tracking-tight">{{ t.alltag.title() }}</h1>
-          <p class="mt-1 text-sm text-[var(--muted)]">{{ t.alltag.subtitle() }}</p>
+          <h1 class="page-title">{{ t.alltag.title() }}</h1>
+          <p class="page-subtitle">{{ t.alltag.subtitle() }}</p>
         </div>
-        <div class="flex items-center gap-2">
-          <select
-            v-model="selectedCategory"
-            class="h-8 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-xs text-[var(--text)] outline-none focus:border-[var(--accent)]"
-          >
+        <div class="flex w-full items-center gap-2 sm:w-auto">
+          <select v-model="selectedCategory" class="input h-10 flex-1 px-3 py-0 text-xs sm:w-40 sm:flex-none">
             <option
               v-for="category in alltagCategories"
               :key="category.value"
@@ -244,59 +255,49 @@ watch(selectedCategory, async (nextCategory) => {
               {{ category.label }}
             </option>
           </select>
-          <button
-            class="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
-            type="button"
-            @click="router.push('/alltagssprache/review')"
-          >
+          <button class="btn-ghost h-10 px-3 text-xs" type="button" @click="router.push('/alltagssprache/review')">
             <History class="h-3.5 w-3.5" />
             {{ t.alltag.review() }}
           </button>
-          <button
-            class="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--accent)]"
-            type="button"
-            :disabled="isPromptLoading"
-            @click="handleNext"
-          >
+          <button class="btn-soft h-10 px-4 text-xs" type="button" :disabled="isPromptLoading" @click="handleNext">
             <Loader2 v-if="isPromptLoading" class="h-3.5 w-3.5 animate-spin" />
             <span v-else>{{ t.common.next() }}</span>
           </button>
         </div>
       </div>
 
-      <p
-        v-if="notice"
-        class="rounded-lg border px-3 py-2 text-xs"
-        :class="notice.type === 'error'
-          ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-          : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
-        "
-      >
+      <p v-if="notice" :class="notice.type === 'error' ? 'notice-error' : 'notice-success'">
         {{ notice.text }}
       </p>
 
-      <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-        <div class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-          <Loader2 v-if="isPromptLoading" class="h-3.5 w-3.5 animate-spin" />
-          <Globe v-else class="h-3.5 w-3.5" />
-          <span>{{ t.alltag.expressInGerman() }}</span>
+      <div class="card-hero p-5 sm:p-6">
+        <div class="flex items-center justify-between">
+          <span class="eyebrow">
+            <span class="eyebrow-icon">
+              <Loader2 v-if="isPromptLoading" class="h-3 w-3 animate-spin" />
+              <Globe v-else class="h-3 w-3" />
+            </span>
+            {{ t.alltag.expressInGerman() }}
+          </span>
+          <span v-if="prompt?.generationCategory" class="chip hidden sm:inline-flex">{{ prompt.generationCategory }}</span>
         </div>
-        <p class="mt-3 font-serif text-2xl leading-relaxed">
-          {{ prompt?.englishText ? `"${prompt.englishText}"` : t.common.loading() }}
+        <p class="mt-4 font-serif text-2xl leading-snug sm:text-3xl">
+          {{ prompt?.englishText ? `“${prompt.englishText}”` : t.common.loading() }}
         </p>
       </div>
 
       <div class="space-y-2">
-        <label class="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.answerPrompt() }}</label>
+        <label class="eyebrow">{{ t.alltag.answerPrompt() }}</label>
         <div class="relative">
           <textarea
             v-model="form.userAnswerText"
-            class="min-h-[80px] w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-3 pr-12 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+            class="input min-h-[96px] resize-y pb-14 sm:pb-3 sm:pr-36"
             :placeholder="t.alltag.answerPlaceholder()"
+            @keydown.enter.meta.prevent="handleSubmit"
           />
           <div class="absolute bottom-3 right-3 flex items-center gap-2">
             <button
-              class="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-2 text-[10px] font-semibold uppercase tracking-wide transition hover:border-[var(--accent)] disabled:opacity-50"
+              class="btn-ghost h-9 px-2.5 text-[11px]"
               :disabled="!prompt || attemptMutation.isPending.value"
               @click="handleIDontKnow"
             >
@@ -304,47 +305,57 @@ watch(selectedCategory, async (nextCategory) => {
               <span>{{ t.alltag.idk() }}</span>
             </button>
             <button
-              class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--panel-soft)] transition hover:border-[var(--accent)] disabled:opacity-50"
+              class="btn-primary h-9 w-9 rounded-xl p-0"
               :disabled="!form.userAnswerText.trim() || attemptMutation.isPending.value"
               @click="handleSubmit"
             >
-              <Send class="h-4 w-4" />
+              <Loader2 v-if="attemptMutation.isPending.value" class="h-4 w-4 animate-spin" />
+              <Send v-else class="h-4 w-4" />
             </button>
           </div>
         </div>
       </div>
 
-      <div v-if="latestAttempt" class="space-y-4">
-        <div v-if="hasFeedback" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            <MessageSquareText class="h-3.5 w-3.5" />
-            {{ t.alltag.feedback() }}
-          </div>
-          <p class="mt-2 text-sm text-[var(--muted)]">{{ latestAttempt.feedback }}</p>
-          <div class="mt-3 inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-semibold" :class="[scoreBadgeTone(latestAttempt.naturalnessScore), scoreTone(latestAttempt.naturalnessScore)]">
-            <span>{{ latestAttempt.naturalnessScore }}%</span>
+      <div v-if="latestAttempt" class="animate-fade-up space-y-4">
+        <div class="card p-5">
+          <div class="flex flex-col-reverse items-center gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0 flex-1">
+              <span class="eyebrow">
+                <span class="eyebrow-icon"><MessageSquareText class="h-3 w-3" /></span>
+                {{ t.alltag.feedback() }}
+              </span>
+              <p class="mt-3 text-sm leading-relaxed" :class="hasFeedback ? 'text-[var(--text)]' : 'text-[var(--muted)]'">
+                {{ hasFeedback ? latestAttempt.feedback : t.alltagReview.naturalFallback() }}
+              </p>
+            </div>
+            <ScoreRing
+              :score="latestAttempt.naturalnessScore"
+              :label="scoreLabel(latestAttempt.naturalnessScore)"
+              class="shrink-0"
+            />
           </div>
         </div>
 
-        <div v-if="hasNativeLike" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            <CheckCircle2 class="h-3.5 w-3.5 text-[var(--status-good)]" />
+        <div v-if="hasNativeLike" class="card border-[color-mix(in_srgb,var(--status-good)_30%,var(--line))] p-5">
+          <span class="eyebrow text-[var(--status-good)]">
+            <CheckCircle2 class="h-3.5 w-3.5" />
             {{ t.alltag.nativeLike() }}
-          </div>
-          <p class="mt-2 rounded-lg bg-[var(--panel-soft)] px-3 py-2 text-sm font-medium">{{ latestAttempt.nativeLikeVersion }}</p>
+          </span>
+          <p class="panel-inset mt-3 px-4 py-3 font-serif text-lg">{{ latestAttempt.nativeLikeVersion }}</p>
         </div>
 
-        <div v-if="hasAlternatives" class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            <Sparkles class="h-3.5 w-3.5" />
+        <div v-if="hasAlternatives" class="card p-5">
+          <span class="eyebrow">
+            <span class="eyebrow-icon"><Sparkles class="h-3 w-3" /></span>
             {{ t.alltag.alternatives() }}
-          </div>
-          <div class="mt-2 space-y-2">
+          </span>
+          <div class="mt-3 space-y-2">
             <div
               v-for="(alt, i) in latestAttempt.alternatives"
               :key="`${latestAttempt.id}-${i}`"
-              class="rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm"
+              class="panel-inset flex items-center gap-3 px-4 py-2.5 text-sm"
             >
+              <span class="text-[11px] font-bold text-[var(--accent)]">{{ i + 1 }}</span>
               {{ alt }}
             </div>
           </div>
@@ -352,26 +363,27 @@ watch(selectedCategory, async (nextCategory) => {
       </div>
 
       <div class="space-y-3">
-        <div class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-          <History class="h-3.5 w-3.5" />
+        <div class="eyebrow">
+          <span class="eyebrow-icon"><History class="h-3 w-3" /></span>
           {{ t.alltag.history() }}
         </div>
-        <div v-if="!historyItems.length && !historyQuery.isFetching.value" class="rounded-xl border border-dashed border-[var(--line)] bg-[var(--panel)] p-3 text-xs text-[var(--muted)]">
+        <div v-if="!historyItems.length && !historyQuery.isFetching.value" class="card border-dashed p-4 text-xs text-[var(--muted)]">
           {{ t.dailyTalk.noHistory() }}
         </div>
         <div class="space-y-2">
           <div
             v-for="item in historyItems"
             :key="item.id"
-            class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]"
-            :class="expandedHistoryId === item.id ? 'bg-[var(--panel-soft)]' : ''"
+            class="card card-hover p-3.5"
+            :class="expandedHistoryId === item.id ? 'border-[color-mix(in_srgb,var(--accent)_45%,var(--line))]' : ''"
           >
             <button class="flex w-full items-start justify-between gap-3 text-left" type="button" @click="toggleHistoryItem(item.id)">
               <div class="min-w-0">
-                <p class="truncate text-sm font-medium">{{ `"${item.englishText}"` }}</p>
+                <p class="truncate text-sm font-semibold">{{ `“${item.englishText}”` }}</p>
+                <p class="mt-0.5 truncate text-xs text-[var(--muted)]">{{ item.userAnswerText }}</p>
               </div>
               <span class="inline-flex items-center gap-2 self-center">
-                <span class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold" :class="[scoreBadgeTone(item.naturalnessScore), scoreTone(item.naturalnessScore)]">
+                <span class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold" :class="[scoreBadgeTone(item.naturalnessScore), scoreTone(item.naturalnessScore)]">
                   {{ item.naturalnessScore }}%
                 </span>
                 <ChevronDown v-if="expandedHistoryId !== item.id" class="h-3.5 w-3.5 text-[var(--muted)]" />
@@ -389,7 +401,7 @@ watch(selectedCategory, async (nextCategory) => {
             >
               <div
                 v-if="expandedHistoryId === item.id"
-                class="mt-3 space-y-3 rounded-lg border border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_90%,white)] p-3 text-xs text-[var(--muted)]"
+                class="panel-inset mt-3 space-y-3 p-3.5 text-xs text-[var(--muted)]"
               >
                 <div v-if="previousAttemptScores(item.attemptHistory, item.id).length > 0">
                   <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.alltag.attempts() }}</p>
@@ -443,7 +455,7 @@ watch(selectedCategory, async (nextCategory) => {
         <div ref="loadMoreSentinel" class="h-6" />
         <button
           v-if="hasMoreHistory"
-          class="w-full rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs text-[var(--muted)]"
+          class="btn-ghost w-full text-xs text-[var(--muted)]"
           :disabled="historyQuery.isFetchingNextPage.value"
           @click="historyQuery.fetchNextPage()"
         >

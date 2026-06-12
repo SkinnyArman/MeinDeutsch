@@ -1,5 +1,13 @@
 export const messages = {
   en: {
+    shell: {
+      greetingMorning: "Guten Morgen",
+      greetingAfternoon: "Guten Tag",
+      greetingEvening: "Guten Abend",
+      streakSafe: "Streak secured for today",
+      streakAtRisk: "{time} left to keep your streak",
+      tagline: "Dein Weg zu natürlichem Deutsch"
+    },
     common: {
       loading: "Loading...",
       refresh: "Refresh",
@@ -151,7 +159,12 @@ export const messages = {
       history: "History",
       historyLoadFailed: "Could not load history",
       promptFailed: "Could not generate expression",
-      assessFailed: "Could not submit answer"
+      assessFailed: "Could not submit answer",
+      naturalness: "Naturalness",
+      scoreExcellent: "Excellent",
+      scoreGood: "Good",
+      scoreAlmost: "Almost",
+      scoreKeepGoing: "Keep going"
     },
     alltagReview: {
       title: "Review",
@@ -187,11 +200,16 @@ export const messages = {
     },
     settings: {
       title: "Settings",
+      subtitle: "Tune MeinDeutsch to your taste.",
       apiBaseUrl: "API Base URL",
       theme: "Theme",
+      themeDesc: "Pick the color mood of the app.",
       topics: "Topics",
+      topicsDesc: "Manage the topics your questions come from.",
       knowledge: "Knowledge",
-      apiTools: "API Tools"
+      knowledgeDesc: "Inspect your stored learning records.",
+      apiTools: "API Tools",
+      apiToolsDesc: "Trigger backend endpoints manually."
     }
   }
 };

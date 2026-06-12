@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
+import { ChevronRight, Database, MessageSquareText, Palette, Wrench } from "lucide-vue-next";
 import { apiBaseUrl, setApiBaseUrl } from "@/config/api";
 import AppContainer from "./AppContainer.vue";
 
@@ -16,55 +17,61 @@ const baseUrlModel = computed({
 const cards = computed(() => [
   {
     title: t.settings.theme(),
-    description: t.settings.theme(),
-    route: "/settings/theme"
+    description: t.settings.themeDesc(),
+    route: "/settings/theme",
+    icon: Palette
   },
   {
     title: t.settings.topics(),
-    description: t.settings.topics(),
-    route: "/settings/topics"
+    description: t.settings.topicsDesc(),
+    route: "/settings/topics",
+    icon: MessageSquareText
   },
   {
     title: t.settings.knowledge(),
-    description: t.settings.knowledge(),
-    route: "/settings/knowledge"
+    description: t.settings.knowledgeDesc(),
+    route: "/settings/knowledge",
+    icon: Database
   },
   {
     title: t.settings.apiTools(),
-    description: t.settings.apiTools(),
-    route: "/settings/api"
+    description: t.settings.apiToolsDesc(),
+    route: "/settings/api",
+    icon: Wrench
   }
 ]);
 </script>
 
 <template>
   <AppContainer>
-    <section class="space-y-4">
-      <article class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-        <h3 class="text-lg font-semibold">{{ t.settings.title() }}</h3>
-        <p class="mt-1 text-sm text-[var(--muted)]">{{ t.settings.title() }}</p>
-        <div class="mt-4">
-          <label class="mb-2 block text-sm text-[var(--muted)]">{{ t.settings.apiBaseUrl() }}</label>
-          <input
-            v-model="baseUrlModel"
-            class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
-            type="text"
-            placeholder="http://localhost:4000"
-          />
-        </div>
-      </article>
+    <section class="animate-fade-up space-y-6">
+      <header>
+        <h2 class="page-title">{{ t.settings.title() }}</h2>
+        <p class="page-subtitle">{{ t.settings.subtitle() }}</p>
+      </header>
 
-      <div class="grid gap-4 md:grid-cols-2">
+      <div class="grid gap-4 sm:grid-cols-2">
         <button
           v-for="card in cards"
           :key="card.title"
-          class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 text-left shadow-[var(--surface-shadow)] transition hover:border-[var(--accent)]"
+          class="card card-hover group flex items-center gap-4 p-5 text-left"
           @click="router.push(card.route)"
         >
-          <h4 class="text-lg font-semibold">{{ card.title }}</h4>
-          <p class="mt-2 text-sm text-[var(--muted)]">{{ card.description }}</p>
+          <span class="eyebrow-icon h-11 w-11 shrink-0 rounded-xl">
+            <component :is="card.icon" class="h-5 w-5" />
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-base font-semibold">{{ card.title }}</span>
+            <span class="mt-0.5 block text-xs text-[var(--muted)]">{{ card.description }}</span>
+          </span>
+          <ChevronRight class="h-4 w-4 shrink-0 text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
         </button>
       </div>
+
+      <article class="card p-5">
+        <label class="eyebrow">{{ t.settings.apiBaseUrl() }}</label>
+        <input v-model="baseUrlModel" class="input mt-2.5" type="text" placeholder="http://localhost:4000" />
+      </article>
     </section>
   </AppContainer>
 </template>

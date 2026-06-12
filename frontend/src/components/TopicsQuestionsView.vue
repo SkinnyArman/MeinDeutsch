@@ -51,71 +51,47 @@ const handleDelete = async (topicId: number) => {
 
 <template>
   <AppContainer>
-    <section class="space-y-4">
+    <section class="animate-fade-up space-y-6">
       <header>
-        <h2 class="font-serif text-3xl font-semibold tracking-tight">{{ t.topics.title() }}</h2>
+        <h2 class="page-title">{{ t.topics.title() }}</h2>
+        <p class="page-subtitle">{{ t.settings.topicsDesc() }}</p>
       </header>
 
-      <p
-        v-if="notice"
-        class="rounded-lg border px-3 py-2 text-xs"
-        :class="notice.type === 'error'
-          ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-          : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
-        "
-      >
+      <p v-if="notice" :class="notice.type === 'error' ? 'notice-error' : 'notice-success'">
         {{ notice.text }}
       </p>
 
-      <div class="grid gap-4 md:grid-cols-[280px_1fr]">
-        <form
-          class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]"
-          @submit.prevent="handleCreate"
-        >
-          <div class="space-y-3">
-            <div>
-              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.topics.nameLabel() }}</label>
-              <input
-                v-model="form.topicName"
-                class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm"
-                type="text"
-              />
-            </div>
-            <div>
-              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.topics.descriptionLabel() }}</label>
-              <textarea
-                v-model="form.topicDescription"
-                class="w-full rounded-md border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm"
-                rows="3"
-              />
-            </div>
-            <button
-              class="inline-flex w-full items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs transition hover:border-[var(--accent)] disabled:opacity-60"
-              type="submit"
-              :disabled="createMutation.isPending.value"
-            >
-              <Plus class="h-3.5 w-3.5" />
-              {{ t.common.create() }}
-            </button>
+      <div class="grid gap-5 md:grid-cols-[300px_1fr]">
+        <form class="card h-fit space-y-4 p-4 md:sticky md:top-20" @submit.prevent="handleCreate">
+          <div>
+            <label class="eyebrow">{{ t.topics.nameLabel() }}</label>
+            <input v-model="form.topicName" class="input mt-2" type="text" />
           </div>
+          <div>
+            <label class="eyebrow">{{ t.topics.descriptionLabel() }}</label>
+            <textarea v-model="form.topicDescription" class="input mt-2 resize-y" rows="3" />
+          </div>
+          <button class="btn-primary w-full" type="submit" :disabled="createMutation.isPending.value">
+            <Plus class="h-4 w-4" />
+            {{ t.common.create() }}
+          </button>
         </form>
 
-        <div class="space-y-2">
-          <div v-if="!topicsQuery.data.value?.length && !topicsQuery.isFetching.value" class="rounded-xl border border-dashed border-[var(--line)] bg-[var(--panel)] p-4 text-sm text-[var(--muted)]">
+        <div class="space-y-2.5">
+          <div
+            v-if="!topicsQuery.data.value?.length && !topicsQuery.isFetching.value"
+            class="card border-dashed p-5 text-sm text-[var(--muted)]"
+          >
             {{ t.dailyTalk.noHistory() }}
           </div>
-          <article
-            v-for="topic in topicsQuery.data.value ?? []"
-            :key="topic.id"
-            class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 shadow-[var(--surface-shadow)]"
-          >
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <p class="text-sm font-semibold">{{ topic.name }}</p>
-                <p class="mt-1 text-xs text-[var(--muted)]">{{ topic.description || '-' }}</p>
+          <article v-for="topic in topicsQuery.data.value ?? []" :key="topic.id" class="card card-hover p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-sm font-bold">{{ topic.name }}</p>
+                <p class="mt-1 text-xs leading-relaxed text-[var(--muted)]">{{ topic.description || '-' }}</p>
               </div>
               <button
-                class="inline-flex items-center gap-1 rounded-md border border-[var(--line)] px-2 py-1 text-[10px] transition hover:border-[var(--status-bad)]"
+                class="btn-ghost shrink-0 px-2.5 py-1.5 text-[11px] hover:border-[var(--status-bad)] hover:text-[var(--status-bad)]"
                 :disabled="deleteMutation.isPending.value"
                 @click="handleDelete(topic.id)"
               >

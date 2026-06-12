@@ -173,82 +173,95 @@ const handleSaveWord = async (payload: { word: string; description: string; exam
 
 <template>
   <AppContainer>
-    <section class="space-y-5">
-      <header class="flex items-center justify-between">
+    <section class="animate-fade-up space-y-6">
+      <header class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 class="font-serif text-3xl font-semibold tracking-tight">{{ t.dailyTalkDetail.title() }}</h2>
+          <button
+            class="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--accent)]"
+            @click="router.push('/daily-talk')"
+          >
+            <ArrowLeft class="h-3.5 w-3.5" />
+            {{ t.common.back() }}
+          </button>
+          <h2 class="page-title">{{ t.dailyTalkDetail.title() }}</h2>
         </div>
-        <button
-          class="inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs transition hover:border-[var(--accent)]"
-          @click="router.push('/daily-talk')"
-        >
-          <ArrowLeft class="h-3.5 w-3.5" />
-          {{ t.common.back() }}
-        </button>
       </header>
 
-      <p
-        v-if="notice"
-        class="rounded-lg border px-3 py-2 text-xs"
-        :class="notice.type === 'error'
-          ? 'border-[color-mix(in_srgb,var(--status-bad)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-bad)_14%,var(--panel))]'
-          : 'border-[color-mix(in_srgb,var(--status-good)_45%,var(--line))] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))]'
-        "
-      >
+      <p v-if="notice" :class="notice.type === 'error' ? 'notice-error' : 'notice-success'">
         {{ notice.text }}
       </p>
 
       <div v-if="logQuery.data.value" class="space-y-4">
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-          <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.question() }}</p>
-          <p class="mt-2 text-lg font-medium">{{ logQuery.data.value.questionText }}</p>
+        <div class="card-hero p-5">
+          <p class="eyebrow">{{ t.dailyTalkNew.question() }}</p>
+          <p class="mt-3 font-serif text-xl leading-relaxed sm:text-2xl">{{ logQuery.data.value.questionText }}</p>
         </div>
 
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-          <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.yourAnswer() }}</p>
-          <HighlightedText class="mt-2" :segments="highlightedAnswerSegments" />
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="card p-5">
+            <p class="eyebrow">{{ t.dailyTalkNew.yourAnswer() }}</p>
+            <HighlightedText class="mt-3" :segments="highlightedAnswerSegments" />
+          </div>
+
+          <div class="card border-[color-mix(in_srgb,var(--status-good)_30%,var(--line))] p-5">
+            <p class="eyebrow text-[var(--status-good)]">{{ t.dailyTalkNew.correctedText() }}</p>
+            <p class="mt-3 text-sm leading-relaxed">{{ logQuery.data.value.correctedText }}</p>
+          </div>
         </div>
 
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-          <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.correctedText() }}</p>
-          <p class="mt-2 text-sm text-[var(--muted)]">{{ logQuery.data.value.correctedText }}</p>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <span class="chip-accent px-3 py-1.5 text-sm">{{ t.dailyTalkNew.cefrLevel() }} · {{ logQuery.data.value.cefrLevel }}</span>
+          <span class="chip">{{ logQuery.data.value.modelUsed }}</span>
         </div>
 
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-          <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.tips() }}</p>
-          <ul class="mt-2 space-y-2 text-sm text-[var(--muted)]">
-            <li v-for="(tip, idx) in logQuery.data.value.tips" :key="`tip-${idx}`">{{ tip }}</li>
-          </ul>
-        </div>
-
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-          <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.errors() }}</p>
-          <ul class="mt-2 space-y-2 text-sm text-[var(--muted)]">
-            <li v-for="(error, idx) in logQuery.data.value.errorTypes" :key="`${error.type}-${idx}`" class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2">
-              <p class="text-sm font-semibold text-[var(--text)]">{{ error.message }}</p>
-              <p class="mt-1 text-xs text-[var(--muted)]">{{ error.description }}</p>
+        <div v-if="logQuery.data.value.errorTypes.length" class="card p-5">
+          <p class="eyebrow">{{ t.dailyTalkNew.errors() }}</p>
+          <ul class="mt-3 space-y-2.5">
+            <li
+              v-for="(error, idx) in logQuery.data.value.errorTypes"
+              :key="`${error.type}-${idx}`"
+              class="panel-inset border-l-2 border-l-[var(--status-bad)] px-3.5 py-3"
+            >
+              <p class="text-sm font-semibold">{{ error.message }}</p>
+              <p class="mt-1 text-xs leading-relaxed text-[var(--muted)]">{{ error.description }}</p>
             </li>
           </ul>
         </div>
 
-        <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            <Sparkles class="h-3.5 w-3.5" />
+        <div v-if="logQuery.data.value.tips.length" class="card p-5">
+          <p class="eyebrow">{{ t.dailyTalkNew.tips() }}</p>
+          <ul class="mt-3 space-y-2.5">
+            <li
+              v-for="(tip, idx) in logQuery.data.value.tips"
+              :key="`tip-${idx}`"
+              class="flex items-start gap-2.5 text-sm leading-relaxed text-[var(--muted)]"
+            >
+              <span class="eyebrow-icon mt-0.5 shrink-0">
+                <Sparkles class="h-3 w-3" />
+              </span>
+              <span>{{ tip }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="logQuery.data.value.contextualWordSuggestions.length" class="card p-5">
+          <p class="eyebrow">
+            <span class="eyebrow-icon"><Sparkles class="h-3 w-3" /></span>
             {{ t.dailyTalkNew.wordSuggestions() }}
-          </div>
-          <div class="mt-3 space-y-3">
+          </p>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <div
               v-for="(word, idx) in logQuery.data.value.contextualWordSuggestions"
               :key="`${word.word}-${idx}`"
-              class="rounded-lg border border-[var(--line)] bg-[var(--panel-soft)] p-3"
+              class="panel-inset flex flex-col p-3.5"
             >
               <div class="flex items-start justify-between gap-2">
-                <div>
-                  <p class="text-sm font-semibold">{{ word.word }}</p>
-                  <p class="mt-1 text-xs text-[var(--muted)]">{{ word.description }}</p>
+                <div class="min-w-0">
+                  <p class="text-sm font-bold">{{ word.word }}</p>
+                  <p class="mt-1 text-xs leading-relaxed text-[var(--muted)]">{{ word.description }}</p>
                 </div>
                 <button
-                  class="inline-flex items-center gap-1 rounded-md border border-[var(--line)] px-2 py-1 text-[10px] transition hover:border-[var(--accent)] disabled:opacity-50"
+                  class="btn-soft shrink-0 px-2.5 py-1.5 text-[11px]"
                   :disabled="savingWordKey === `${word.word}|${word.description}` || savedWordKeys.has(`${word.word}|${word.description}`)"
                   @click="handleSaveWord({ word: word.word, description: word.description, examples: word.examples, category: logQuery.data.value.topicName || DEFAULT_CATEGORY })"
                 >
@@ -256,21 +269,16 @@ const handleSaveWord = async (payload: { word: string; description: string; exam
                   {{ savedWordKeys.has(`${word.word}|${word.description}`) ? t.dailyTalkNew.wordSavedLabel() : t.dailyTalkNew.wordSave() }}
                 </button>
               </div>
-              <ul class="mt-2 space-y-1 text-xs text-[var(--muted)]">
-                <li v-for="(example, exIdx) in word.examples" :key="`ex-${idx}-${exIdx}`">{{ example }}</li>
+              <ul class="mt-2.5 space-y-1.5">
+                <li
+                  v-for="(example, exIdx) in word.examples"
+                  :key="`ex-${idx}-${exIdx}`"
+                  class="border-l-2 border-[color-mix(in_srgb,var(--accent)_45%,var(--line))] pl-2.5 text-xs italic leading-relaxed text-[var(--muted)]"
+                >
+                  {{ example }}
+                </li>
               </ul>
             </div>
-          </div>
-        </div>
-
-        <div class="grid gap-3 md:grid-cols-2">
-          <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.cefrLevel() }}</p>
-            <p class="mt-2 text-base font-semibold">{{ logQuery.data.value.cefrLevel }}</p>
-          </div>
-          <div class="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-[var(--surface-shadow)]">
-            <p class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.dailyTalkNew.modelUsed() }}</p>
-            <p class="mt-2 text-base font-semibold">{{ logQuery.data.value.modelUsed }}</p>
           </div>
         </div>
       </div>
