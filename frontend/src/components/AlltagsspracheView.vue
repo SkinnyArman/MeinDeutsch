@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
-import { CheckCircle2, ChevronDown, ChevronUp, CircleHelp, History, Lightbulb, Loader2, MessageCircleQuestion, MessageSquareText, Send, Sparkles } from "lucide-vue-next";
+import { CheckCircle2, ChevronDown, ChevronUp, CircleHelp, History, Lightbulb, Loader2, MessageCircleQuestion, MessageSquareText, Send, Sparkles, XCircle } from "lucide-vue-next";
 import type { ExpressionAttemptHistoryPoint, ExpressionAttemptRecord, ExpressionPromptRecord } from "@/types/ApiTypes";
 import AppContainer from "./AppContainer.vue";
 import ScoreRing from "./ScoreRing.vue";
@@ -11,7 +11,8 @@ import {
   useAlltagAttemptMutation,
   useAlltagCategoriesQuery,
   useAlltagHistoryInfiniteQuery,
-  useAlltagNextPromptMutation
+  useAlltagNextPromptMutation,
+  useAlltagRecognitionMutation
 } from "@/queries/alltag";
 import { ALLTAG_IDK_ANSWER } from "@/constants/app";
 
@@ -26,6 +27,10 @@ const expandedHistoryId = ref<number | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
 const selectedCategory = ref<AlltagCategory>("random");
 
+// Recognition (MCQ) phase state.
+const selectedOption = ref<string | null>(null);
+const recognitionResult = ref<{ correct: boolean; correctAnswer: string } | null>(null);
+
 const form = reactive({
   userAnswerText: ""
 });
@@ -34,7 +39,9 @@ const historyQuery = useAlltagHistoryInfiniteQuery();
 const categoriesQuery = useAlltagCategoriesQuery();
 const nextPromptMutation = useAlltagNextPromptMutation();
 const attemptMutation = useAlltagAttemptMutation();
+const recognitionMutation = useAlltagRecognitionMutation();
 const isPromptLoading = computed(() => nextPromptMutation.isPending.value);
+const isRecognition = computed(() => prompt.value?.mode === "recognition" && (prompt.value?.options?.length ?? 0) > 0);
 
 const historyItems = computed(() => historyQuery.data.value?.pages.flatMap((page) => page.items) ?? []);
 const hasMoreHistory = computed(() => Boolean(historyQuery.hasNextPage.value));
@@ -80,18 +87,48 @@ watchEffect(() => {
   if (attemptMutation.error.value) {
     notice.value = { type: "error", text: attemptMutation.error.value.message };
   }
+  if (recognitionMutation.error.value) {
+    notice.value = { type: "error", text: recognitionMutation.error.value.message };
+  }
 });
 
 const ensurePromptForCategory = async (category: AlltagCategory): Promise<void> => {
   const generated = await nextPromptMutation.mutateAsync({ category });
   prompt.value = generated;
   showHint.value = false;
+  selectedOption.value = null;
+  recognitionResult.value = null;
 };
 
 const handleNext = async (): Promise<void> => {
   latestAttempt.value = null;
   form.userAnswerText = "";
   await ensurePromptForCategory(selectedCategory.value);
+};
+
+const chooseOption = async (option: string): Promise<void> => {
+  if (!prompt.value || recognitionResult.value || recognitionMutation.isPending.value) {
+    return;
+  }
+  selectedOption.value = option;
+  const data = await recognitionMutation.mutateAsync({
+    promptId: prompt.value.id,
+    chosenText: option
+  });
+  recognitionResult.value = { correct: data.correct, correctAnswer: data.correctAnswer };
+};
+
+const optionState = (option: string): "idle" | "correct" | "wrong" | "missed" => {
+  if (!recognitionResult.value) {
+    return "idle";
+  }
+  if (option === recognitionResult.value.correctAnswer) {
+    return "correct";
+  }
+  if (option === selectedOption.value) {
+    return "wrong";
+  }
+  return "missed";
 };
 
 const submitAttempt = async (userAnswerText: string) => {
@@ -281,7 +318,15 @@ watch(selectedCategory, async (nextCategory) => {
             </span>
             {{ t.alltag.situationPrompt() }}
           </span>
-          <span v-if="prompt?.generationCategory" class="chip hidden sm:inline-flex">{{ prompt.generationCategory }}</span>
+          <span class="flex items-center gap-2">
+            <span
+              v-if="prompt && !isPromptLoading"
+              class="chip-accent text-[10px] uppercase tracking-wide"
+            >
+              {{ isRecognition ? t.alltag.modeRecognize() : t.alltag.modeProduce() }}
+            </span>
+            <span v-if="prompt?.generationCategory" class="chip hidden sm:inline-flex">{{ prompt.generationCategory }}</span>
+          </span>
         </div>
 
         <!-- Situational prompt leads; older prompts without a situation fall back to the English expression. -->
@@ -291,8 +336,9 @@ watch(selectedCategory, async (nextCategory) => {
           <template v-else>{{ prompt?.englishText ? `“${prompt.englishText}”` : t.common.loading() }}</template>
         </p>
 
-        <!-- English hint, hidden until requested, so the user produces from the situation first. -->
-        <div v-if="prompt?.situationText && prompt?.englishText" class="mt-4">
+        <!-- English hint, hidden until requested, so the user produces from the situation first.
+             Suppressed during recognition since the options already reveal the wording. -->
+        <div v-if="!isRecognition && prompt?.situationText && prompt?.englishText" class="mt-4">
           <button
             v-if="!showHint"
             type="button"
@@ -309,7 +355,47 @@ watch(selectedCategory, async (nextCategory) => {
         </div>
       </div>
 
-      <div class="space-y-2">
+      <!-- Recognition phase: pick the natural option. -->
+      <div v-if="isRecognition" class="space-y-2">
+        <label class="eyebrow">{{ t.alltag.pickNatural() }}</label>
+        <div class="grid gap-2">
+          <button
+            v-for="(option, i) in prompt?.options ?? []"
+            :key="`opt-${i}`"
+            type="button"
+            class="flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all duration-150 disabled:cursor-default"
+            :class="{
+              'border-[var(--line)] bg-[var(--panel)] hover:border-[var(--accent)] hover:bg-[var(--panel-soft)]': optionState(option) === 'idle',
+              'border-[var(--status-good)] bg-[color-mix(in_srgb,var(--status-good)_14%,var(--panel))] text-[var(--status-good)] font-semibold': optionState(option) === 'correct',
+              'border-[var(--status-bad)] bg-[color-mix(in_srgb,var(--status-bad)_12%,var(--panel))] text-[var(--status-bad)]': optionState(option) === 'wrong',
+              'border-[var(--line)] bg-[var(--panel)] opacity-50': optionState(option) === 'missed'
+            }"
+            :disabled="Boolean(recognitionResult) || recognitionMutation.isPending.value"
+            @click="chooseOption(option)"
+          >
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[var(--line)] text-[11px] font-bold">
+              {{ String.fromCharCode(65 + i) }}
+            </span>
+            <span class="min-w-0 flex-1">{{ option }}</span>
+            <CheckCircle2 v-if="optionState(option) === 'correct'" class="h-4 w-4 shrink-0" />
+            <XCircle v-else-if="optionState(option) === 'wrong'" class="h-4 w-4 shrink-0" />
+          </button>
+        </div>
+
+        <div v-if="recognitionResult" class="animate-fade-up pt-1">
+          <p class="text-sm font-medium" :class="recognitionResult.correct ? 'text-[var(--status-good)]' : 'text-[var(--status-bad)]'">
+            {{ recognitionResult.correct ? t.alltag.recognizeRight() : t.alltag.recognizeWrong() }}
+          </p>
+          <p class="mt-1 text-xs text-[var(--muted)]">{{ t.alltag.produceLaterHint() }}</p>
+          <button class="btn-primary mt-3 w-full sm:w-auto" :disabled="isPromptLoading" @click="handleNext">
+            <Loader2 v-if="isPromptLoading" class="h-4 w-4 animate-spin" />
+            <span v-else>{{ t.common.next() }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Production phase: produce the German from the situation. -->
+      <div v-else class="space-y-2">
         <label class="eyebrow">{{ t.alltag.answerPrompt() }}</label>
         <div class="relative">
           <textarea

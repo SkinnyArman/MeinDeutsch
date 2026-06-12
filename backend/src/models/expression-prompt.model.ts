@@ -30,12 +30,20 @@ export class ExpressionPrompt {
   @Column({ name: "situation_text", type: "text", nullable: true })
   situationText!: string | null;
 
+  @Column({ name: "native_answer", type: "text", nullable: true })
+  nativeAnswer!: string | null;
+
+  @Column({ type: "jsonb", default: [] })
+  distractors!: string[];
+
   @Column({ name: "generation_category", type: "text", default: "random" })
   generationCategory!: string;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }
+
+export type ExpressionPracticeMode = "recognition" | "production";
 
 export interface ExpressionPromptRecord {
   id: number;
@@ -44,4 +52,7 @@ export interface ExpressionPromptRecord {
   generatedContext: string | null;
   generationCategory: string;
   createdAt: string;
+  // Set only on the served "next" payload; never persisted on the record.
+  mode?: ExpressionPracticeMode;
+  options?: string[];
 }

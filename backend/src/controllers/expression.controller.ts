@@ -11,6 +11,11 @@ const assessAttemptSchema = z.object({
   userAnswerText: z.string().trim().min(1)
 });
 
+const recognitionSchema = z.object({
+  promptId: z.coerce.number().int().positive(),
+  chosenText: z.string().trim().min(1)
+});
+
 const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(30),
   offset: z.coerce.number().int().min(0).default(0)
@@ -81,6 +86,16 @@ export const assessExpressionAttemptController = async (req: Request, res: Respo
     userAnswerText: payload.userAnswerText
   });
   sendSuccess(res, 201, API_MESSAGES.expression.assessed, attempt);
+};
+
+export const assessExpressionRecognitionController = async (req: Request, res: Response): Promise<void> => {
+  const payload = recognitionSchema.parse(req.body);
+  const result = await expressionService.assessRecognition({
+    userId: req.auth.userId,
+    promptId: payload.promptId,
+    chosenText: payload.chosenText
+  });
+  sendSuccess(res, 201, API_MESSAGES.expression.recognitionAssessed, result);
 };
 
 export const listExpressionHistoryController = async (req: Request, res: Response): Promise<void> => {

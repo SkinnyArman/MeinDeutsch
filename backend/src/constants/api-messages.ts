@@ -41,6 +41,7 @@ export const API_MESSAGES = {
     generated: "Expression generated successfully",
     categoriesListed: "Expression categories fetched successfully",
     assessed: "Expression attempt assessed successfully",
+    recognitionAssessed: "Expression recognition assessed successfully",
     historyListed: "Expression history fetched successfully",
     reviewListed: "Expression review items fetched successfully",
     reviewAssessed: "Expression review attempt assessed successfully"

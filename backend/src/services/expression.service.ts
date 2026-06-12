@@ -7,6 +7,7 @@ import {
 import { API_MESSAGES } from "../constants/api-messages.js";
 import type { ExpressionAttemptRecord } from "../models/expression-attempt.model.js";
 import type { ExpressionPromptRecord } from "../models/expression-prompt.model.js";
+import type { ExpressionPracticeMode } from "../models/expression-prompt.model.js";
 import type { ExpressionReviewItemRecord } from "../models/expression-review-item.model.js";
 import {
   computeReviewTransition,
@@ -29,6 +30,39 @@ const EXPRESSION_POOL_GENERATION_SIZE = 20;
 const EXPRESSION_MIN_UNSEEN_BUFFER = 6;
 const EXPRESSION_AVOID_LIST_SIZE = 80;
 const EXPRESSION_MAX_CONCURRENT_REFILLS = 2;
+// Spacing gate: a recognized item becomes due for production after this delay,
+// so production lands in a later session rather than the same sitting.
+export const RECOGNITION_TO_PRODUCTION_DELAY_MS = 6 * 60 * 60 * 1000;
+
+const shuffle = <T>(items: T[]): T[] => {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j] as T, copy[i] as T];
+  }
+  return copy;
+};
+
+// Build the MCQ options for recognition mode. Falls back to production when the
+// prompt has no stored answer/distractors (legacy rows).
+const buildDelivery = async (
+  prompt: ExpressionPromptRecord,
+  requestedMode: ExpressionPracticeMode
+): Promise<ExpressionPromptRecord> => {
+  if (requestedMode !== "recognition") {
+    return { ...prompt, mode: "production" };
+  }
+  const answer = await expressionRepository.findPromptAnswerById({ promptId: prompt.id });
+  const distractors = answer?.distractors ?? [];
+  if (!answer?.nativeAnswer || distractors.length < 1) {
+    return { ...prompt, mode: "production" };
+  }
+  return {
+    ...prompt,
+    mode: "recognition",
+    options: shuffle([answer.nativeAnswer, ...distractors])
+  };
+};
 
 interface GeneratePromptPoolInput {
   userId: number;
@@ -67,6 +101,8 @@ const generatePromptPool = async (input: GeneratePromptPoolInput): Promise<Gener
         userId: input.userId,
         englishText: generated.englishText,
         situationText: generated.situationText,
+        nativeAnswer: generated.nativeAnswer,
+        distractors: generated.distractors,
         generatedContext: generated.generatedContext,
         generationCategory: category
       });
@@ -129,6 +165,19 @@ export const expressionService = {
     return first;
   },
   async getNextPrompt(input: { userId: number; category: ExpressionGenerationCategory }): Promise<ExpressionPromptRecord> {
+    const now = new Date();
+
+    // 1) An item recognized earlier and now due for production (the spaced test).
+    const dueProduction = await expressionRepository.findDueProductionPrompt({
+      userId: input.userId,
+      category: input.category,
+      now
+    });
+    if (dueProduction) {
+      return buildDelivery(dueProduction, "production");
+    }
+
+    // 2) A fresh unseen item → first encounter is recognition.
     const unseen = await expressionRepository.listUnseenPromptsByCategory({
       userId: input.userId,
       category: input.category,
@@ -136,13 +185,18 @@ export const expressionService = {
     });
 
     let nextPrompt: ExpressionPromptRecord | null = unseen[0] ?? null;
+    let mode: ExpressionPracticeMode = "recognition";
+
+    // 3) Nothing new and nothing due → recycle a previously produced item.
     if (!nextPrompt) {
       nextPrompt = await expressionRepository.findLeastRecentlyViewedPrompt({
         userId: input.userId,
         category: input.category
       });
+      mode = "production";
     }
 
+    // 4) Pool empty → generate one (fresh, so recognition).
     if (!nextPrompt) {
       const generated = await generatePromptPool({
         userId: input.userId,
@@ -150,19 +204,65 @@ export const expressionService = {
         countPerCategory: 1
       });
       nextPrompt = generated.promptsByCategory[input.category]?.[0] ?? null;
+      mode = "recognition";
     }
 
     if (!nextPrompt) {
       throw new AppError(500, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
     }
 
-    await expressionRepository.markPromptViewed({ userId: input.userId, promptId: nextPrompt.id });
+    const delivery = await buildDelivery(nextPrompt, mode);
+    // Record the encounter so the item is not re-served as "unseen".
+    await expressionRepository.markRecognitionServed({ userId: input.userId, promptId: nextPrompt.id });
 
     if (unseen.length < EXPRESSION_MIN_UNSEEN_BUFFER) {
       expressionPoolRefillScheduler.schedule(input);
     }
 
-    return nextPrompt;
+    return delivery;
+  },
+
+  async assessRecognition(input: {
+    userId: number;
+    promptId: number;
+    chosenText: string;
+  }): Promise<{ correct: boolean; correctAnswer: string; englishText: string }> {
+    const prompt = await expressionRepository.findPromptById({ promptId: input.promptId });
+    if (!prompt) {
+      throw new AppError(404, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
+    }
+    const hasViewed = await expressionRepository.hasUserViewedPrompt({ userId: input.userId, promptId: input.promptId });
+    if (!hasViewed) {
+      throw new AppError(404, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
+    }
+    const answer = await expressionRepository.findPromptAnswerById({ promptId: input.promptId });
+    const correctAnswer = answer?.nativeAnswer ?? "";
+    const normalize = (text: string): string => text.trim().toLowerCase().replace(/\s+/g, " ");
+    const correct = normalize(input.chosenText) === normalize(correctAnswer);
+
+    // Recognition done now; production becomes due after the spacing delay.
+    await expressionRepository.markRecognitionDone({
+      userId: input.userId,
+      promptId: input.promptId,
+      productionDueAt: new Date(Date.now() + RECOGNITION_TO_PRODUCTION_DELAY_MS)
+    });
+
+    // Lightweight attempt row so the daily goal / activity count recognition as
+    // practice; phase 'recognition' keeps it out of history/trends/review.
+    await expressionRepository.createAttempt({
+      userId: input.userId,
+      promptId: input.promptId,
+      englishText: prompt.englishText,
+      userAnswerText: input.chosenText,
+      naturalnessScore: correct ? 100 : 0,
+      feedback: "",
+      nativeLikeVersion: correctAnswer,
+      alternatives: [],
+      phase: "recognition"
+    });
+
+    await dailyGoalService.recordGoalProgress(input.userId);
+    return { correct, correctAnswer, englishText: prompt.englishText };
   },
   async generatePromptPool(input: GeneratePromptPoolInput): Promise<GeneratedPromptPool> {
     return generatePromptPool(input);
@@ -184,10 +284,12 @@ export const expressionService = {
       throw new AppError(404, "EXPRESSION_PROMPT_NOT_FOUND", API_MESSAGES.errors.expressionPromptNotFound);
     }
 
+    const answer = await expressionRepository.findPromptAnswerById({ promptId: input.promptId });
     const isSkipAnswer = isIDontKnowAnswer(input.userAnswerText);
     const assessment = await assessExpressionAttempt({
       englishText: prompt.englishText,
       situationText: prompt.situationText,
+      referenceAnswer: answer?.nativeAnswer ?? null,
       userAnswerText: input.userAnswerText
     });
     if (isSkipAnswer) {
@@ -203,8 +305,12 @@ export const expressionService = {
       naturalnessScore: Math.round(assessment.naturalnessScore),
       feedback: assessment.feedback,
       nativeLikeVersion: assessment.nativeLikeVersion,
-      alternatives: assessment.alternatives
+      alternatives: assessment.alternatives,
+      phase: "production"
     });
+
+    // Mark the spaced production phase complete for this user+prompt.
+    await expressionRepository.markProductionDone({ userId: input.userId, promptId: input.promptId });
 
     if (shouldEnqueueForReview(created.naturalnessScore)) {
       await expressionReviewRepository.upsertLowScoreItem({

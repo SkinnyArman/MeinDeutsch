@@ -44,6 +44,7 @@ export const API_PATHS = {
   expressionsNext: "/api/expressions/next",
   expressionsCategories: "/api/expressions/categories",
   expressionsAttempt: "/api/expressions/attempt",
+  expressionsRecognition: "/api/expressions/recognition",
   expressionsHistory: "/api/expressions/history",
   expressionsReview: "/api/expressions/review",
   expressionsReviewAttempt: (id: number) => `/api/expressions/review/${id}/attempt`,

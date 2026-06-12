@@ -25,6 +25,7 @@ import { AddVocabularyReviewHistory1780883000000 } from "./migrations/1780883000
 import { AddQuestionViewTracking1780884000000 } from "./migrations/1780884000000-AddQuestionViewTracking.js";
 import { AddCollocationTables1780885000000 } from "./migrations/1780885000000-AddCollocationTables.js";
 import { AddExpressionSituation1780886000000 } from "./migrations/1780886000000-AddExpressionSituation.js";
+import { AddExpressionRecognition1780887000000 } from "./migrations/1780887000000-AddExpressionRecognition.js";
 
 export const appDataSource = new DataSource({
   type: "postgres",
@@ -55,7 +56,8 @@ export const appDataSource = new DataSource({
     AddVocabularyReviewHistory1780883000000,
     AddQuestionViewTracking1780884000000,
     AddCollocationTables1780885000000,
-    AddExpressionSituation1780886000000
+    AddExpressionSituation1780886000000,
+    AddExpressionRecognition1780887000000
   ],
   migrationsRun: true,
   synchronize: false,

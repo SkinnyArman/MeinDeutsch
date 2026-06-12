@@ -5,5 +5,6 @@ export type { AlltagCategory } from "./useAlltagPrompt";
 export { useAlltagPromptPoolMutation } from "./useAlltagPromptPool";
 export { useAlltagNextPromptMutation } from "./useAlltagNextPrompt";
 export { useAlltagAttemptMutation } from "./useAlltagAttempt";
+export { useAlltagRecognitionMutation } from "./useAlltagRecognition";
 export { useAlltagReviewQuery } from "./useAlltagReview";
 export { useAlltagReviewAttemptMutation } from "./useAlltagReviewAttempt";

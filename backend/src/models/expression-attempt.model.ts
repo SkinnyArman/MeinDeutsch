@@ -47,6 +47,9 @@ export class ExpressionAttempt {
   @Column({ type: "jsonb", default: [] })
   alternatives!: string[];
 
+  @Column({ name: "phase", type: "text", default: "production" })
+  phase!: "recognition" | "production";
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }

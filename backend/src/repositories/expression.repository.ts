@@ -48,6 +48,8 @@ export const expressionRepository = {
     userId?: number | null;
     englishText: string;
     situationText?: string | null;
+    nativeAnswer?: string | null;
+    distractors?: string[];
     generatedContext?: string | null;
     generationCategory: string;
   }): Promise<ExpressionPromptRecord> {
@@ -62,6 +64,8 @@ export const expressionRepository = {
         englishText: input.englishText.trim(),
         normalizedEnglishText,
         situationText: input.situationText ?? null,
+        nativeAnswer: input.nativeAnswer ?? null,
+        distractors: input.distractors ?? [],
         generatedContext: input.generatedContext ?? null,
         generationCategory: input.generationCategory
       })
@@ -84,6 +88,16 @@ export const expressionRepository = {
       }
     });
     return row ? toPromptRecord(row) : null;
+  },
+
+  // Server-only: includes the gold answer + distractors (never sent in the served record).
+  async findPromptAnswerById(input: { promptId: number }): Promise<{ nativeAnswer: string | null; distractors: string[] } | null> {
+    const repo = appDataSource.getRepository(ExpressionPrompt);
+    const row = await repo.findOne({ where: { id: String(input.promptId) } });
+    if (!row) {
+      return null;
+    }
+    return { nativeAnswer: row.nativeAnswer ?? null, distractors: Array.isArray(row.distractors) ? row.distractors : [] };
   },
 
   async listUnseenPromptsByCategory(input: {
@@ -221,6 +235,62 @@ export const expressionRepository = {
     return count > 0;
   },
 
+  // Recognition→production phase state (one row per user+prompt).
+  async findDueProductionPrompt(input: {
+    userId: number;
+    category: string;
+    now: Date;
+  }): Promise<ExpressionPromptRecord | null> {
+    const repo = appDataSource.getRepository(ExpressionPrompt);
+    const row = await repo
+      .createQueryBuilder("prompt")
+      .innerJoin(
+        ExpressionPromptView,
+        "viewed",
+        "viewed.promptId = prompt.id AND viewed.userId = :userId",
+        { userId: String(input.userId) }
+      )
+      .where("prompt.generationCategory = :category", { category: input.category })
+      .andWhere("viewed.recognition_done_at IS NOT NULL")
+      .andWhere("viewed.production_done_at IS NULL")
+      .andWhere("viewed.production_due_at IS NOT NULL")
+      .andWhere("viewed.production_due_at <= :now", { now: input.now.toISOString() })
+      .orderBy("viewed.production_due_at", "ASC")
+      .getOne();
+    return row ? toPromptRecord(row) : null;
+  },
+
+  async markRecognitionServed(input: { userId: number; promptId: number }): Promise<void> {
+    const repo = appDataSource.getRepository(ExpressionPromptView);
+    await repo
+      .createQueryBuilder()
+      .insert()
+      .into(ExpressionPromptView)
+      .values({
+        userId: String(input.userId),
+        promptId: String(input.promptId),
+        createdAt: new Date()
+      })
+      .orIgnore()
+      .execute();
+  },
+
+  async markRecognitionDone(input: { userId: number; promptId: number; productionDueAt: Date }): Promise<void> {
+    const repo = appDataSource.getRepository(ExpressionPromptView);
+    await repo.update(
+      { userId: String(input.userId), promptId: String(input.promptId) },
+      { recognitionDoneAt: new Date(), productionDueAt: input.productionDueAt }
+    );
+  },
+
+  async markProductionDone(input: { userId: number; promptId: number }): Promise<void> {
+    const repo = appDataSource.getRepository(ExpressionPromptView);
+    await repo.update(
+      { userId: String(input.userId), promptId: String(input.promptId) },
+      { productionDoneAt: new Date() }
+    );
+  },
+
   async createAttempt(input: {
     userId: number;
     promptId: number;
@@ -230,6 +300,7 @@ export const expressionRepository = {
     feedback: string;
     nativeLikeVersion: string;
     alternatives: string[];
+    phase?: "recognition" | "production";
   }): Promise<ExpressionAttemptRecord> {
     const repo = appDataSource.getRepository(ExpressionAttempt);
     const created = repo.create({
@@ -240,7 +311,8 @@ export const expressionRepository = {
       naturalnessScore: input.naturalnessScore,
       feedback: input.feedback,
       nativeLikeVersion: input.nativeLikeVersion,
-      alternatives: input.alternatives
+      alternatives: input.alternatives,
+      phase: input.phase ?? "production"
     });
     const saved = await repo.save(created);
     return toAttemptRecord(saved);
@@ -249,7 +321,7 @@ export const expressionRepository = {
   async listAttempts(input: { userId: number; limit: number; offset: number }): Promise<ExpressionAttemptRecord[]> {
     const repo = appDataSource.getRepository(ExpressionAttempt);
     const rows = await repo.find({
-      where: { userId: String(input.userId) },
+      where: { userId: String(input.userId), phase: "production" },
       order: { createdAt: "DESC" },
       take: input.limit,
       skip: input.offset
@@ -260,7 +332,7 @@ export const expressionRepository = {
   async countAttempts(input: { userId: number }): Promise<number> {
     const repo = appDataSource.getRepository(ExpressionAttempt);
     return repo.count({
-      where: { userId: String(input.userId) }
+      where: { userId: String(input.userId), phase: "production" }
     });
   },
 
@@ -281,6 +353,7 @@ export const expressionRepository = {
     const rows = await repo
       .createQueryBuilder("attempt")
       .where("attempt.userId = :userId", { userId: String(input.userId) })
+      .andWhere("attempt.phase = 'production'")
       .andWhere("attempt.englishText IN (:...englishTexts)", { englishTexts: uniqueTexts })
       .orderBy("attempt.createdAt", "ASC")
       .addOrderBy("attempt.id", "ASC")

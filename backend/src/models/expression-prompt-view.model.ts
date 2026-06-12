@@ -23,6 +23,15 @@ export class ExpressionPromptView {
   @JoinColumn({ name: "prompt_id" })
   prompt!: ExpressionPrompt;
 
+  @Column({ name: "recognition_done_at", type: "timestamptz", nullable: true })
+  recognitionDoneAt!: Date | null;
+
+  @Column({ name: "production_due_at", type: "timestamptz", nullable: true })
+  productionDueAt!: Date | null;
+
+  @Column({ name: "production_done_at", type: "timestamptz", nullable: true })
+  productionDoneAt!: Date | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }

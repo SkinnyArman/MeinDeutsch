@@ -100,7 +100,7 @@ export const dashboardRepository = {
   }> {
     const [alltagRows, kollokRows] = await Promise.all([
       appDataSource.getRepository(ExpressionAttempt).find({
-        where: { userId: String(userId) },
+        where: { userId: String(userId), phase: "production" },
         order: { createdAt: "DESC" },
         take: limit,
         select: { naturalnessScore: true, createdAt: true }

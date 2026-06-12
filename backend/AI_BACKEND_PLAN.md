@@ -85,6 +85,12 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Frontend dashboard at `/` with goal stepper, streak hero, feature cards (sparklines), 14-day stacked activity chart (custom SVG, no chart lib)
 - [x] App shell streak chip now driven by the daily goal (progress + countdown / secured)
 
+## 6d) Alltagssprache pedagogy upgrades (Implemented)
+- [x] Situational reframe: German micro-situation prompt + English as reveal-on-tap hint; difficulty ceiling; situation-aware scoring (`situation_text`)
+- [x] Spaced recognition→production (option C): stored `native_answer` + `distractors`; MCQ recognition first, free production a later session (default 6h gate)
+- [x] Per-user phase state on `expression_prompt_views`; delivery priority due-production → unseen(recognition) → recycle(production)
+- [x] `POST /api/expressions/recognition`; `expression_attempts.phase` keeps recognition out of history/trends/review but in daily-goal count
+
 ## 7) Vocabulary SRS (Implemented)
 - [x] Save vocabulary from contextual suggestions
 - [x] Category list + icon metadata

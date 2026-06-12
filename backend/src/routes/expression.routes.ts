@@ -3,6 +3,7 @@ import {
   listExpressionCategoriesController,
   assessExpressionReviewAttemptController,
   assessExpressionAttemptController,
+  assessExpressionRecognitionController,
   generateExpressionController,
   generateExpressionPoolController,
   nextExpressionController,
@@ -17,6 +18,7 @@ expressionRouter.post("/generate", asyncHandler(generateExpressionController));
 expressionRouter.post("/pool", asyncHandler(generateExpressionPoolController));
 expressionRouter.post("/next", asyncHandler(nextExpressionController));
 expressionRouter.get("/categories", asyncHandler(listExpressionCategoriesController));
+expressionRouter.post("/recognition", asyncHandler(assessExpressionRecognitionController));
 expressionRouter.post("/attempt", asyncHandler(assessExpressionAttemptController));
 expressionRouter.get("/history", asyncHandler(listExpressionHistoryController));
 expressionRouter.get("/review", asyncHandler(listExpressionReviewController));

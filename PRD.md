@@ -60,6 +60,14 @@ Build a personal German learning MVP where:
   - Generation has a difficulty ceiling: simple A2-B1 scenario wording even when the target expression
     is idiomatic; expected answers ~3-12 words, natural spoken register (not literary/abstract).
   - AI scores whether the answer fits the SITUATION (not literal-translation equivalence).
+  - Two-phase spaced practice (recognition → production), research-backed:
+    - First encounter with an item is RECOGNITION: pick the natural utterance from a multiple-choice
+      set (the stored native answer + 3 AI-generated plausible distractors).
+    - A LATER session (spacing gate, default 6h) re-serves the same item as PRODUCTION: type it cold.
+    - Per-user phase state lives on `expression_prompt_views` (recognition_done_at / production_due_at /
+      production_done_at); delivery priority is due-production → unseen (recognition) → recycle (production).
+    - Recognition still counts toward the daily goal but is excluded from history/score trends
+      (attempt rows carry a `phase` column).
   - Categories are dynamic from backend configuration (frontend reads from API).
   - Current categories include: random, work, transport (bus/U-Bahn), home, slang, school/uni, doctor's office, cinema, concert, food, travel, sprichwort.
   - Page auto-loads a prompt on open and on category switch (no manual generate click).

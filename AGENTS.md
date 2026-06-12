@@ -222,6 +222,30 @@ on top. Format:
   enter the pool. NOTE: same English gloss with different German collocation (Entscheidung
   treffen vs Entschluss fassen) is allowed on purpose.
 
+### 2026-06-12 — Alltagssprache: spaced recognition→production (option C) (Claude Code)
+- Built on top of the situational reframe (option A). Each prompt now stores `native_answer` +
+  `distractors` (jsonb); generation emits them. First encounter with an item is RECOGNITION
+  (MCQ: shuffle of native answer + 3 distractors); a LATER session re-serves it as PRODUCTION
+  (free text). Migration `AddExpressionRecognition`.
+- Per-user phase state on `expression_prompt_views`: `recognition_done_at`, `production_due_at`,
+  `production_done_at`. `getNextPrompt` priority: (1) due-production → (2) unseen → recognition →
+  (3) recycle → production. Spacing gate `RECOGNITION_TO_PRODUCTION_DELAY_MS` (default 6h) in
+  expression.service — production is withheld until then, so it lands in a later session.
+- New endpoint `POST /api/expressions/recognition` ({promptId, chosenText} → {correct, correctAnswer}).
+  `assessAttempt` (production) marks production_done + uses stored native_answer as a scoring reference.
+- `expression_attempts.phase` ('recognition'|'production'): recognition rows count toward the daily
+  goal/activity but are filtered OUT of history, score trends, and review (production-only).
+- Frontend AlltagsspracheView branches on `prompt.mode`: recognition = MCQ buttons with correct/wrong
+  states + "Next"; production = existing textarea + score ring. English hint hidden in recognition
+  (options would reveal it). Mode chip shows RECOGNIZE/PRODUCE.
+- buildDelivery downgrades to production when a prompt has no stored answer (legacy rows).
+- VERIFY GOTCHA: tsx watch kept wedging on rapid edits and a STALE server served old code (0 prompts
+  got answers until restarted); also the answer wasn't persisted until the service createPrompt call
+  passed nativeAnswer/distractors (repo+AI were ready first). Purged answerless unattempted prompts so
+  pools regenerate. To verify production locally, fast-forward `production_due_at` in the DB.
+- Verified live end-to-end: recognition MCQ (4 options) → correct check → same-session next is a
+  DIFFERENT item (spacing holds) → after due-time, item returns as production. 40 backend tests pass.
+
 ### 2026-06-12 — Alltagssprache reframed to situational production (Claude Code)
 - Product fix: the feature was generating abstract English sentences to translate; reframed
   (research-backed — situational formulaic-language practice > decontextualized translation)

@@ -115,6 +115,8 @@ export interface SavedVocabularyPayload {
   created: boolean;
 }
 
+export type ExpressionPracticeMode = "recognition" | "production";
+
 export interface ExpressionPromptRecord {
   id: number;
   englishText: string;
@@ -122,6 +124,15 @@ export interface ExpressionPromptRecord {
   generatedContext: string | null;
   generationCategory: string;
   createdAt: string;
+  // Present only on the served "next" payload.
+  mode?: ExpressionPracticeMode;
+  options?: string[];
+}
+
+export interface ExpressionRecognitionResult {
+  correct: boolean;
+  correctAnswer: string;
+  englishText: string;
 }
 
 export interface ExpressionPromptPoolPayload {

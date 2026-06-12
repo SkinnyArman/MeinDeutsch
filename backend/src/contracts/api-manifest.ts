@@ -281,6 +281,17 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     ]
   },
   {
+    id: "assess-expression-recognition",
+    method: "POST",
+    path: "/api/expressions/recognition",
+    title: "Assess Alltagssprache Recognition",
+    description: "Checks a multiple-choice recognition answer and schedules the spaced production phase.",
+    requestFields: [
+      { name: "promptId", label: "Prompt ID", type: "number", required: true, placeholder: "1" },
+      { name: "chosenText", label: "Chosen option (German)", type: "text", required: true }
+    ]
+  },
+  {
     id: "assess-expression",
     method: "POST",
     path: "/api/expressions/attempt",

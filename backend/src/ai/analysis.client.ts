@@ -90,6 +90,12 @@ Rules for situationText (the main prompt, in GERMAN):
 - The situation must have a clear, natural spoken answer (an idiom, fixed phrase, social formula, reaction, or short everyday utterance).
 Rules for englishText (a HINT, in English):
 - The natural English version of what the learner should say (e.g. "Break a leg!", "Sorry I'm late."). This is shown only as an optional hint, so keep it to the utterance itself.
+Rules for nativeAnswer (in GERMAN):
+- The natural German utterance a native would say in this situation (3-12 words, spoken register). This is the gold-standard answer.
+Rules for distractors (array of exactly 3, in GERMAN):
+- Three WRONG-but-plausible German utterances for a multiple-choice recognition step.
+- Each must be clearly not what a native would say HERE: e.g. wrong register, a literal/English-transfer phrasing, right words but wrong meaning, or a related-but-inappropriate response.
+- Similar length/shape to nativeAnswer so the choice is non-trivial. Never duplicate nativeAnswer.
 Other rules:
 - The expected German answer should be roughly 3-12 words; natural spoken register, NOT literary.
 - Available expression types: ${EXPRESSION_TYPES_LIST}
@@ -230,7 +236,13 @@ export const generateQuestion = async (input: {
 export const generateEverydayExpression = async (
   category: ExpressionGenerationCategory = "random",
   options?: { avoidEnglishTexts?: string[] }
-): Promise<{ englishText: string; situationText: string | null; generatedContext: string | null }> => {
+): Promise<{
+  englishText: string;
+  situationText: string | null;
+  nativeAnswer: string | null;
+  distractors: string[];
+  generatedContext: string | null;
+}> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
       provider: "openai",
@@ -263,10 +275,12 @@ export const generateEverydayExpression = async (
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["situationText", "englishText", "generatedContext"],
+            required: ["situationText", "englishText", "nativeAnswer", "distractors", "generatedContext"],
             properties: {
               situationText: { type: "string", minLength: 1 },
               englishText: { type: "string", minLength: 1 },
+              nativeAnswer: { type: "string", minLength: 1 },
+              distractors: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 3 },
               generatedContext: { type: "string", minLength: 1 }
             }
           }
@@ -276,22 +290,42 @@ export const generateEverydayExpression = async (
     return JSON.parse(completion.output_text) as {
       englishText: string;
       situationText: string | null;
+      nativeAnswer: string | null;
+      distractors: string[];
       generatedContext: string | null;
     };
   } catch (error) {
     logger.error("OpenAI expression generation failed", error);
     if (env.AI_FALLBACK_ENABLED) {
       const fallbackExpressions = [
-        { englishText: "Break a leg.", situationText: "Ein Freund hat morgen eine wichtige Prüfung. Was wünschst du ihm?", generatedContext: "idiom_encouragement" },
-        { englishText: "Better late than never.", situationText: "Ein Kollege liefert eine Aufgabe spät ab, aber immerhin fertig. Was sagst du?", generatedContext: "proverb_time" },
-        { englishText: "It's not my cup of tea.", situationText: "Jemand fragt, ob du gern Jazz hörst, aber du magst es nicht. Was antwortest du?", generatedContext: "idiom_opinion" },
-        { englishText: "Let's call it a day.", situationText: "Es ist spät und ihr habt im Büro genug geschafft. Was schlägst du vor?", generatedContext: "idiom_work" },
-        { englishText: "I'm so damn tired today.", situationText: "Du bist nach einem langen Tag total erschöpft und sagst es einem Freund. Was sagst du?", generatedContext: "casual_emotion" }
+        {
+          englishText: "Break a leg.",
+          situationText: "Ein Freund hat morgen eine wichtige Prüfung. Was wünschst du ihm?",
+          nativeAnswer: "Toi, toi, toi!",
+          distractors: ["Brich dir ein Bein!", "Viel Glück beim Brechen!", "Mach das Bein kaputt!"],
+          generatedContext: "idiom_encouragement"
+        },
+        {
+          englishText: "It's not my cup of tea.",
+          situationText: "Jemand fragt, ob du gern Jazz hörst, aber du magst es nicht. Was antwortest du?",
+          nativeAnswer: "Das ist nicht so mein Ding.",
+          distractors: ["Das ist nicht meine Tasse Tee.", "Ich mag keinen Tee.", "Das ist nicht mein Becher."],
+          generatedContext: "idiom_opinion"
+        },
+        {
+          englishText: "Let's call it a day.",
+          situationText: "Es ist spät und ihr habt im Büro genug geschafft. Was schlägst du vor?",
+          nativeAnswer: "Lass uns für heute Schluss machen.",
+          distractors: ["Lass uns den Tag rufen.", "Nennen wir es einen Tag.", "Lass uns heute anfangen."],
+          generatedContext: "idiom_work"
+        }
       ];
       const fallback = pickRandom(fallbackExpressions);
       return {
         englishText: fallback.englishText,
         situationText: fallback.situationText,
+        nativeAnswer: fallback.nativeAnswer,
+        distractors: fallback.distractors,
         generatedContext: fallback.generatedContext
       };
     }
@@ -326,6 +360,7 @@ export interface ExpressionReviewAssessmentResult {
 export const assessExpressionAttempt = async (input: {
   englishText: string;
   situationText?: string | null;
+  referenceAnswer?: string | null;
   userAnswerText: string;
 }): Promise<ExpressionAssessmentResult> => {
   if (!openai) {
@@ -342,6 +377,7 @@ export const assessExpressionAttempt = async (input: {
       input: [
         input.situationText ? `Situation (German): ${input.situationText}` : null,
         `English hint: ${input.englishText}`,
+        input.referenceAnswer ? `Reference native answer (one good option): ${input.referenceAnswer}` : null,
         `German attempt: ${input.userAnswerText}`
       ]
         .filter(Boolean)
