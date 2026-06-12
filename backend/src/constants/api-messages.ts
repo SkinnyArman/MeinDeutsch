@@ -27,6 +27,9 @@ export const API_MESSAGES = {
   streak: {
     fetched: "Streak fetched successfully"
   },
+  dashboard: {
+    fetched: "Dashboard overview fetched successfully"
+  },
   vocabulary: {
     saved: "Vocabulary item saved successfully",
     listed: "Vocabulary items fetched successfully",

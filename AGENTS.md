@@ -204,6 +204,24 @@ on top. Format:
 - Anything left unfinished or discovered for the next session
 ```
 
+### 2026-06-12 — NEW FEATURE: Dashboard + Daily Goal streak (Claude Code)
+- `/` is now a dashboard (was a redirect): daily-goal stepper (4 clickable steps), streak
+  hero, per-feature cards (totals, due badges, score sparklines), 14-day stacked activity
+  chart. Charts are hand-rolled SVG components (`Sparkline.vue`, `ActivityChart.vue`) —
+  no chart library; keep it that way unless there's a real need.
+- STREAK REDEFINED: the headline streak is now the "daily goal" — at least one task in
+  EVERY section that day (Daily Talk, Alltag, Kollokationen, vocab review). Vocab counts
+  as done when its due queue is empty. Stored as `streak_status.feature_key='daily_goal'`
+  via the now-generic `streakRepository.getStatus/recordCompletion`. The old `daily_talk`
+  streak still exists and `/api/streaks/daily-talk` is unchanged.
+- Pure goal logic in `logic/daily-goal.logic.ts` (+ tests). `dailyGoalService.recordGoalProgress`
+  is hooked after all four task writes (never throws) AND the goal is re-evaluated on
+  `GET /api/dashboard/overview` (App shell polls it every 60s; chip shows "n/4 · time left"
+  or "secured"). Mobile bottom nav: Settings moved to the top bar gear; tabs are
+  Home/Talk/Alltag/Kollok./Vocab.
+- Verified live: overview returned 2/4 done (kollok 13 today, vocab auto-done via empty
+  queue), streak correctly not yet recorded. 36 backend tests pass.
+
 ### 2026-06-12 — NEW FEATURE: Kollokationen (collocation trainer) (Claude Code)
 - Full-stack feature mirroring Alltagssprache's architecture. Backend: 4 tables
   (`collocation_prompts` shared pool w/ unique normalized-German+category index,

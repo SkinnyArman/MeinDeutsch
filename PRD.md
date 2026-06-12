@@ -88,6 +88,18 @@ Build a personal German learning MVP where:
   - Scores <= 70 auto-enqueue into a review queue; graduation after two successes >= 90
     (same transition logic as Alltagssprache review).
 
+- New feature: Dashboard + Daily Goal streak
+  - `/` is a dashboard: daily-goal stepper, streak, per-feature cards with due counts and
+    score sparklines, and a 14-day activity chart.
+  - Streak redefinition: a day counts when EVERY section saw at least one task
+    (Daily Talk submission, Alltagssprache attempt, Kollokationen attempt, vocabulary review).
+    Vocabulary also counts as done when its due queue is empty (nothing reviewable must not
+    block the goal).
+  - The day streak is stored under `streak_status.feature_key = 'daily_goal'` (UTC-day
+    windows, same mechanics as the legacy daily_talk streak, which remains for compatibility).
+  - The goal is re-evaluated after every qualifying task write and on each
+    `GET /api/dashboard/overview`, so completion is recorded the moment the last section finishes.
+
 ### Out of scope (post-MVP)
 - Any feature not required for this loop:
   topics -> AI questions -> answers -> mistakes + CEFR + tips -> knowledge base.

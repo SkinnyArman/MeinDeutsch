@@ -7,6 +7,7 @@ import { appDataSource } from "../db/pool.js";
 import { knowledgeRepository } from "../repositories/knowledge.repository.js";
 import { questionRepository } from "../repositories/question.repository.js";
 import { submissionRepository } from "../repositories/submission.repository.js";
+import { dailyGoalService } from "./daily-goal.service.js";
 import { streakService } from "./streak.service.js";
 import { AppError } from "../utils/app-error.js";
 
@@ -77,7 +78,7 @@ export const submissionService = {
     analysis.errors = alignErrorRanges(input.answerText, analysis.correctedText, analysis.errors);
     analysis.errors = filterInvalidErrors(input.answerText, analysis.correctedText, analysis.errors);
 
-    return persistAnalyzedSubmission({
+    const persisted = await persistAnalyzedSubmission({
       userId,
       questionId: input.questionId,
       questionText,
@@ -87,6 +88,9 @@ export const submissionService = {
       modelUsed,
       analysis
     });
+
+    await dailyGoalService.recordGoalProgress(userId);
+    return persisted;
   }
 };
 

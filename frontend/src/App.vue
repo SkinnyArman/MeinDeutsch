@@ -2,12 +2,12 @@
 import { computed, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
-import { useQuery } from "@/libs/query";
 import {
   BookOpen,
   CheckCircle2,
   Flame,
   Languages,
+  LayoutDashboard,
   LogOut,
   MessageCircle,
   PanelLeft,
@@ -15,12 +15,10 @@ import {
   Settings
 } from "lucide-vue-next";
 import { THEME_MAP, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
-import type { DailyTalkStreakRecord } from "@/types/ApiTypes";
-import { fetchJson } from "@/libs/http";
-import { API_PATHS } from "@/config/api";
+import { useDashboardOverviewQuery } from "@/queries/dashboard";
 import { clearSession, getSessionUser } from "./utils/auth";
 
-type ViewKey = "daily-talk" | "alltagssprache" | "kollokationen" | "vocabulary" | "settings";
+type ViewKey = "dashboard" | "daily-talk" | "alltagssprache" | "kollokationen" | "vocabulary" | "settings";
 
 const route = useRoute();
 const router = useRouter();
@@ -34,6 +32,13 @@ let tickTimer: ReturnType<typeof setInterval> | undefined;
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 const navItems = computed(() => [
+  {
+    key: "dashboard" as ViewKey,
+    title: t.dashboard.title(),
+    shortTitle: t.tabs.home(),
+    path: "/",
+    icon: LayoutDashboard
+  },
   {
     key: "daily-talk" as ViewKey,
     title: t.dailyTalk.title(),
@@ -102,27 +107,32 @@ const formatRemaining = (ms: number): string => {
   return `${minutes}m ${seconds}s`;
 };
 
-const streakQuery = useQuery({
-  queryKey: ["streak", "daily-talk"],
-  queryFn: async () => (await fetchJson<DailyTalkStreakRecord>(API_PATHS.streakDailyTalk)).data,
-  refetchInterval: 60000
-});
+const streakQuery = useDashboardOverviewQuery({ refetchInterval: 60000 });
+const goal = computed(() => streakQuery.data.value?.goal ?? null);
 
 const streakRemainingMs = computed(() => {
-  const endAt = streakQuery.data.value?.windowEndAt;
+  const endAt = goal.value?.streak.windowEndAt;
   if (!endAt) {
     return 0;
   }
   return Math.max(0, new Date(endAt).getTime() - nowMs.value);
 });
 
-const streakCount = computed(() => streakQuery.data.value?.currentStreak ?? 0);
-const streakSafeToday = computed(() => Boolean(streakQuery.data.value?.hasCompletedToday));
-const streakStatusText = computed(() =>
-  streakSafeToday.value
-    ? t.shell.streakSafe()
-    : t.shell.streakAtRisk({ time: formatRemaining(streakRemainingMs.value) })
-);
+const streakCount = computed(() => goal.value?.streak.currentStreak ?? 0);
+const streakSafeToday = computed(() => Boolean(goal.value?.allDone));
+const streakStatusText = computed(() => {
+  if (streakSafeToday.value) {
+    return t.shell.streakSafe();
+  }
+  if (goal.value) {
+    return t.shell.streakProgress({
+      done: goal.value.completedCount,
+      total: goal.value.totalSteps,
+      time: formatRemaining(streakRemainingMs.value)
+    });
+  }
+  return t.shell.streakAtRisk({ time: formatRemaining(streakRemainingMs.value) });
+});
 
 const firstName = computed(() => {
   const name = sessionUser.value?.displayName?.trim();
@@ -178,6 +188,9 @@ onUnmounted(() => {
 const activeNavKey = computed<ViewKey | "">(() => {
   if (route.path === "/login") {
     return "";
+  }
+  if (route.path === "/") {
+    return "dashboard";
   }
   if (route.path.startsWith("/settings")) {
     return "settings";
@@ -373,6 +386,12 @@ const logout = async (): Promise<void> => {
               <Flame class="h-3.5 w-3.5" />
               {{ streakCount }}
             </span>
+            <RouterLink
+              to="/settings"
+              class="rounded-lg border border-[var(--line)] p-1.5 text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
+            >
+              <Settings class="h-3.5 w-3.5" />
+            </RouterLink>
             <button
               class="rounded-lg border border-[var(--line)] p-1.5 text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
               :title="'Logout'"
@@ -396,7 +415,7 @@ const logout = async (): Promise<void> => {
     >
       <div class="mx-auto grid max-w-md grid-cols-5">
         <RouterLink
-          v-for="item in navItems"
+          v-for="item in navItems.filter((n) => n.key !== 'settings')"
           :key="`tab-${item.key}`"
           :to="item.path"
           class="flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold transition"

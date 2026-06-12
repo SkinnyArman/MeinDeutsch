@@ -276,8 +276,8 @@ export interface KnowledgeItemRecord {
   createdAt: string;
 }
 
-export interface DailyTalkStreakRecord {
-  featureKey: "daily_talk";
+export interface StreakRecord {
+  featureKey: string;
   currentStreak: number;
   longestStreak: number;
   hasCompletedToday: boolean;
@@ -285,4 +285,59 @@ export interface DailyTalkStreakRecord {
   windowStartAt: string;
   windowEndAt: string;
   remainingMs: number;
+}
+
+export interface DailyTalkStreakRecord extends StreakRecord {
+  featureKey: "daily_talk";
+}
+
+export type DailyGoalStepKey = "dailyTalk" | "alltagssprache" | "kollokationen" | "vocabulary";
+
+export interface DailyGoalStepState {
+  key: DailyGoalStepKey;
+  done: boolean;
+  countToday: number;
+}
+
+export interface DailyGoalState {
+  steps: DailyGoalStepState[];
+  completedCount: number;
+  totalSteps: number;
+  allDone: boolean;
+  streak: StreakRecord;
+}
+
+export interface DashboardActivityDay {
+  date: string;
+  dailyTalk: number;
+  alltagssprache: number;
+  kollokationen: number;
+  vocabulary: number;
+}
+
+export interface DashboardScorePoint {
+  score: number;
+  at: string;
+}
+
+export interface DashboardOverviewPayload {
+  goal: DailyGoalState;
+  activity: DashboardActivityDay[];
+  totals: {
+    dailyTalks: number;
+    expressionAttempts: number;
+    collocationAttempts: number;
+    vocabularyWords: number;
+    vocabularyReviews: number;
+  };
+  due: {
+    vocabulary: number;
+    alltagReview: number;
+    kollokReview: number;
+  };
+  trends: {
+    alltag: DashboardScorePoint[];
+    kollok: DashboardScorePoint[];
+  };
+  latestCefrLevel: string | null;
 }

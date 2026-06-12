@@ -6,6 +6,7 @@ export const messages = {
       greetingEvening: "Guten Abend",
       streakSafe: "Streak secured for today",
       streakAtRisk: "{time} left to keep your streak",
+      streakProgress: "{done}/{total} done · {time} left",
       tagline: "Dein Weg zu natürlichem Deutsch"
     },
     common: {
@@ -184,9 +185,29 @@ export const messages = {
       submitFailed: "Could not submit review attempt"
     },
     tabs: {
+      home: "Home",
       dailyTalk: "Talk",
       alltag: "Alltag",
       vocab: "Vocab"
+    },
+    dashboard: {
+      title: "Dashboard",
+      subtitle: "Your German at a glance.",
+      dailyGoal: "Daily Goal",
+      dailyGoalHint: "One task in every section keeps the streak alive.",
+      goalDone: "Day complete — streak secured!",
+      goalProgress: "{done} of {total} sections done",
+      activity: "Activity — last 14 days",
+      scoreTrend: "Last {count} scores",
+      longestStreak: "Longest: {count} days",
+      dayStreak: "day streak",
+      latestCefr: "Latest CEFR",
+      sessions: "{count} sessions",
+      words: "{count} words",
+      reviewsDone: "{count} reviews done",
+      caughtUp: "Caught up",
+      todayCount: "{count} today",
+      noActivity: "No activity yet — your charts grow as you practice."
     },
     alltagReview: {
       title: "Review",

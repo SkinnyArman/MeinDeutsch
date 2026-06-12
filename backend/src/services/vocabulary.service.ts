@@ -9,6 +9,7 @@ import { AppError } from "../utils/app-error.js";
 import { API_MESSAGES } from "../constants/api-messages.js";
 import { categoryToIcon } from "../constants/vocabulary-icons.js";
 import { computeNextSrsState } from "../logic/srs.logic.js";
+import { dailyGoalService } from "./daily-goal.service.js";
 
 interface SaveVocabularyInput {
   userId: number;
@@ -90,7 +91,7 @@ export const vocabularyService = {
     rating: VocabularyReviewRating;
     now?: Date;
   }): Promise<VocabularyItemRecord> {
-    return appDataSource.transaction(async (manager) => {
+    const reviewed = await appDataSource.transaction(async (manager) => {
       const existing = await vocabularyRepository.findByIdForUpdate({
         userId: input.userId,
         vocabularyId: input.vocabularyId
@@ -142,5 +143,8 @@ export const vocabularyService = {
 
       return updated;
     });
+
+    await dailyGoalService.recordGoalProgress(input.userId);
+    return reviewed;
   }
 };

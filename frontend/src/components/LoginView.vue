@@ -58,7 +58,7 @@ const handleCredential = async (response: GoogleCredentialResponse): Promise<voi
 
     setSession(payload.data.token, payload.data.user);
     notice.value = { type: "success", text: t.login.success() };
-    await router.replace("/daily-talk");
+    await router.replace("/");
   } catch (error) {
     setError(error instanceof Error ? error.message : t.login.signInFailed());
   } finally {

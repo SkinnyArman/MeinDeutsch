@@ -1,16 +1,17 @@
 import type { EntityManager } from "typeorm";
 import { appDataSource } from "../db/pool.js";
-import { type DailyTalkStreakRecord, StreakStatus } from "../models/streak-status.model.js";
+import { type DailyTalkStreakRecord, type StreakRecord, StreakStatus } from "../models/streak-status.model.js";
 
-const FEATURE_KEY = "daily_talk";
+const DAILY_TALK_FEATURE_KEY = "daily_talk";
+export const DAILY_GOAL_FEATURE_KEY = "daily_goal";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const startOfUtcDay = (date: Date): Date => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 
 const formatDateOnly = (date: Date): string => date.toISOString().slice(0, 10);
 
-const toRecord = (entity: StreakStatus, now: Date): DailyTalkStreakRecord => ({
-  featureKey: "daily_talk",
+const toRecord = (entity: StreakStatus, now: Date): StreakRecord => ({
+  featureKey: entity.featureKey,
   currentStreak: entity.currentStreak,
   longestStreak: entity.longestStreak,
   hasCompletedToday: entity.lastCompletionDate === formatDateOnly(now),
@@ -20,9 +21,14 @@ const toRecord = (entity: StreakStatus, now: Date): DailyTalkStreakRecord => ({
   remainingMs: Math.max(0, entity.windowEndAt.getTime() - now.getTime())
 });
 
-const ensureRow = async (userId: number, now: Date, manager?: EntityManager): Promise<StreakStatus> => {
+const ensureRow = async (
+  userId: number,
+  featureKey: string,
+  now: Date,
+  manager?: EntityManager
+): Promise<StreakStatus> => {
   const repo = (manager ?? appDataSource.manager).getRepository(StreakStatus);
-  const existing = await repo.findOne({ where: { userId: String(userId), featureKey: FEATURE_KEY } });
+  const existing = await repo.findOne({ where: { userId: String(userId), featureKey } });
   if (existing) {
     return existing;
   }
@@ -30,7 +36,7 @@ const ensureRow = async (userId: number, now: Date, manager?: EntityManager): Pr
   const dayStart = startOfUtcDay(now);
   const created = repo.create({
     userId: String(userId),
-    featureKey: FEATURE_KEY,
+    featureKey,
     currentStreak: 0,
     longestStreak: 0,
     lastCompletionDate: null,
@@ -42,8 +48,8 @@ const ensureRow = async (userId: number, now: Date, manager?: EntityManager): Pr
 };
 
 export const streakRepository = {
-  async getDailyTalkStatus(userId: number, now: Date, manager?: EntityManager): Promise<DailyTalkStreakRecord> {
-    const row = await ensureRow(userId, now, manager);
+  async getStatus(userId: number, featureKey: string, now: Date, manager?: EntityManager): Promise<StreakRecord> {
+    const row = await ensureRow(userId, featureKey, now, manager);
 
     const todayStart = startOfUtcDay(now);
     const todayEnd = new Date(todayStart.getTime() + DAY_MS);
@@ -57,13 +63,14 @@ export const streakRepository = {
     return toRecord(row, now);
   },
 
-  async recordDailyTalkCompletion(
+  async recordCompletion(
     userId: number,
+    featureKey: string,
     now: Date,
     manager?: EntityManager
-  ): Promise<DailyTalkStreakRecord> {
+  ): Promise<StreakRecord> {
     const repo = (manager ?? appDataSource.manager).getRepository(StreakStatus);
-    const row = await ensureRow(userId, now, manager);
+    const row = await ensureRow(userId, featureKey, now, manager);
 
     const today = formatDateOnly(now);
     if (row.lastCompletionDate === today) {
@@ -81,5 +88,17 @@ export const streakRepository = {
 
     const saved = await repo.save(row);
     return toRecord(saved, now);
+  },
+
+  async getDailyTalkStatus(userId: number, now: Date, manager?: EntityManager): Promise<DailyTalkStreakRecord> {
+    return (await this.getStatus(userId, DAILY_TALK_FEATURE_KEY, now, manager)) as DailyTalkStreakRecord;
+  },
+
+  async recordDailyTalkCompletion(
+    userId: number,
+    now: Date,
+    manager?: EntityManager
+  ): Promise<DailyTalkStreakRecord> {
+    return (await this.recordCompletion(userId, DAILY_TALK_FEATURE_KEY, now, manager)) as DailyTalkStreakRecord;
   }
 };

@@ -410,6 +410,14 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     ]
   },
   {
+    id: "dashboard-overview",
+    method: "GET",
+    path: "/api/dashboard/overview",
+    title: "Dashboard Overview",
+    description: "Returns daily goal checklist, day streak, 14-day activity, totals, due counts, and score trends.",
+    requestFields: []
+  },
+  {
     id: "daily-talk-streak",
     method: "GET",
     path: "/api/streaks/daily-talk",

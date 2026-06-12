@@ -77,6 +77,14 @@ Use this checklist and mark done items as `- [x]`.
 - [x] DB-enforced prompt uniqueness (normalized German + category); answer fields never served in prompts
 - [x] Pool service unit tests
 
+## 6c) Dashboard + Daily Goal (Implemented)
+- [x] Generic streak repository (`getStatus`/`recordCompletion` by feature key); `daily_goal` streak added
+- [x] Daily goal logic: all four sections done in a UTC day → streak day (vocab satisfied when due queue empty); pure logic + unit tests
+- [x] Goal progress hooks after Daily Talk submission, Alltag attempt, Kollokationen attempt, vocab review
+- [x] `GET /api/dashboard/overview`: goal checklist, streak, 14-day activity series, totals, due counts, score trends, latest CEFR
+- [x] Frontend dashboard at `/` with goal stepper, streak hero, feature cards (sparklines), 14-day stacked activity chart (custom SVG, no chart lib)
+- [x] App shell streak chip now driven by the daily goal (progress + countdown / secured)
+
 ## 7) Vocabulary SRS (Implemented)
 - [x] Save vocabulary from contextual suggestions
 - [x] Category list + icon metadata

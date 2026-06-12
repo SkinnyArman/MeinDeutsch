@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import LoginView from "./components/LoginView.vue";
+import DashboardView from "./components/DashboardView.vue";
 import AlltagsspracheView from "./components/AlltagsspracheView.vue";
 import AlltagsspracheReviewView from "./components/AlltagsspracheReviewView.vue";
 import KollokationenView from "./components/KollokationenView.vue";
@@ -20,7 +21,7 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/login", component: LoginView, meta: { public: true } },
-    { path: "/", redirect: "/daily-talk" },
+    { path: "/", component: DashboardView },
     { path: "/daily-talk", component: DailyTalkView },
     { path: "/alltagssprache", component: AlltagsspracheView },
     { path: "/alltagssprache/review", component: AlltagsspracheReviewView },
@@ -47,7 +48,7 @@ router.beforeEach((to) => {
   }
 
   if (to.path === "/login" && token) {
-    return "/daily-talk";
+    return "/";
   }
 
   return true;

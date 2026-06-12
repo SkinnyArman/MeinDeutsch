@@ -37,8 +37,8 @@ export class StreakStatus {
   updatedAt!: Date;
 }
 
-export interface DailyTalkStreakRecord {
-  featureKey: "daily_talk";
+export interface StreakRecord {
+  featureKey: string;
   currentStreak: number;
   longestStreak: number;
   hasCompletedToday: boolean;
@@ -46,4 +46,8 @@ export interface DailyTalkStreakRecord {
   windowStartAt: string;
   windowEndAt: string;
   remainingMs: number;
+}
+
+export interface DailyTalkStreakRecord extends StreakRecord {
+  featureKey: "daily_talk";
 }

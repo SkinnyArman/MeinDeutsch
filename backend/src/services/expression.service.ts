@@ -15,6 +15,7 @@ import {
 import { logger } from "../config/logger.js";
 import { expressionReviewRepository } from "../repositories/expression-review.repository.js";
 import { expressionRepository } from "../repositories/expression.repository.js";
+import { dailyGoalService } from "./daily-goal.service.js";
 import { AppError } from "../utils/app-error.js";
 import { createRefillQueue } from "../utils/refill-queue.js";
 
@@ -214,6 +215,7 @@ export const expressionService = {
       });
     }
 
+    await dailyGoalService.recordGoalProgress(input.userId);
     return created;
   },
 

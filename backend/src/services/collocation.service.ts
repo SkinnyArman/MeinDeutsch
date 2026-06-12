@@ -19,6 +19,7 @@ import {
 import { logger } from "../config/logger.js";
 import { collocationReviewRepository } from "../repositories/collocation-review.repository.js";
 import { collocationRepository, normalizeCollocationText } from "../repositories/collocation.repository.js";
+import { dailyGoalService } from "./daily-goal.service.js";
 import { AppError } from "../utils/app-error.js";
 import { createRefillQueue } from "../utils/refill-queue.js";
 
@@ -210,6 +211,7 @@ export const collocationService = {
       });
     }
 
+    await dailyGoalService.recordGoalProgress(input.userId);
     return created;
   },
 

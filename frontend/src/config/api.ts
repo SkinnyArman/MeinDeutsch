@@ -52,5 +52,6 @@ export const API_PATHS = {
   collocationsReview: "/api/collocations/review",
   collocationsReviewAttempt: (id: number) => `/api/collocations/review/${id}/attempt`,
   knowledge: "/api/knowledge",
-  streakDailyTalk: "/api/streaks/daily-talk"
+  streakDailyTalk: "/api/streaks/daily-talk",
+  dashboardOverview: "/api/dashboard/overview"
 } as const;
