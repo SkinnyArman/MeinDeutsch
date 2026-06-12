@@ -36,7 +36,12 @@ export const messages = {
       missingClientId: "VITE_GOOGLE_CLIENT_ID is missing.",
       googleUnavailable: "Google SDK is unavailable",
       signInFailed: "Sign-in failed",
-      success: "Signed in successfully. Redirecting..."
+      success: "Signed in successfully. Redirecting...",
+      or: "or",
+      passwordHint: "Google blocked? Sign in with your password instead.",
+      emailLabel: "Email",
+      passwordLabel: "Password",
+      passwordSubmit: "Sign in with password"
     },
     dailyTalk: {
       title: "Daily Talk",

@@ -34,6 +34,27 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     ]
   },
   {
+    id: "password-signin",
+    method: "POST",
+    path: "/api/auth/password",
+    title: "Password Sign-In",
+    description: "Google-free fallback login for whitelisted emails (requires AUTH_PASSWORD in backend env).",
+    requestFields: [
+      {
+        name: "email",
+        label: "Email",
+        type: "text",
+        required: true
+      },
+      {
+        name: "password",
+        label: "Password",
+        type: "text",
+        required: true
+      }
+    ]
+  },
+  {
     id: "health",
     method: "GET",
     path: "/api/health",

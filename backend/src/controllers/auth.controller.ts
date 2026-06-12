@@ -8,9 +8,20 @@ const googleSignInSchema = z.object({
   idToken: z.string().min(1)
 });
 
+const passwordSignInSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(1)
+});
+
 export const googleSignInController = async (req: Request, res: Response): Promise<void> => {
   const payload = googleSignInSchema.parse(req.body);
   const session = await authService.signInWithGoogle(payload.idToken);
+  sendSuccess(res, 200, API_MESSAGES.auth.signedIn, session);
+};
+
+export const passwordSignInController = async (req: Request, res: Response): Promise<void> => {
+  const payload = passwordSignInSchema.parse(req.body);
+  const session = await authService.signInWithPassword(payload.email, payload.password);
   sendSuccess(res, 200, API_MESSAGES.auth.signedIn, session);
 };
 

@@ -37,6 +37,13 @@ npm run migration:run
 npm run migration:revert
 ```
 
+Auth: Google sign-in is the primary method. Because Google endpoints can be blocked by
+network/region (403 on `accounts.google.com` in the browser or `googleapis.com` cert
+fetch on the server), an optional Google-free fallback exists: set `AUTH_PASSWORD`
+(min 8 chars) in `.env` and `POST /api/auth/password` with a whitelisted email + that
+password issues the same app JWT. Failed attempts are throttled (5 per 15 minutes per
+email). Leave `AUTH_PASSWORD` empty to disable.
+
 User-owned tables enforce non-null foreign keys to `users`. The shared Alltagssprache prompt pool is the exception: a prompt may keep an optional creator reference, while views, attempts, and review records remain user-owned.
 
 Daily Talk persistence is transactional. The answer log, knowledge item, mistake aggregates, and streak update either all commit or all roll back.

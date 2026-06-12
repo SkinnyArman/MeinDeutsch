@@ -23,6 +23,12 @@ export const userRepository = {
     return row ? toUserRecord(row) : null;
   },
 
+  async findByEmail(email: string): Promise<UserRecord | null> {
+    const repo = appDataSource.getRepository(User);
+    const row = await repo.findOne({ where: { email: email.toLowerCase() } });
+    return row ? toUserRecord(row) : null;
+  },
+
   async create(input: {
     googleSub: string;
     email: string;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
 import type { ApiResponse } from "@/types/ApiTypes";
@@ -38,6 +38,33 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undef
 const googleButtonRoot = ref<HTMLElement | null>(null);
 const notice = ref<{ type: "error" | "success"; text: string } | null>(null);
 const loading = ref(false);
+const passwordForm = reactive({ email: "", password: "" });
+
+const handlePasswordSignIn = async (): Promise<void> => {
+  if (!passwordForm.email.trim() || !passwordForm.password) {
+    return;
+  }
+  loading.value = true;
+  try {
+    const res = await apiFetch(API_PATHS.authPassword, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: passwordForm.email.trim(), password: passwordForm.password })
+    });
+    const payload = (await res.json()) as ApiResponse<GoogleAuthResult>;
+    if (!res.ok || !payload.success || !payload.data) {
+      throw new Error(payload.message || t.login.signInFailed());
+    }
+
+    setSession(payload.data.token, payload.data.user);
+    notice.value = { type: "success", text: t.login.success() };
+    await router.replace("/");
+  } catch (error) {
+    setError(error instanceof Error ? error.message : t.login.signInFailed());
+  } finally {
+    loading.value = false;
+  }
+};
 
 const setError = (text: string): void => {
   notice.value = { type: "error", text };
@@ -152,6 +179,31 @@ onMounted(async () => {
         <div ref="googleButtonRoot" class="w-full [&>div]:flex [&>div]:justify-center" />
         <p v-if="loading" class="text-xs text-[var(--muted)]">{{ t.common.loading() }}</p>
       </div>
+
+      <div class="mt-6 flex items-center gap-3">
+        <span class="h-px flex-1 bg-[var(--line)]" />
+        <span class="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.login.or() }}</span>
+        <span class="h-px flex-1 bg-[var(--line)]" />
+      </div>
+
+      <form class="mt-5 space-y-3" @submit.prevent="handlePasswordSignIn">
+        <p class="text-center text-xs text-[var(--muted)]">{{ t.login.passwordHint() }}</p>
+        <div>
+          <label class="eyebrow">{{ t.login.emailLabel() }}</label>
+          <input v-model="passwordForm.email" class="input mt-1.5" type="email" autocomplete="email" />
+        </div>
+        <div>
+          <label class="eyebrow">{{ t.login.passwordLabel() }}</label>
+          <input v-model="passwordForm.password" class="input mt-1.5" type="password" autocomplete="current-password" />
+        </div>
+        <button
+          class="btn-primary w-full"
+          type="submit"
+          :disabled="loading || !passwordForm.email.trim() || !passwordForm.password"
+        >
+          {{ t.login.passwordSubmit() }}
+        </button>
+      </form>
     </section>
   </main>
 </template>

@@ -1,7 +1,9 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
+import { createLoginThrottle } from "../logic/login-throttle.js";
 import type { UserRecord } from "../models/user.model.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { topicService } from "./topic.service.js";
@@ -56,7 +58,63 @@ export const isGoogleUpstreamFailure = (error: unknown): boolean => {
   );
 };
 
+const passwordThrottle = createLoginThrottle({ maxFailures: 5, lockMs: 15 * 60 * 1000 });
+
+// Constant-time comparison; hashing first equalizes lengths.
+const passwordsMatch = (provided: string, expected: string): boolean => {
+  const providedDigest = createHash("sha256").update(provided).digest();
+  const expectedDigest = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(providedDigest, expectedDigest);
+};
+
+const ensureUserForEmail = async (email: string): Promise<UserRecord> => {
+  const existing = await userRepository.findByEmail(email);
+  if (existing) {
+    return existing;
+  }
+
+  const created = await userRepository.create({
+    googleSub: `local:${email}`,
+    email,
+    displayName: email.split("@")[0] ?? null,
+    avatarUrl: null
+  });
+  try {
+    await topicService.seedDefaultTopics(created.id);
+  } catch (error) {
+    logger.error("Failed to seed default topics for new user", error);
+  }
+  return created;
+};
+
 export const authService = {
+  /**
+   * Google-free fallback for whitelisted emails when Google endpoints are
+   * unreachable (region/network blocks). Enabled by setting AUTH_PASSWORD.
+   */
+  async signInWithPassword(emailInput: string, password: string): Promise<{ token: string; user: UserRecord }> {
+    if (!env.AUTH_PASSWORD) {
+      throw new AppError(503, "AUTH_PASSWORD_DISABLED", API_MESSAGES.errors.authPasswordDisabled);
+    }
+
+    const email = emailInput.trim().toLowerCase();
+    if (passwordThrottle.isLocked(email)) {
+      throw new AppError(429, "AUTH_TOO_MANY_ATTEMPTS", API_MESSAGES.errors.authTooManyAttempts);
+    }
+
+    if (!allowedEmails.has(email) || !passwordsMatch(password, env.AUTH_PASSWORD)) {
+      passwordThrottle.recordFailure(email);
+      throw new AppError(401, "AUTH_INVALID_CREDENTIALS", API_MESSAGES.errors.authInvalidCredentials);
+    }
+
+    passwordThrottle.reset(email);
+    const user = await ensureUserForEmail(email);
+    return {
+      token: signToken(user),
+      user
+    };
+  },
+
   async signInWithGoogle(idToken: string): Promise<{ token: string; user: UserRecord }> {
     let ticket;
     try {
@@ -82,6 +140,10 @@ export const authService = {
     }
 
     let user = await userRepository.findByGoogleSub(payload.sub);
+    if (!user) {
+      // The account may already exist via the password fallback (local: sub).
+      user = await userRepository.findByEmail(email);
+    }
     if (!user) {
       user = await userRepository.create({
         googleSub: payload.sub,

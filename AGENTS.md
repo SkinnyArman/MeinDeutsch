@@ -222,6 +222,38 @@ on top. Format:
   enter the pool. NOTE: same English gloss with different German collocation (Entscheidung
   treffen vs Entschluss fassen) is allowed on purpose.
 
+### 2026-06-12 — Password sign-in fallback (Google 403 workaround) (Claude Code)
+- Google sign-in 403s when the network/region blocks Google (browser-side GSI and/or
+  backend cert fetch to googleapis.com; VPN often only covers the browser). Added a
+  Google-free fallback: `POST /api/auth/password` — whitelisted email + `AUTH_PASSWORD`
+  from env (min 8 chars, empty = disabled) → same app JWT. Constant-time compare
+  (sha256 + timingSafeEqual), brute-force throttle (5 fails / 15 min per email,
+  pure logic in `logic/login-throttle.ts` + tests), wrong password and non-whitelisted
+  email return the SAME 401 (no whitelist probing).
+- Accounts unify by email: password-created users get `google_sub = local:<email>`;
+  Google sign-in now falls back to `findByEmail` so it reuses that account instead of
+  crashing on the unique email constraint.
+- LoginView has an email+password form under the Google button ("Google blocked?" hint).
+- GOTCHA: `.env` is read once at startup — after editing `AUTH_PASSWORD`, restart the
+  backend (tsx watch does NOT reload on .env changes; that caused a confusing 503).
+
+### 2026-06-12 — Fix round: Daily Talk submit 404, dynamic cloze gaps, review queue UX (Claude Code)
+- Daily Talk submit hit `POST /api/submissions` (only GET exists there) → "Route not
+  found"; frontend now posts to `/api/submissions/text` (`API_PATHS.submissionsText`).
+- Kollokationen cloze is now DYNAMIC: generation gaps only the hard-to-guess collocate
+  (noun stays visible; e.g. "die Entscheidungen ____" → answer "getroffen"); clozeAnswer
+  must exactly reproduce the sentence; structural validation rejects bad generations
+  (exactly one gap, no markers in answer). Assessment accepts gap-only answers AND full
+  collocations without penalty. Purged 39 unattempted old-format prompts so pools regenerate.
+- Review pages (Kollok + Alltag) now run a SESSION QUEUE: snapshot of due items at page
+  load, explicit "Next card" button after each answer — previously the active card was
+  derived from the live due-list which mutated after every answer (cards seemed to vanish).
+- Collocation review attempts are now mirrored into history via synthetic prompts
+  (category "review", like Alltag), so the history card's percentage bumps on retries.
+- Dedup hardening: collocation avoid-list now spans ALL categories and compares
+  article-stripped keys ("eine/die Entscheidung treffen" collide). Same English gloss
+  with different German collocation (e.g. "einen Entschluss fassen") is intentionally allowed.
+
 ### 2026-06-12 — NEW FEATURE: Dashboard + Daily Goal streak (Claude Code)
 - `/` is now a dashboard (was a redirect): daily-goal stepper (4 clickable steps), streak
   hero, per-feature cards (totals, due badges, score sparklines), 14-day stacked activity

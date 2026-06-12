@@ -28,6 +28,7 @@ export const apiUrl = (path: string): string => {
 
 export const API_PATHS = {
   authGoogle: "/api/auth/google",
+  authPassword: "/api/auth/password",
   submissions: "/api/submissions",
   submissionsText: "/api/submissions/text",
   submissionDetail: (id: number) => `/api/submissions/${id}`,
