@@ -71,6 +71,23 @@ Build a personal German learning MVP where:
   - Review mode re-tests weak items until they graduate.
   - No CEFR target selector for this feature.
 
+- New feature: `Kollokationen` (collocation trainer)
+  - Trains conventional German word partnerships (Verantwortung übernehmen, eine Entscheidung treffen, hohes Fieber).
+  - Pedagogy (research-driven): productive recall from English cue, gap-fill in sentence context
+    ("form recall with clue"), corrective feedback that names the conventional partner word,
+    and spaced re-testing of failures.
+  - AI generates prompts biased toward L1-INCONGRUENT collocations (not word-for-word translatable
+    from English) since those carry the highest learning burden.
+  - Each prompt: German cloze sentence (collocation gapped, inflected) + English equivalent.
+    The served prompt never includes the answer.
+  - Shared prompt pool per category with per-user seen tracking and background refill
+    (same machinery as Alltagssprache; shared refill-queue util).
+  - AI scores 0-100: full credit for the conventional partner (or an equally natural alternative),
+    partial credit for right partner with wrong inflection, low score for transfer errors with
+    explicit contrastive feedback.
+  - Scores <= 70 auto-enqueue into a review queue; graduation after two successes >= 90
+    (same transition logic as Alltagssprache review).
+
 ### Out of scope (post-MVP)
 - Any feature not required for this loop:
   topics -> AI questions -> answers -> mistakes + CEFR + tips -> knowledge base.

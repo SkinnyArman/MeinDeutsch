@@ -11,6 +11,7 @@ import {
   LogOut,
   MessageCircle,
   PanelLeft,
+  Puzzle,
   Settings
 } from "lucide-vue-next";
 import { THEME_MAP, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
@@ -19,7 +20,7 @@ import { fetchJson } from "@/libs/http";
 import { API_PATHS } from "@/config/api";
 import { clearSession, getSessionUser } from "./utils/auth";
 
-type ViewKey = "daily-talk" | "alltagssprache" | "vocabulary" | "settings";
+type ViewKey = "daily-talk" | "alltagssprache" | "kollokationen" | "vocabulary" | "settings";
 
 const route = useRoute();
 const router = useRouter();
@@ -36,24 +37,35 @@ const navItems = computed(() => [
   {
     key: "daily-talk" as ViewKey,
     title: t.dailyTalk.title(),
+    shortTitle: t.tabs.dailyTalk(),
     path: "/daily-talk",
     icon: MessageCircle
   },
   {
     key: "alltagssprache" as ViewKey,
     title: t.alltag.title(),
+    shortTitle: t.tabs.alltag(),
     path: "/alltagssprache",
     icon: Languages
   },
   {
+    key: "kollokationen" as ViewKey,
+    title: t.kollok.title(),
+    shortTitle: t.kollok.tab(),
+    path: "/kollokationen",
+    icon: Puzzle
+  },
+  {
     key: "vocabulary" as ViewKey,
     title: t.vocab.title(),
+    shortTitle: t.tabs.vocab(),
     path: "/vocabulary",
     icon: BookOpen
   },
   {
     key: "settings" as ViewKey,
     title: t.settings.title(),
+    shortTitle: t.settings.title(),
     path: "/settings",
     icon: Settings
   }
@@ -175,6 +187,9 @@ const activeNavKey = computed<ViewKey | "">(() => {
   }
   if (route.path.startsWith("/alltagssprache")) {
     return "alltagssprache";
+  }
+  if (route.path.startsWith("/kollokationen")) {
+    return "kollokationen";
   }
   return "daily-talk";
 });
@@ -379,7 +394,7 @@ const logout = async (): Promise<void> => {
       class="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_92%,transparent)] backdrop-blur-md lg:hidden"
       style="padding-bottom: env(safe-area-inset-bottom)"
     >
-      <div class="mx-auto grid max-w-md grid-cols-4">
+      <div class="mx-auto grid max-w-md grid-cols-5">
         <RouterLink
           v-for="item in navItems"
           :key="`tab-${item.key}`"
@@ -388,12 +403,12 @@ const logout = async (): Promise<void> => {
           :class="activeNavKey === item.key ? 'text-[var(--accent-strong)]' : 'text-[var(--muted)]'"
         >
           <span
-            class="flex h-7 w-12 items-center justify-center rounded-full transition"
+            class="flex h-7 w-11 items-center justify-center rounded-full transition"
             :class="activeNavKey === item.key ? 'bg-[color-mix(in_srgb,var(--accent)_16%,transparent)]' : ''"
           >
             <component :is="item.icon" class="h-[18px] w-[18px]" />
           </span>
-          {{ item.title }}
+          <span class="max-w-full truncate px-0.5">{{ item.shortTitle }}</span>
         </RouterLink>
       </div>
     </nav>

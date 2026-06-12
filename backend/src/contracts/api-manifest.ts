@@ -315,6 +315,85 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     ]
   },
   {
+    id: "list-collocation-categories",
+    method: "GET",
+    path: "/api/collocations/categories",
+    title: "List Collocation Categories",
+    description: "Returns Kollokationen practice categories configured in backend.",
+    requestFields: []
+  },
+  {
+    id: "next-collocation",
+    method: "POST",
+    path: "/api/collocations/next",
+    title: "Get Next Collocation Prompt",
+    description: "Returns next unseen collocation cloze prompt from the shared category pool.",
+    requestFields: [
+      {
+        name: "category",
+        label: "Category",
+        type: "text",
+        required: false,
+        placeholder: "Use value from GET /api/collocations/categories"
+      }
+    ]
+  },
+  {
+    id: "assess-collocation",
+    method: "POST",
+    path: "/api/collocations/attempt",
+    title: "Assess Collocation Answer",
+    description: "Scores the learner's gap answer (0-100) with partner-word feedback and alternatives.",
+    requestFields: [
+      {
+        name: "promptId",
+        label: "Prompt ID",
+        type: "number",
+        required: true,
+        placeholder: "1"
+      },
+      {
+        name: "userAnswerText",
+        label: "German Answer (gap text)",
+        type: "textarea",
+        required: true,
+        placeholder: "eine Entscheidung treffen"
+      }
+    ]
+  },
+  {
+    id: "list-collocation-history",
+    method: "GET",
+    path: "/api/collocations/history?limit=...&offset=...",
+    title: "List Collocation History",
+    description: "Lists recent collocation attempts with pagination.",
+    requestFields: []
+  },
+  {
+    id: "list-collocation-review",
+    method: "GET",
+    path: "/api/collocations/review",
+    title: "List Collocation Review Queue",
+    description: "Lists due collocation review items auto-added from low scores.",
+    requestFields: []
+  },
+  {
+    id: "assess-collocation-review",
+    method: "POST",
+    path: "/api/collocations/review/:id/attempt",
+    title: "Assess Collocation Review Attempt",
+    description: "Re-tests a weak collocation against its baseline answer.",
+    requestFields: [
+      {
+        name: "userAnswerText",
+        label: "German Answer (gap text)",
+        type: "textarea",
+        required: true,
+        placeholder: "Verantwortung übernehmen"
+      }
+    ]
+  },
+  {
     id: "review-vocabulary",
     method: "POST",
     path: "/api/vocabulary/:id/review",

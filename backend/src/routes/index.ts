@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authProtectedRouter } from "./auth-protected.routes.js";
 import { authRouter } from "./auth.routes.js";
+import { collocationRouter } from "./collocation.routes.js";
 import { expressionRouter } from "./expression.routes.js";
 import { healthRouter } from "./health.routes.js";
 import { knowledgeRouter } from "./knowledge.routes.js";
@@ -18,6 +19,7 @@ publicApiRouter.use("/auth", authRouter);
 
 protectedApiRouter.use("/topics", topicRouter);
 protectedApiRouter.use("/auth", authProtectedRouter);
+protectedApiRouter.use("/collocations", collocationRouter);
 protectedApiRouter.use("/expressions", expressionRouter);
 protectedApiRouter.use("/questions", questionRouter);
 protectedApiRouter.use("/knowledge", knowledgeRouter);

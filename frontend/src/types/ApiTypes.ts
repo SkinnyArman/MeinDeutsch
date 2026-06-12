@@ -188,6 +188,82 @@ export interface ExpressionReviewAssessmentPayload {
   feedback: string;
 }
 
+export interface CollocationCategoryRecord {
+  id: string;
+  label: string;
+}
+
+/**
+ * Served practice prompt. Deliberately excludes the German collocation and
+ * cloze answer — the learner has to produce them.
+ */
+export interface CollocationPromptRecord {
+  id: number;
+  englishText: string;
+  clozeSentence: string;
+  collocationType: string;
+  generationCategory: string;
+  createdAt: string;
+}
+
+export interface CollocationAttemptHistoryPoint {
+  id: number;
+  userAnswerText: string;
+  score: number;
+  createdAt: string;
+}
+
+export interface CollocationAttemptRecord {
+  id: number;
+  promptId: number;
+  germanText: string;
+  englishText: string;
+  clozeSentence: string;
+  userAnswerText: string;
+  score: number;
+  feedback: string;
+  correctVersion: string;
+  alternatives: string[];
+  attemptHistory: CollocationAttemptHistoryPoint[];
+  createdAt: string;
+}
+
+export interface CollocationReviewScorePoint {
+  score: number;
+  at: string;
+}
+
+export interface CollocationReviewItemRecord {
+  id: number;
+  germanText: string;
+  englishText: string;
+  clozeSentence: string;
+  initialScore: number;
+  lastScore: number;
+  successCount: number;
+  reviewAttemptCount: number;
+  nextReviewAt: string;
+  lastReviewedAt: string | null;
+  status: "active" | "graduated";
+  baselineCorrectVersion: string;
+  baselineAlternatives: string[];
+  baselineFeedback: string;
+  scoreHistory: CollocationReviewScorePoint[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CollocationReviewListPayload {
+  dueCount: number;
+  items: CollocationReviewItemRecord[];
+}
+
+export interface CollocationReviewAssessmentPayload {
+  reviewItem: CollocationReviewItemRecord;
+  score: number;
+  feedback: string;
+}
+
 export interface KnowledgeItemRecord {
   id: number;
   topicId: number | null;

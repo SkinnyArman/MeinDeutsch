@@ -42,6 +42,14 @@ export const API_MESSAGES = {
     reviewListed: "Expression review items fetched successfully",
     reviewAssessed: "Expression review attempt assessed successfully"
   },
+  collocation: {
+    nextServed: "Next collocation served successfully",
+    categoriesListed: "Collocation categories fetched successfully",
+    assessed: "Collocation attempt assessed successfully",
+    historyListed: "Collocation history fetched successfully",
+    reviewListed: "Collocation review items fetched successfully",
+    reviewAssessed: "Collocation review attempt assessed successfully"
+  },
   errors: {
     validationFailed: "Validation failed",
     invalidJson: "Invalid JSON payload",
@@ -51,6 +59,9 @@ export const API_MESSAGES = {
     aiExpressionGenerationFailed: "AI expression generation failed",
     aiExpressionAssessmentFailed: "AI expression assessment failed",
     aiExpressionReviewAssessmentFailed: "AI expression review assessment failed",
+    aiCollocationGenerationFailed: "AI collocation generation failed",
+    aiCollocationAssessmentFailed: "AI collocation assessment failed",
+    aiCollocationReviewAssessmentFailed: "AI collocation review assessment failed",
     authMissingToken: "Authentication token is required",
     authInvalidGoogleToken: "Google sign-in failed",
     authGoogleUpstreamUnavailable: "Google sign-in is blocked by your network (403). Please try turning on a VPN and sign in again.",
@@ -63,6 +74,9 @@ export const API_MESSAGES = {
     expressionPromptNotFound: "Expression prompt not found",
     expressionReviewItemNotFound: "Expression review item not found",
     expressionReviewItemNotDue: "Expression review item is not due yet",
+    collocationPromptNotFound: "Collocation prompt not found",
+    collocationReviewItemNotFound: "Collocation review item not found",
+    collocationReviewItemNotDue: "Collocation review item is not due yet",
     vocabularyNotFound: "Vocabulary item not found",
     vocabularyNotDue: "Vocabulary item is not due for review yet",
     internalServerError: "Internal server error",

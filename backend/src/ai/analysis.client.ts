@@ -10,6 +10,12 @@ import {
   EXPRESSION_TARGET_TYPES,
   type ExpressionGenerationCategory
 } from "../constants/expression-generation.config.js";
+import {
+  COLLOCATION_CATEGORY_BY_ID,
+  COLLOCATION_TARGET_CONTEXTS,
+  COLLOCATION_TYPES,
+  type CollocationGenerationCategory
+} from "../constants/collocation-generation.config.js";
 import { MISTAKE_TYPES, type AnalysisResult, type AssessmentContext, type SubmissionAssessmentInput } from "../types/submission.types.js";
 import { AppError } from "../utils/app-error.js";
 
@@ -430,6 +436,303 @@ export const assessExpressionReviewAttempt = async (input: {
       status: error && typeof error === "object" && "status" in error ? (error as { status?: unknown }).status : undefined,
       code: error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined,
       type: error && typeof error === "object" && "type" in error ? (error as { type?: unknown }).type : undefined
+    });
+  }
+};
+
+const COLLOCATION_GENERATION_PROMPT = `You generate exactly one common German collocation for an upper-intermediate learner (B1-C1).
+A collocation is a conventional word partnership: Verantwortung übernehmen, eine Entscheidung treffen, die Ansicht teilen, hohes Fieber, Schule besuchen, sich Mühe geben.
+Rules:
+- Output strict JSON only.
+- Pick HIGH-FREQUENCY collocations natives actually use in the target context; no rare or literary pairings.
+- STRONGLY prefer collocations that are NOT word-for-word translatable from English (incongruent), because those cause typical learner errors
+  (e.g. "eine Entscheidung treffen" not "machen", "Schule besuchen" not "gehen zu", "ein Foto machen" not "nehmen").
+- germanText: the collocation in dictionary/base form (e.g. "Verantwortung übernehmen").
+- englishText: the natural English equivalent (e.g. "to take on responsibility"), NOT a word-for-word gloss of the German.
+- clozeSentence: one natural German sentence (B1-C1, 8-16 words) where the collocation appears INFLECTED and its words are CONTIGUOUS, with the full collocation replaced by "____".
+  The sentence context must make the gapped collocation recoverable together with the English hint.
+- clozeAnswer: exactly the words removed from clozeSentence (inflected as they appear in the sentence).
+- collocationType: one of ${COLLOCATION_TYPES.join(", ")}.
+- Strict anti-repetition: never output a collocation identical or near-identical to entries in the avoid list (including inflection variants).
+- No explanations, only JSON.`;
+
+const COLLOCATION_ASSESSMENT_PROMPT = `You are a German collocation coach.
+The learner saw a German sentence with the collocation gapped out ("____") plus the English equivalent, and typed their German answer for the gap.
+Return strict JSON only:
+{
+  "score": number,
+  "feedback": "string",
+  "correctVersion": "string",
+  "alternatives": ["string"]
+}
+Scoring rules (0-100):
+- 95-100: conventional partner word(s), correct inflection for the gap. Also give 95-100 to an equally natural alternative collocate that fits the sentence.
+- 60-90: right partner word but wrong inflection/case/word order; explain the form error briefly.
+- 20-50: understandable but unconventional pairing (typical English transfer, e.g. "Entscheidung machen"); name the conventional partner word EXPLICITLY and contrast it with the learner's choice.
+- 0-15: wrong meaning or unintelligible.
+Feedback rules:
+- Max 2 sentences, concrete, about the word PARTNERSHIP first, grammar second.
+- If fully correct, feedback can be empty or a very short confirmation.
+- correctVersion: exactly the text that fits the gap (the reference cloze answer).
+- alternatives: other natural collocates that fit this gap (may be empty). Do not invent forced ones.
+- No extra fields.`;
+
+const COLLOCATION_REVIEW_ASSESSMENT_PROMPT = `You are a German collocation coach in review mode.
+The learner is re-tested on a collocation they previously got wrong. Compare their answer against the reference answer for the gap.
+Return strict JSON only:
+{
+  "score": number,
+  "feedback": "string"
+}
+Rules:
+- score 0-100; use the reference cloze answer as the PRIMARY gold standard.
+- 95-100 only for the conventional partner word(s) with correct inflection (or an equally natural alternative).
+- Right partner word, wrong form: 60-90 with a one-sentence form note.
+- Wrong partner word: below 50; name the conventional partner explicitly.
+- Keep feedback max 2 sentences; empty if fully correct.
+- No extra fields.`;
+
+export interface CollocationGenerationResult {
+  germanText: string;
+  englishText: string;
+  clozeSentence: string;
+  clozeAnswer: string;
+  collocationType: string;
+}
+
+export interface CollocationAssessmentResult {
+  score: number;
+  feedback: string;
+  correctVersion: string;
+  alternatives: string[];
+}
+
+export interface CollocationReviewAssessmentResult {
+  score: number;
+  feedback: string;
+}
+
+export const generateCollocation = async (
+  category: CollocationGenerationCategory = "random",
+  options?: { avoidGermanTexts?: string[] }
+): Promise<CollocationGenerationResult> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+
+  const config = COLLOCATION_CATEGORY_BY_ID[category];
+  const contexts = config?.targetContexts?.length ? config.targetContexts : [...COLLOCATION_TARGET_CONTEXTS];
+  const targetContext = pickRandom(contexts);
+  const targetType = pickRandom(COLLOCATION_TYPES);
+  const avoidList = (options?.avoidGermanTexts ?? [])
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 60);
+
+  try {
+    const completion = await openai.responses.create({
+      model: env.OPENAI_MODEL,
+      instructions: COLLOCATION_GENERATION_PROMPT,
+      input: [
+        "Generate one common German collocation.",
+        `Selected category: ${category}`,
+        `Target context: ${targetContext}`,
+        `Preferred collocation type: ${targetType} (strong preference, not a hard constraint)`,
+        `Avoid list (must not repeat): ${avoidList.length > 0 ? avoidList.join(" | ") : "none"}`
+      ].join("\n"),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "german_collocation",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["germanText", "englishText", "clozeSentence", "clozeAnswer", "collocationType"],
+            properties: {
+              germanText: { type: "string", minLength: 1 },
+              englishText: { type: "string", minLength: 1 },
+              clozeSentence: { type: "string", minLength: 1 },
+              clozeAnswer: { type: "string", minLength: 1 },
+              collocationType: { type: "string", enum: [...COLLOCATION_TYPES] }
+            }
+          }
+        }
+      }
+    });
+    return JSON.parse(completion.output_text) as CollocationGenerationResult;
+  } catch (error) {
+    logger.error("OpenAI collocation generation failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      const fallbacks: CollocationGenerationResult[] = [
+        {
+          germanText: "eine Entscheidung treffen",
+          englishText: "to make a decision",
+          clozeSentence: "Wir müssen bis Freitag ____, sonst verlieren wir den Auftrag.",
+          clozeAnswer: "eine Entscheidung treffen",
+          collocationType: "verb_noun"
+        },
+        {
+          germanText: "Verantwortung übernehmen",
+          englishText: "to take on responsibility",
+          clozeSentence: "In meiner neuen Rolle muss ich deutlich mehr ____.",
+          clozeAnswer: "Verantwortung übernehmen",
+          collocationType: "verb_noun"
+        },
+        {
+          germanText: "die Schule besuchen",
+          englishText: "to attend school",
+          clozeSentence: "Seine Kinder ____ in Berlin ____.",
+          clozeAnswer: "besuchen die Schule",
+          collocationType: "verb_noun"
+        }
+      ];
+      return pickRandom(fallbacks);
+    }
+
+    const status =
+      error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
+        ? ((error as { status: number }).status >= 400 && (error as { status: number }).status <= 599
+            ? (error as { status: number }).status
+            : 502)
+        : 502;
+    throw new AppError(status, "AI_COLLOCATION_GENERATION_FAILED", API_MESSAGES.errors.aiCollocationGenerationFailed, {
+      provider: "openai"
+    });
+  }
+};
+
+export const assessCollocationAttempt = async (input: {
+  germanText: string;
+  englishText: string;
+  clozeSentence: string;
+  clozeAnswer: string;
+  userAnswerText: string;
+}): Promise<CollocationAssessmentResult> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+
+  try {
+    const completion = await openai.responses.create({
+      model: env.OPENAI_MODEL,
+      instructions: COLLOCATION_ASSESSMENT_PROMPT,
+      input: [
+        `Cloze sentence: ${input.clozeSentence}`,
+        `English equivalent: ${input.englishText}`,
+        `Reference answer for the gap: ${input.clozeAnswer}`,
+        `Target collocation (base form): ${input.germanText}`,
+        `Learner answer: ${input.userAnswerText}`
+      ].join("\n"),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "collocation_assessment",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["score", "feedback", "correctVersion", "alternatives"],
+            properties: {
+              score: { type: "number", minimum: 0, maximum: 100 },
+              feedback: { type: "string" },
+              correctVersion: { type: "string", minLength: 1 },
+              alternatives: { type: "array", items: { type: "string" } }
+            }
+          }
+        }
+      }
+    });
+    return JSON.parse(completion.output_text) as CollocationAssessmentResult;
+  } catch (error) {
+    logger.error("OpenAI collocation assessment failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return {
+        score: 0,
+        feedback: "Fallback mode: AI assessment unavailable. Please try again later.",
+        correctVersion: input.clozeAnswer,
+        alternatives: []
+      };
+    }
+
+    const status =
+      error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
+        ? ((error as { status: number }).status >= 400 && (error as { status: number }).status <= 599
+            ? (error as { status: number }).status
+            : 502)
+        : 502;
+    throw new AppError(status, "AI_COLLOCATION_ASSESSMENT_FAILED", API_MESSAGES.errors.aiCollocationAssessmentFailed, {
+      provider: "openai"
+    });
+  }
+};
+
+export const assessCollocationReviewAttempt = async (input: {
+  germanText: string;
+  englishText: string;
+  clozeSentence: string;
+  baselineCorrectVersion: string;
+  userAnswerText: string;
+}): Promise<CollocationReviewAssessmentResult> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+
+  try {
+    const completion = await openai.responses.create({
+      model: env.OPENAI_MODEL,
+      instructions: COLLOCATION_REVIEW_ASSESSMENT_PROMPT,
+      input: [
+        `Cloze sentence: ${input.clozeSentence}`,
+        `English equivalent: ${input.englishText}`,
+        `Reference answer for the gap: ${input.baselineCorrectVersion}`,
+        `Target collocation (base form): ${input.germanText}`,
+        `Learner answer: ${input.userAnswerText}`
+      ].join("\n"),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "collocation_review_assessment",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["score", "feedback"],
+            properties: {
+              score: { type: "number", minimum: 0, maximum: 100 },
+              feedback: { type: "string" }
+            }
+          }
+        }
+      }
+    });
+    return JSON.parse(completion.output_text) as CollocationReviewAssessmentResult;
+  } catch (error) {
+    logger.error("OpenAI collocation review assessment failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return {
+        score: 0,
+        feedback: "Fallback mode: review assessment unavailable. Please try again later."
+      };
+    }
+
+    const status =
+      error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
+        ? ((error as { status: number }).status >= 400 && (error as { status: number }).status <= 599
+            ? (error as { status: number }).status
+            : 502)
+        : 502;
+    throw new AppError(status, "AI_COLLOCATION_REVIEW_ASSESSMENT_FAILED", API_MESSAGES.errors.aiCollocationReviewAssessmentFailed, {
+      provider: "openai"
     });
   }
 };

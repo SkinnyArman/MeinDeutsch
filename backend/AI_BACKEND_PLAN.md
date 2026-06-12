@@ -66,6 +66,17 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Review graduation rule: requires two successful review scores (`>= 90`)
 - [x] Persist review score history (`score_history`)
 
+## 6b) Kollokationen (Implemented)
+- [x] `GET /api/collocations/categories` dynamic category config
+- [x] `POST /api/collocations/next` per-user unseen cloze prompt from shared pool (+ background refill via shared refill-queue)
+- [x] AI generation biased toward L1-incongruent, high-frequency collocations with inflected in-context cloze
+- [x] `POST /api/collocations/attempt` scoring with explicit partner-word (anti-transfer) feedback
+- [x] `GET /api/collocations/history` with pagination + per-collocation attempt history
+- [x] Auto-enqueue weak attempts (<= 70) into review queue; graduation after two >= 90 (reuses expression review logic)
+- [x] `GET /api/collocations/review` + `POST /api/collocations/review/:id/attempt`
+- [x] DB-enforced prompt uniqueness (normalized German + category); answer fields never served in prompts
+- [x] Pool service unit tests
+
 ## 7) Vocabulary SRS (Implemented)
 - [x] Save vocabulary from contextual suggestions
 - [x] Category list + icon metadata

@@ -164,6 +164,30 @@ export const messages = {
       scoreAlmost: "Almost",
       scoreKeepGoing: "Keep going"
     },
+    kollok: {
+      title: "Kollokationen",
+      subtitle: "Master the word partnerships natives actually use.",
+      tab: "Kollok.",
+      fillTheGap: "Fill the gap",
+      englishHint: "English meaning",
+      answerPrompt: "What goes in the gap?",
+      answerPlaceholder: "z.B. eine Entscheidung treffen",
+      correctAnswer: "Correct collocation",
+      inContext: "In context",
+      alternatives: "Also natural here",
+      promptFailed: "Could not load collocation",
+      assessFailed: "Could not submit answer"
+    },
+    kollokReview: {
+      title: "Collocation Review",
+      loadFailed: "Could not load review queue",
+      submitFailed: "Could not submit review attempt"
+    },
+    tabs: {
+      dailyTalk: "Talk",
+      alltag: "Alltag",
+      vocab: "Vocab"
+    },
     alltagReview: {
       title: "Review",
       loadFailed: "Could not load review queue",

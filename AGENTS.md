@@ -204,6 +204,24 @@ on top. Format:
 - Anything left unfinished or discovered for the next session
 ```
 
+### 2026-06-12 — NEW FEATURE: Kollokationen (collocation trainer) (Claude Code)
+- Full-stack feature mirroring Alltagssprache's architecture. Backend: 4 tables
+  (`collocation_prompts` shared pool w/ unique normalized-German+category index,
+  `collocation_prompt_views`, `collocation_attempts`, `collocation_review_items`),
+  migration `AddCollocationTables`, repos, service (shared refill-queue + reused
+  `expression-review.logic` transitions), routes under `/api/collocations/*`.
+- Pedagogy (from SLA research on collocation learning): productive recall (EN cue → DE),
+  gap-fill in sentence context with the collocation INFLECTED, generation biased toward
+  L1-incongruent pairings ("Entscheidung treffen" not "machen"), assessment gives
+  contrastive partner-word feedback, failures (<=70) enter spaced review (2× >=90 to
+  graduate). Served prompts NEVER include germanText/clozeAnswer (see
+  `CollocationPromptInternal` in the repo layer).
+- Frontend: `KollokationenView` + `KollokationenReviewView` (routes /kollokationen[.review]),
+  queries in `queries/collocations/`, 5th nav item (Puzzle icon); mobile bottom nav is now
+  5 tabs using new short labels (`t.tabs.*`, `t.kollok.tab`).
+- Verified live: prompt drawn, transfer error "eine Entscheidung machen" scored 20 with
+  explicit "treffen" feedback and auto-enqueued to review. 33 backend tests pass.
+
 ### 2026-06-12 — Daily Talk question pool, CEFR dropped from UI (Claude Code)
 - Daily Talk now works exactly like Alltagssprache: `POST /api/questions/next` draws an
   unseen pre-generated question for the topic (falls back to least-recently-viewed, then

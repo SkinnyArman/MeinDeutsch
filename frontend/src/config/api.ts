@@ -45,6 +45,12 @@ export const API_PATHS = {
   expressionsHistory: "/api/expressions/history",
   expressionsReview: "/api/expressions/review",
   expressionsReviewAttempt: (id: number) => `/api/expressions/review/${id}/attempt`,
+  collocationsCategories: "/api/collocations/categories",
+  collocationsNext: "/api/collocations/next",
+  collocationsAttempt: "/api/collocations/attempt",
+  collocationsHistory: "/api/collocations/history",
+  collocationsReview: "/api/collocations/review",
+  collocationsReviewAttempt: (id: number) => `/api/collocations/review/${id}/attempt`,
   knowledge: "/api/knowledge",
   streakDailyTalk: "/api/streaks/daily-talk"
 } as const;
