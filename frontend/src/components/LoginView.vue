@@ -6,7 +6,7 @@ import type { ApiResponse } from "@/types/ApiTypes";
 import { apiFetch } from "@/libs/http";
 import { API_PATHS } from "@/config/api";
 import { setSession, type SessionUser } from "../utils/auth";
-import { resetLevelCache } from "../utils/level";
+import { resetLevel } from "../utils/level";
 
 interface GoogleAuthResult {
   token: string;
@@ -58,7 +58,7 @@ const handlePasswordSignIn = async (): Promise<void> => {
     }
 
     setSession(payload.data.token, payload.data.user);
-    resetLevelCache();
+    resetLevel();
     notice.value = { type: "success", text: t.login.success() };
     await router.replace("/");
   } catch (error) {
@@ -86,7 +86,7 @@ const handleCredential = async (response: GoogleCredentialResponse): Promise<voi
     }
 
     setSession(payload.data.token, payload.data.user);
-    resetLevelCache();
+    resetLevel();
     notice.value = { type: "success", text: t.login.success() };
     await router.replace("/");
   } catch (error) {

@@ -5,7 +5,7 @@ import { ArrowLeft, GraduationCap, RefreshCw } from "lucide-vue-next";
 import { useLanguage } from "@/libs/i18n";
 import { CEFR_LEVELS } from "@/types/ApiTypes";
 import { useLevelQuery, useSetLevelMutation } from "@/queries/level";
-import { setLevelKnown } from "@/utils/level";
+import { markLeveled, requestRetake } from "@/utils/level";
 import AppContainer from "./AppContainer.vue";
 
 const router = useRouter();
@@ -35,7 +35,7 @@ const assessedDate = computed(() => {
 const save = async (level: string): Promise<void> => {
   selected.value = level;
   await setLevelMutation.mutateAsync({ cefrLevel: level });
-  setLevelKnown(true);
+  markLeveled();
   await levelQuery.refetch();
   notice.value = t.level.saved();
 };
@@ -95,7 +95,7 @@ const save = async (level: string): Promise<void> => {
         </div>
       </div>
 
-      <button class="btn-ghost" @click="router.push('/onboarding')">
+      <button class="btn-ghost" @click="requestRetake">
         <RefreshCw class="h-4 w-4" />
         {{ t.level.retake() }}
       </button>

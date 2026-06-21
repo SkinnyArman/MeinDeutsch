@@ -16,15 +16,12 @@ import SettingsLevelView from "./components/SettingsLevelView.vue";
 import TopicsQuestionsView from "./components/TopicsQuestionsView.vue";
 import KnowledgeBaseView from "./components/KnowledgeBaseView.vue";
 import ApiTriggerView from "./components/ApiTriggerView.vue";
-import OnboardingView from "./components/OnboardingView.vue";
 import { getAuthToken } from "./utils/auth";
-import { hasAssessedLevel } from "./utils/level";
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/login", component: LoginView, meta: { public: true } },
-    { path: "/onboarding", component: OnboardingView },
     { path: "/", component: DashboardView },
     { path: "/daily-talk", component: DailyTalkView },
     { path: "/alltagssprache", component: AlltagsspracheView },
@@ -44,7 +41,7 @@ export const router = createRouter({
   ]
 });
 
-router.beforeEach(async (to) => {
+router.beforeEach((to) => {
   const token = getAuthToken();
   const isPublic = Boolean(to.meta.public);
 
@@ -56,14 +53,6 @@ router.beforeEach(async (to) => {
     return "/";
   }
 
-  // Gate the app behind the placement exam until a level is assessed.
-  if (token && !isPublic) {
-    const leveled = await hasAssessedLevel();
-    if (!leveled && to.path !== "/onboarding") {
-      return "/onboarding";
-    }
-    // Leveled users may still open /onboarding deliberately to retake the exam.
-  }
-
+  // The placement exam is enforced as a blocking modal in App.vue (not a route).
   return true;
 });

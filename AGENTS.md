@@ -231,10 +231,12 @@ on top. Format:
   questions (`generateLevelExam`, cheap model); `assessLevel` (smart model) estimates CEFR
   from all answers. Endpoints under `/api/level` (GET status, GET /exam, POST /assess, POST set).
   Level is set-once + manually adjustable (no auto-drift) per product decision.
-- Frontend: `OnboardingView` (/onboarding) gated by an async router guard using
-  `utils/level.ts` (session-cached `hasAssessedLevel`; reset on login/logout, set after exam).
-  `SettingsLevelView` (/settings/level) shows level + rationale, lets you adjust (A1-C2) or
-  retake. Daily Talk question generation now targets `user.cefrLevel` (falls back to a
+- Frontend: the placement exam is a BLOCKING MODAL overlay (`OnboardingExamModal`, rendered in
+  `App.vue`, z-50, non-dismissable) — NOT a route. Visibility is driven by the reactive store in
+  `utils/level.ts` (`levelKnown` null/false/true + `examOpen` for retake; `refreshLevel`,
+  `markLeveled`, `resetLevel`, `requestRetake`). App refreshes level on route change when a token
+  exists; logout/login reset it. `SettingsLevelView` (/settings/level) shows level + rationale,
+  lets you adjust (A1-C2) or retake (sets `examOpen`). Daily Talk question generation now targets `user.cefrLevel` (falls back to a
   B1-C1 ladder if unset); question template pitches difficulty to the target.
 - CEFR per-response tags removed from Daily Talk list/new/detail earlier; corrected text now
   highlights fixes in GREEN (HighlightedText `tone` prop) mirroring the red answer diff.

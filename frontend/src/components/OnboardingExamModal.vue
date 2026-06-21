@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Sparkles } from "lucide-vue-next";
 import type { UserLevelState } from "@/types/ApiTypes";
 import { useAssessLevelMutation, useLevelExamQuery } from "@/queries/level";
-import { setLevelKnown } from "@/utils/level";
+import { markLeveled } from "@/utils/level";
 
-const router = useRouter();
+const emit = defineEmits<{ done: [] }>();
 const { t } = useLanguage();
 
 const examQuery = useLevelExamQuery();
@@ -46,25 +45,30 @@ const submit = async (): Promise<void> => {
   };
   try {
     result.value = await assessMutation.mutateAsync(payload);
-    setLevelKnown(true);
   } catch {
     notice.value = t.onboarding.assessFailed();
   }
 };
 
-const finish = async (): Promise<void> => {
-  await router.replace("/");
+const finish = (): void => {
+  // Keep the result visible until the user dismisses it, then drop the overlay.
+  markLeveled();
+  emit("done");
 };
 </script>
 
 <template>
-  <main class="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-4 py-8">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] px-4 py-8 backdrop-blur-md"
+    role="dialog"
+    aria-modal="true"
+  >
     <div
       class="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full opacity-25 blur-3xl"
       style="background-image: linear-gradient(135deg, var(--accent), var(--accent-strong))"
     />
 
-    <section class="card relative w-full max-w-xl animate-fade-up p-6 sm:p-8">
+    <section class="card relative my-auto w-full max-w-xl animate-fade-up p-6 sm:p-8">
       <!-- Result -->
       <div v-if="result" class="flex flex-col items-center text-center">
         <span class="flex h-16 w-16 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--accent)_16%,transparent)]">
@@ -111,7 +115,7 @@ const finish = async (): Promise<void> => {
           <!-- Progress dots -->
           <div class="mb-4 flex items-center gap-1.5">
             <span
-              v-for="(q, i) in questions"
+              v-for="(_, i) in questions"
               :key="`dot-${i}`"
               class="h-1.5 flex-1 rounded-full transition"
               :class="i <= currentIndex ? 'bg-[var(--accent)]' : 'bg-[var(--line)]'"
@@ -149,5 +153,5 @@ const finish = async (): Promise<void> => {
         </div>
       </div>
     </section>
-  </main>
+  </div>
 </template>

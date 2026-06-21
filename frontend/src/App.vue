@@ -16,8 +16,9 @@ import {
 } from "lucide-vue-next";
 import { THEME_MAP, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
 import { useDashboardOverviewQuery } from "@/queries/dashboard";
-import { clearSession, getSessionUser } from "./utils/auth";
-import { resetLevelCache } from "./utils/level";
+import { clearSession, getAuthToken, getSessionUser } from "./utils/auth";
+import { examOpen, levelKnown, markLeveled, refreshLevel, resetLevel } from "./utils/level";
+import OnboardingExamModal from "./components/OnboardingExamModal.vue";
 
 type ViewKey = "dashboard" | "daily-talk" | "alltagssprache" | "kollokationen" | "vocabulary" | "settings";
 
@@ -210,6 +211,19 @@ const activeNavKey = computed<ViewKey | "">(() => {
 
 const showMainLayout = computed(() => route.path !== "/login");
 
+// Placement exam shown as a blocking overlay (not a route) once logged in.
+const showExamModal = computed(
+  () => route.path !== "/login" && Boolean(getAuthToken()) && (levelKnown.value === false || examOpen.value)
+);
+
+const ensureLevelChecked = (): void => {
+  if (route.path !== "/login" && getAuthToken() && levelKnown.value === null) {
+    void refreshLevel();
+  }
+};
+
+watch(() => route.path, ensureLevelChecked, { immediate: true });
+
 const sidebarItemClass = (key: ViewKey): string => {
   const isActive = activeNavKey.value === key;
   if (isActive) {
@@ -224,13 +238,15 @@ const toggleSidebar = (): void => {
 
 const logout = async (): Promise<void> => {
   clearSession();
-  resetLevelCache();
+  resetLevel();
   sessionUser.value = null;
   await router.replace("/login");
 };
 </script>
 
 <template>
+  <OnboardingExamModal v-if="showExamModal" @done="markLeveled" />
+
   <RouterView v-if="!showMainLayout" />
 
   <main v-else class="h-[100dvh] overflow-hidden">
