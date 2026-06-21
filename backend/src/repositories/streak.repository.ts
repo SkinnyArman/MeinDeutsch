@@ -10,6 +10,18 @@ const startOfUtcDay = (date: Date): Date => new Date(Date.UTC(date.getUTCFullYea
 
 const formatDateOnly = (date: Date): string => date.toISOString().slice(0, 10);
 
+// A streak is only alive if the last completion was today or yesterday;
+// otherwise the chain is broken and the current streak is 0.
+export const isStreakAlive = (lastCompletionDate: string | null, now: Date): boolean => {
+  if (!lastCompletionDate) {
+    return false;
+  }
+  const todayStart = startOfUtcDay(now);
+  const today = formatDateOnly(todayStart);
+  const yesterday = formatDateOnly(new Date(todayStart.getTime() - DAY_MS));
+  return lastCompletionDate === today || lastCompletionDate === yesterday;
+};
+
 const toRecord = (entity: StreakStatus, now: Date): StreakRecord => ({
   featureKey: entity.featureKey,
   currentStreak: entity.currentStreak,
@@ -54,9 +66,21 @@ export const streakRepository = {
     const todayStart = startOfUtcDay(now);
     const todayEnd = new Date(todayStart.getTime() + DAY_MS);
 
+    let dirty = false;
+
     if (row.windowStartAt.getTime() !== todayStart.getTime() || row.windowEndAt.getTime() !== todayEnd.getTime()) {
       row.windowStartAt = todayStart;
       row.windowEndAt = todayEnd;
+      dirty = true;
+    }
+
+    // Expire a lapsed streak on read (last completion older than yesterday).
+    if (row.currentStreak !== 0 && !isStreakAlive(row.lastCompletionDate, now)) {
+      row.currentStreak = 0;
+      dirty = true;
+    }
+
+    if (dirty) {
       await (manager ?? appDataSource.manager).getRepository(StreakStatus).save(row);
     }
 
