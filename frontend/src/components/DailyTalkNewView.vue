@@ -120,6 +120,33 @@ const mergeRanges = (
   return merged.sort((a, b) => a.start - b.start);
 };
 
+// Tokens present in the corrected text but not shared with the answer (LCS) are
+// the fixes — highlight them green.
+const buildCorrectedSegments = (answerText: string, correctedText: string): HighlightSegment[] => {
+  if (!correctedText) {
+    return [];
+  }
+  const correctedTokens = tokenizeWithSpans(correctedText);
+  const keep = lcsIndices(
+    correctedTokens.map((t) => t.token),
+    answerText.split(/\s+/)
+  );
+
+  const segments: HighlightSegment[] = [];
+  let cursor = 0;
+  correctedTokens.forEach((token, idx) => {
+    if (token.start > cursor) {
+      segments.push({ text: correctedText.slice(cursor, token.start), highlight: false });
+    }
+    segments.push({ text: token.token, highlight: !keep.has(idx) });
+    cursor = token.end;
+  });
+  if (cursor < correctedText.length) {
+    segments.push({ text: correctedText.slice(cursor), highlight: false });
+  }
+  return segments;
+};
+
 const highlightedAnswerSegments = computed(() => {
   if (!result.value) {
     return [] as HighlightSegment[];
@@ -149,6 +176,15 @@ const highlightedAnswerSegments = computed(() => {
     segments.push({ text: result.value.answerText.slice(cursor), highlight: false });
   }
   return segments;
+});
+
+// Mark the changed/added words in the corrected text (the inverse of the red
+// diff on the answer side) so they can be highlighted green.
+const correctedSegments = computed(() => {
+  if (!result.value) {
+    return [] as HighlightSegment[];
+  }
+  return buildCorrectedSegments(result.value.answerText, result.value.correctedText);
 });
 
 const topicsQuery = useDailyTalkTopicsQuery();
@@ -315,12 +351,11 @@ const handleSaveWord = async (payload: { word: string; description: string; exam
 
               <div class="card border-[color-mix(in_srgb,var(--status-good)_30%,var(--line))] p-5">
                 <p class="eyebrow text-[var(--status-good)]">{{ t.dailyTalkNew.correctedText() }}</p>
-                <p class="mt-3 text-sm leading-relaxed">{{ result.correctedText }}</p>
+                <HighlightedText class="mt-3" :segments="correctedSegments" tone="success" />
               </div>
             </div>
 
             <div class="flex flex-wrap items-center gap-2.5">
-              <span class="chip-accent px-3 py-1.5 text-sm">{{ t.dailyTalkNew.cefrLevel() }} · {{ result.cefrLevel }}</span>
               <span class="chip">{{ result.modelUsed }}</span>
             </div>
 
