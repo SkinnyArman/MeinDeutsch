@@ -19,6 +19,15 @@ export class User {
   @Column({ name: "avatar_url", type: "text", nullable: true })
   avatarUrl!: string | null;
 
+  @Column({ name: "cefr_level", type: "text", nullable: true })
+  cefrLevel!: string | null;
+
+  @Column({ name: "cefr_rationale", type: "text", nullable: true })
+  cefrRationale!: string | null;
+
+  @Column({ name: "cefr_assessed_at", type: "timestamptz", nullable: true })
+  cefrAssessedAt!: Date | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }
@@ -29,5 +38,8 @@ export interface UserRecord {
   email: string;
   displayName: string | null;
   avatarUrl: string | null;
+  cefrLevel: string | null;
+  cefrRationale: string | null;
+  cefrAssessedAt: string | null;
   createdAt: string;
 }

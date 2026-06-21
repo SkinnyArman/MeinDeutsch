@@ -12,15 +12,19 @@ import VocabularyView from "./components/VocabularyView.vue";
 import VocabularyReviewView from "./components/VocabularyReviewView.vue";
 import SettingsHomeView from "./components/SettingsHomeView.vue";
 import SettingsThemeView from "./components/SettingsThemeView.vue";
+import SettingsLevelView from "./components/SettingsLevelView.vue";
 import TopicsQuestionsView from "./components/TopicsQuestionsView.vue";
 import KnowledgeBaseView from "./components/KnowledgeBaseView.vue";
 import ApiTriggerView from "./components/ApiTriggerView.vue";
+import OnboardingView from "./components/OnboardingView.vue";
 import { getAuthToken } from "./utils/auth";
+import { hasAssessedLevel } from "./utils/level";
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/login", component: LoginView, meta: { public: true } },
+    { path: "/onboarding", component: OnboardingView },
     { path: "/", component: DashboardView },
     { path: "/daily-talk", component: DailyTalkView },
     { path: "/alltagssprache", component: AlltagsspracheView },
@@ -33,13 +37,14 @@ export const router = createRouter({
     { path: "/vocabulary/review", component: VocabularyReviewView },
     { path: "/settings", component: SettingsHomeView },
     { path: "/settings/theme", component: SettingsThemeView },
+    { path: "/settings/level", component: SettingsLevelView },
     { path: "/settings/topics", component: TopicsQuestionsView },
     { path: "/settings/knowledge", component: KnowledgeBaseView },
     { path: "/settings/api", component: ApiTriggerView }
   ]
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const token = getAuthToken();
   const isPublic = Boolean(to.meta.public);
 
@@ -49,6 +54,15 @@ router.beforeEach((to) => {
 
   if (to.path === "/login" && token) {
     return "/";
+  }
+
+  // Gate the app behind the placement exam until a level is assessed.
+  if (token && !isPublic) {
+    const leveled = await hasAssessedLevel();
+    if (!leveled && to.path !== "/onboarding") {
+      return "/onboarding";
+    }
+    // Leveled users may still open /onboarding deliberately to retake the exam.
   }
 
   return true;

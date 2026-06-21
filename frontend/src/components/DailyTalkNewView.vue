@@ -188,6 +188,9 @@ const correctedSegments = computed(() => {
 });
 
 const topicsQuery = useDailyTalkTopicsQuery();
+const hasNoTopics = computed(
+  () => !topicsQuery.isFetching.value && (topicsQuery.data.value?.length ?? 0) === 0
+);
 const nextQuestionMutation = useDailyTalkNextQuestionMutation();
 const submitMutation = useDailyTalkSubmitMutation();
 const savedWordsQuery = useDailyTalkSavedVocabQuery({
@@ -315,9 +318,9 @@ const handleSaveWord = async (payload: { word: string; description: string; exam
               {{ t.dailyTalkNew.question() }}
             </span>
             <p class="mt-3 font-serif text-xl leading-relaxed sm:text-2xl">
-              {{ nextQuestionMutation.isPending.value
-                ? t.common.loading()
-                : generatedQuestion?.questionText || t.dailyTalkNew.questionPlaceholder() }}
+              <template v-if="generatedQuestion?.questionText">{{ generatedQuestion.questionText }}</template>
+              <template v-else-if="hasNoTopics">{{ t.dailyTalkNew.needTopic() }}</template>
+              <template v-else>{{ t.common.loading() }}</template>
             </p>
           </div>
 

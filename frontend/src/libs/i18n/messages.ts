@@ -62,6 +62,7 @@ export const messages = {
       generating: "Loading...",
       question: "Question",
       questionPlaceholder: "Generate a question to start.",
+      needTopic: "Add a topic in Settings to get a question.",
       answerPrompt: "Write your answer",
       answerPlaceholder: "Schreib deine Antwort hier...",
       words: "words",
@@ -197,6 +198,30 @@ export const messages = {
       loadFailed: "Could not load review queue",
       submitFailed: "Could not submit review attempt"
     },
+    onboarding: {
+      title: "Let's find your level",
+      subtitle: "Answer a few short questions in German. Your answers set the difficulty across the app — there are no wrong answers, just write what you can.",
+      questionLabel: "Question {n} of {total}",
+      answerPlaceholder: "Schreib deine Antwort hier...",
+      back: "Back",
+      next: "Next",
+      submit: "Finish & assess my level",
+      assessing: "Assessing your German...",
+      resultTitle: "Your level",
+      resultContinue: "Start learning",
+      loadFailed: "Could not load the placement exam.",
+      assessFailed: "Could not assess your level. Please try again."
+    },
+    level: {
+      title: "Your Level",
+      subtitle: "Sets the difficulty of your questions and content.",
+      current: "Current level",
+      notSet: "Not assessed yet",
+      assessedOn: "Assessed {date}",
+      adjust: "Adjust level",
+      retake: "Retake placement exam",
+      saved: "Level updated."
+    },
     tabs: {
       home: "Home",
       dailyTalk: "Talk",
@@ -260,6 +285,8 @@ export const messages = {
       title: "Settings",
       subtitle: "Tune MeinDeutsch to your taste.",
       apiBaseUrl: "API Base URL",
+      level: "Level",
+      levelDesc: "View and adjust your CEFR level.",
       theme: "Theme",
       themeDesc: "Pick the color mood of the app.",
       topics: "Topics",

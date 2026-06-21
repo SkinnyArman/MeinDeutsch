@@ -26,6 +26,7 @@ import { AddQuestionViewTracking1780884000000 } from "./migrations/1780884000000
 import { AddCollocationTables1780885000000 } from "./migrations/1780885000000-AddCollocationTables.js";
 import { AddExpressionSituation1780886000000 } from "./migrations/1780886000000-AddExpressionSituation.js";
 import { AddExpressionRecognition1780887000000 } from "./migrations/1780887000000-AddExpressionRecognition.js";
+import { AddUserCefrLevel1780888000000 } from "./migrations/1780888000000-AddUserCefrLevel.js";
 
 export const appDataSource = new DataSource({
   type: "postgres",
@@ -57,7 +58,8 @@ export const appDataSource = new DataSource({
     AddQuestionViewTracking1780884000000,
     AddCollocationTables1780885000000,
     AddExpressionSituation1780886000000,
-    AddExpressionRecognition1780887000000
+    AddExpressionRecognition1780887000000,
+    AddUserCefrLevel1780888000000
   ],
   migrationsRun: true,
   synchronize: false,

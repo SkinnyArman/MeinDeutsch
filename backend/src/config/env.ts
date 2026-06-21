@@ -31,6 +31,9 @@ const schema = z.object({
     .or(z.literal("").transform(() => undefined)),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-4o-mini"),
+  // Smarter, pricier model for low-volume high-stakes tasks (e.g. the level
+  // placement assessment). Falls back to OPENAI_MODEL behavior if unset.
+  OPENAI_MODEL_SMART: z.string().default("gpt-4.1"),
   AI_FALLBACK_ENABLED: z.preprocess(parseBooleanFromEnv, z.boolean().default(false))
 });
 

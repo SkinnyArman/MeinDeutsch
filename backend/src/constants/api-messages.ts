@@ -30,6 +30,12 @@ export const API_MESSAGES = {
   dashboard: {
     fetched: "Dashboard overview fetched successfully"
   },
+  level: {
+    fetched: "Level fetched successfully",
+    examGenerated: "Level exam generated successfully",
+    assessed: "Level assessed successfully",
+    updated: "Level updated successfully"
+  },
   vocabulary: {
     saved: "Vocabulary item saved successfully",
     listed: "Vocabulary items fetched successfully",
@@ -66,6 +72,8 @@ export const API_MESSAGES = {
     aiCollocationGenerationFailed: "AI collocation generation failed",
     aiCollocationAssessmentFailed: "AI collocation assessment failed",
     aiCollocationReviewAssessmentFailed: "AI collocation review assessment failed",
+    aiLevelExamFailed: "AI level exam generation failed",
+    aiLevelAssessmentFailed: "AI level assessment failed",
     authMissingToken: "Authentication token is required",
     authInvalidGoogleToken: "Google sign-in failed",
     authGoogleUpstreamUnavailable: "Google sign-in is blocked by your network (403). Please try turning on a VPN and sign in again.",

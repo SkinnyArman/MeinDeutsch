@@ -442,6 +442,45 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     ]
   },
   {
+    id: "get-level",
+    method: "GET",
+    path: "/api/level",
+    title: "Get User Level",
+    description: "Returns the authenticated user's CEFR level, rationale, and assessment date.",
+    requestFields: []
+  },
+  {
+    id: "get-level-exam",
+    method: "GET",
+    path: "/api/level/exam",
+    title: "Generate Placement Exam",
+    description: "Generates a short rising-difficulty German placement exam (open questions).",
+    requestFields: []
+  },
+  {
+    id: "assess-level",
+    method: "POST",
+    path: "/api/level/assess",
+    title: "Assess Placement Exam",
+    description: "Estimates CEFR from the learner's exam answers (smart model) and stores it.",
+    requestFields: [
+      {
+        name: "answers",
+        label: "Answers (JSON array of {targetLevel, questionText, answerText})",
+        type: "textarea",
+        required: true
+      }
+    ]
+  },
+  {
+    id: "set-level",
+    method: "POST",
+    path: "/api/level",
+    title: "Set Level Manually",
+    description: "Manually sets the user's CEFR level (A1-C2).",
+    requestFields: [{ name: "cefrLevel", label: "CEFR Level", type: "text", required: true, placeholder: "B1" }]
+  },
+  {
     id: "dashboard-overview",
     method: "GET",
     path: "/api/dashboard/overview",

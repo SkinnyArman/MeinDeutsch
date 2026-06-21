@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
-import { ChevronRight, Database, MessageSquareText, Palette, Wrench } from "lucide-vue-next";
+import { ChevronRight, Database, GraduationCap, MessageSquareText, Palette, Wrench } from "lucide-vue-next";
 import { apiBaseUrl, setApiBaseUrl } from "@/config/api";
 import AppContainer from "./AppContainer.vue";
 
@@ -15,6 +15,12 @@ const baseUrlModel = computed({
 });
 
 const cards = computed(() => [
+  {
+    title: t.settings.level(),
+    description: t.settings.levelDesc(),
+    route: "/settings/level",
+    icon: GraduationCap
+  },
   {
     title: t.settings.theme(),
     description: t.settings.themeDesc(),

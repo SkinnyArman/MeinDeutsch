@@ -56,5 +56,8 @@ export const API_PATHS = {
   collocationsReviewAttempt: (id: number) => `/api/collocations/review/${id}/attempt`,
   knowledge: "/api/knowledge",
   streakDailyTalk: "/api/streaks/daily-talk",
-  dashboardOverview: "/api/dashboard/overview"
+  dashboardOverview: "/api/dashboard/overview",
+  level: "/api/level",
+  levelExam: "/api/level/exam",
+  levelAssess: "/api/level/assess"
 } as const;

@@ -7,6 +7,9 @@ const toUserRecord = (entity: User): UserRecord => ({
   email: entity.email,
   displayName: entity.displayName,
   avatarUrl: entity.avatarUrl,
+  cefrLevel: entity.cefrLevel ?? null,
+  cefrRationale: entity.cefrRationale ?? null,
+  cefrAssessedAt: entity.cefrAssessedAt ? entity.cefrAssessedAt.toISOString() : null,
   createdAt: entity.createdAt.toISOString()
 });
 
@@ -44,5 +47,23 @@ export const userRepository = {
     });
     const saved = await repo.save(created);
     return toUserRecord(saved);
+  },
+
+  async setCefrLevel(input: {
+    userId: number;
+    cefrLevel: string;
+    cefrRationale?: string | null;
+  }): Promise<UserRecord | null> {
+    const repo = appDataSource.getRepository(User);
+    await repo.update(
+      { id: String(input.userId) },
+      {
+        cefrLevel: input.cefrLevel,
+        cefrRationale: input.cefrRationale ?? null,
+        cefrAssessedAt: new Date()
+      }
+    );
+    const row = await repo.findOne({ where: { id: String(input.userId) } });
+    return row ? toUserRecord(row) : null;
   }
 };

@@ -23,6 +23,19 @@ const openai = env.OPENAI_API_KEY ? new OpenAI({ apiKey: env.OPENAI_API_KEY }) :
 export { EXPRESSION_GENERATION_CATEGORIES };
 export type { ExpressionGenerationCategory };
 
+// Per-task model registry. High-volume generation/scoring uses the cheap
+// default; low-volume high-stakes tasks (level placement) use the smart model.
+type ModelTask = "default" | "levelAssessment";
+
+const modelFor = (task: ModelTask): string => {
+  switch (task) {
+    case "levelAssessment":
+      return env.OPENAI_MODEL_SMART;
+    default:
+      return env.OPENAI_MODEL;
+  }
+};
+
 const ANALYSIS_FIELD_CEFR_LEVEL = `"cefrLevel": "A1|A2|B1|B2|C1|C2"`;
 const ANALYSIS_FIELD_CORRECTED_TEXT = `"correctedText": "string"`;
 const ANALYSIS_FIELD_CONTEXTUAL_WORDS =
@@ -230,6 +243,157 @@ export const generateQuestion = async (input: {
         : 502;
 
     throw new AppError(status, "AI_QUESTION_GENERATION_FAILED", API_MESSAGES.errors.aiQuestionGenerationFailed);
+  }
+};
+
+export const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+
+// Rising-difficulty ladder for the placement exam.
+const LEVEL_EXAM_LADDER = ["A2", "A2", "B1", "B2", "B2", "C1"] as const;
+
+export interface LevelExamQuestion {
+  targetLevel: string;
+  questionText: string;
+}
+
+export interface LevelAssessmentResult {
+  cefrLevel: string;
+  rationale: string;
+}
+
+const LEVEL_EXAM_PROMPT = `You design a short German placement test (CEFR).
+Produce exactly one open German question per requested target level, in rising difficulty order.
+Rules:
+- Output strict JSON only.
+- Each question is answerable in 2-4 German sentences and naturally elicits language at its target level.
+- Phrase the question itself near its target level (simple wording for A2, richer for C1).
+- Cover varied everyday/abstract topics; no meta-questions about grammar.
+- Keep each question to one sentence.`;
+
+const LEVEL_ASSESSMENT_PROMPT = `You are a CEFR examiner for German.
+You receive several placement questions (each with a target level) and the learner's German answers.
+Estimate the learner's overall CEFR level from the PRODUCED language: range of structures, accuracy,
+vocabulary, complexity, and how well they handle the higher-level items. Be calibrated and slightly
+conservative; unanswered or empty answers are evidence of not reaching that level.
+Return strict JSON only:
+{ "cefrLevel": "A1|A2|B1|B2|C1|C2", "rationale": "string" }
+- rationale: 1-2 sentences, concrete, naming what they can/can't yet do. Address the learner as "you".`;
+
+export const generateLevelExam = async (): Promise<LevelExamQuestion[]> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+
+  try {
+    const completion = await openai.responses.create({
+      model: modelFor("default"),
+      instructions: LEVEL_EXAM_PROMPT,
+      input: `Target levels in order: ${LEVEL_EXAM_LADDER.join(", ")}. Generate one German question for each.`,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "level_exam",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["questions"],
+            properties: {
+              questions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["targetLevel", "questionText"],
+                  properties: {
+                    targetLevel: { type: "string", enum: [...CEFR_LEVELS] },
+                    questionText: { type: "string", minLength: 1 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    const parsed = JSON.parse(completion.output_text) as { questions: LevelExamQuestion[] };
+    return parsed.questions;
+  } catch (error) {
+    logger.error("OpenAI level exam generation failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return [
+        { targetLevel: "A2", questionText: "Was machst du normalerweise am Wochenende?" },
+        { targetLevel: "A2", questionText: "Beschreibe deinen letzten Einkauf im Supermarkt." },
+        { targetLevel: "B1", questionText: "Welche Vor- und Nachteile hat das Leben in einer Großstadt?" },
+        { targetLevel: "B2", questionText: "Wie hat sich die Arbeitswelt durch das Homeoffice verändert?" },
+        { targetLevel: "B2", questionText: "Sollte man soziale Medien stärker regulieren? Begründe deine Meinung." },
+        { targetLevel: "C1", questionText: "Inwiefern prägt Sprache unser Denken und unsere Wahrnehmung der Welt?" }
+      ];
+    }
+    const status =
+      error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
+        ? ((error as { status: number }).status >= 400 && (error as { status: number }).status <= 599
+            ? (error as { status: number }).status
+            : 502)
+        : 502;
+    throw new AppError(status, "AI_LEVEL_EXAM_FAILED", API_MESSAGES.errors.aiLevelExamFailed);
+  }
+};
+
+export const assessLevel = async (
+  answers: Array<{ targetLevel: string; questionText: string; answerText: string }>
+): Promise<LevelAssessmentResult> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+
+  try {
+    const transcript = answers
+      .map(
+        (a, i) =>
+          `Q${i + 1} (target ${a.targetLevel}): ${a.questionText}\nA${i + 1}: ${a.answerText.trim() || "(no answer)"}`
+      )
+      .join("\n\n");
+    const completion = await openai.responses.create({
+      model: modelFor("levelAssessment"),
+      instructions: LEVEL_ASSESSMENT_PROMPT,
+      input: transcript,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "level_assessment",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["cefrLevel", "rationale"],
+            properties: {
+              cefrLevel: { type: "string", enum: [...CEFR_LEVELS] },
+              rationale: { type: "string", minLength: 1 }
+            }
+          }
+        }
+      }
+    });
+    return JSON.parse(completion.output_text) as LevelAssessmentResult;
+  } catch (error) {
+    logger.error("OpenAI level assessment failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return { cefrLevel: "B1", rationale: "Fallback estimate: AI assessment unavailable." };
+    }
+    const status =
+      error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
+        ? ((error as { status: number }).status >= 400 && (error as { status: number }).status <= 599
+            ? (error as { status: number }).status
+            : 502)
+        : 502;
+    throw new AppError(status, "AI_LEVEL_ASSESSMENT_FAILED", API_MESSAGES.errors.aiLevelAssessmentFailed);
   }
 };
 

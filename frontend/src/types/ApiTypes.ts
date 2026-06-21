@@ -303,6 +303,24 @@ export interface DailyTalkStreakRecord extends StreakRecord {
   featureKey: "daily_talk";
 }
 
+export const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+export type CefrLevel = (typeof CEFR_LEVELS)[number];
+
+export interface UserLevelState {
+  cefrLevel: string | null;
+  cefrRationale: string | null;
+  cefrAssessedAt: string | null;
+}
+
+export interface LevelExamQuestion {
+  targetLevel: string;
+  questionText: string;
+}
+
+export interface LevelExamPayload {
+  questions: LevelExamQuestion[];
+}
+
 export type DailyGoalStepKey = "dailyTalk" | "alltagssprache" | "kollokationen" | "vocabulary";
 
 export interface DailyGoalStepState {

@@ -222,6 +222,31 @@ on top. Format:
   enter the pool. NOTE: same English gloss with different German collocation (Entscheidung
   treffen vs Entschluss fassen) is allowed on purpose.
 
+### 2026-06-21 — Level foundation: per-task models, placement exam, level-aware Daily Talk (Claude Code)
+- Per-task model registry: `modelFor(task)` in `analysis.client.ts` + `OPENAI_MODEL_SMART`
+  env (default `gpt-4.1`). Level assessment uses the smart model; everything else the cheap
+  `OPENAI_MODEL`. Add new tasks to the `ModelTask` union.
+- Placement exam (onboarding): `users.cefr_level` / `cefr_rationale` / `cefr_assessed_at`
+  (migration `AddUserCefrLevel`). Exam = short rising-difficulty ladder of open German
+  questions (`generateLevelExam`, cheap model); `assessLevel` (smart model) estimates CEFR
+  from all answers. Endpoints under `/api/level` (GET status, GET /exam, POST /assess, POST set).
+  Level is set-once + manually adjustable (no auto-drift) per product decision.
+- Frontend: `OnboardingView` (/onboarding) gated by an async router guard using
+  `utils/level.ts` (session-cached `hasAssessedLevel`; reset on login/logout, set after exam).
+  `SettingsLevelView` (/settings/level) shows level + rationale, lets you adjust (A1-C2) or
+  retake. Daily Talk question generation now targets `user.cefrLevel` (falls back to a
+  B1-C1 ladder if unset); question template pitches difficulty to the target.
+- CEFR per-response tags removed from Daily Talk list/new/detail earlier; corrected text now
+  highlights fixes in GREEN (HighlightedText `tone` prop) mirroring the red answer diff.
+  Kollokationen review got an "I don't know" button; Daily Talk new opens with a question
+  (no "Generate a question to start" placeholder).
+- DECIDED with user: level-awareness/user-aware content does NOT require RAG (RAG is the later
+  history-personalization layer). DEFERRED: (a) level-segmenting the SHARED Alltag/Kollok pools
+  by level band (needs a pool-segmentation design — Daily Talk was done first since questions are
+  user-owned); (b) progress view toward next CEFR (item 4); (c) conversation/"Gespräch" mode
+  (item 6, researched — strong fit as the daily-habit pillar); (d) RAG (item 6/7 final).
+- Verified: both typechecks clean; 44 backend tests pass. (Live/screenshots: user self-verifies.)
+
 ### 2026-06-12 — Alltagssprache: spaced recognition→production (option C) (Claude Code)
 - Built on top of the situational reframe (option A). Each prompt now stores `native_answer` +
   `distractors` (jsonb); generation emits them. First encounter with an item is RECOGNITION

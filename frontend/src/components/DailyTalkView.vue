@@ -82,7 +82,6 @@ const goNext = () => {
             </div>
             <div class="flex shrink-0 items-center gap-2">
               <span v-if="item.topicName" class="chip hidden sm:inline-flex">{{ item.topicName }}</span>
-              <span class="chip-accent">{{ item.cefrLevel }}</span>
               <span class="chip">
                 <CalendarDays class="h-3 w-3" />
                 {{ new Date(item.createdAt).toLocaleDateString() }}

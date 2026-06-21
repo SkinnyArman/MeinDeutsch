@@ -114,6 +114,21 @@ Build a personal German learning MVP where:
   - The goal is re-evaluated after every qualifying task write and on each
     `GET /api/dashboard/overview`, so completion is recorded the moment the last section finishes.
 
+- New feature: Level system (CEFR placement + level-aware content)
+  - Onboarding placement exam: short ladder of rising-difficulty open German questions; a
+    smart model estimates the user's overall CEFR from the produced answers and stores it.
+  - Per-task model config: high-volume generation/scoring uses the cheap model; the level
+    assessment uses a smarter model (`OPENAI_MODEL_SMART`). New tasks pick their model via a
+    backend registry.
+  - Level is set once and manually adjustable (no automatic drift). New users are gated into
+    onboarding until assessed.
+  - Content is level-aware: Daily Talk questions are generated at the user's level.
+    (Alltagssprache/Kollokationen shared-pool level-segmentation is planned next.)
+  - Independent of RAG: level-awareness needs only a stored level passed into prompts; RAG
+    (history-based personalization) is a later, separate layer.
+  - Planned next: progress view toward the next CEFR level; an AI conversation ("Gespräch")
+    mode as the daily-habit pillar; then RAG.
+
 ### Out of scope (post-MVP)
 - Any feature not required for this loop:
   topics -> AI questions -> answers -> mistakes + CEFR + tips -> knowledge base.

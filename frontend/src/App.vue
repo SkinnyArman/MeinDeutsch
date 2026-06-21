@@ -17,6 +17,7 @@ import {
 import { THEME_MAP, THEME_STORAGE_KEY, type ThemeKey, applyThemeTokens } from "./theme/themes";
 import { useDashboardOverviewQuery } from "@/queries/dashboard";
 import { clearSession, getSessionUser } from "./utils/auth";
+import { resetLevelCache } from "./utils/level";
 
 type ViewKey = "dashboard" | "daily-talk" | "alltagssprache" | "kollokationen" | "vocabulary" | "settings";
 
@@ -223,6 +224,7 @@ const toggleSidebar = (): void => {
 
 const logout = async (): Promise<void> => {
   clearSession();
+  resetLevelCache();
   sessionUser.value = null;
   await router.replace("/login");
 };

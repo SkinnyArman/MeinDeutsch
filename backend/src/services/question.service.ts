@@ -5,6 +5,7 @@ import { logger } from "../config/logger.js";
 import type { QuestionRecord } from "../models/question.model.js";
 import { questionRepository } from "../repositories/question.repository.js";
 import { topicRepository } from "../repositories/topic.repository.js";
+import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/app-error.js";
 import { createRefillQueue } from "../utils/refill-queue.js";
 
@@ -13,8 +14,7 @@ const QUESTION_MIN_UNSEEN_BUFFER = 3;
 const QUESTION_AVOID_LIST_SIZE = 30;
 const QUESTION_MAX_CONCURRENT_REFILLS = 2;
 
-// Questions aim at upper-intermediate difficulty; the learner's answer is what
-// gets CEFR-graded. Weighted toward B2.
+// Fallback ladder for users without an assessed level yet.
 const QUESTION_POOL_CEFR_TARGETS = ["B1", "B2", "B2", "C1"] as const;
 
 const pickPoolCefrTarget = (): string =>
@@ -29,6 +29,11 @@ const generateQuestionsForTopic = async (input: {
   if (!topic) {
     throw new AppError(404, "TOPIC_NOT_FOUND", API_MESSAGES.errors.topicNotFound);
   }
+
+  // Questions are tuned to the learner's assessed CEFR level (set once via the
+  // placement exam, adjustable). Falls back to the B1-C1 ladder if unset.
+  const user = await userRepository.findById(input.userId);
+  const userLevel = user?.cefrLevel ?? null;
 
   const avoidTexts = new Set(
     (
@@ -46,7 +51,7 @@ const generateQuestionsForTopic = async (input: {
       topicName: topic.name,
       topicDescription: topic.description,
       generationPrompt: QUESTION_GENERATION_TEMPLATE,
-      cefrTarget: pickPoolCefrTarget(),
+      cefrTarget: userLevel ?? pickPoolCefrTarget(),
       avoidQuestionTexts: Array.from(avoidTexts)
     });
 

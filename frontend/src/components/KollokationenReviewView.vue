@@ -2,10 +2,11 @@
 import { computed, reactive, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
-import { ArrowLeft, ArrowRight, CheckCircle2, Languages, Loader2, Puzzle, Sparkles } from "lucide-vue-next";
+import { ArrowLeft, ArrowRight, CheckCircle2, CircleHelp, Languages, Loader2, Puzzle, Sparkles } from "lucide-vue-next";
 import type { CollocationReviewItemRecord } from "@/types/ApiTypes";
 import AppContainer from "./AppContainer.vue";
 import ScoreRing from "./ScoreRing.vue";
+import { ALLTAG_IDK_ANSWER } from "@/constants/app";
 import { useCollocationReviewAttemptMutation, useCollocationReviewQuery } from "@/queries/collocations";
 
 const router = useRouter();
@@ -60,22 +61,28 @@ watchEffect(() => {
   }
 });
 
-const submitReviewAttempt = async (): Promise<void> => {
+const submitReviewAttempt = async (answerText?: string): Promise<void> => {
   if (!activeItem.value || answered.value) {
     return;
   }
-  if (!form.userAnswerText.trim()) {
+  const text = (answerText ?? form.userAnswerText).trim();
+  if (!text) {
     notice.value = { type: "error", text: t.kollok.answerPrompt() };
     return;
   }
 
   const data = await assessMutation.mutateAsync({
     reviewItemId: activeItem.value.id,
-    userAnswerText: form.userAnswerText.trim()
+    userAnswerText: text
   });
   latest.value = { score: data.score, feedback: data.feedback };
   answered.value = true;
   void reviewQuery.refetch();
+};
+
+const handleIDontKnow = async (): Promise<void> => {
+  form.userAnswerText = ALLTAG_IDK_ANSWER;
+  await submitReviewAttempt(ALLTAG_IDK_ANSWER);
 };
 
 const goToNextCard = (): void => {
@@ -150,7 +157,7 @@ const goToNextCard = (): void => {
             class="input mt-2 min-h-[72px] resize-y"
             :placeholder="t.kollok.answerPlaceholder()"
             :disabled="answered"
-            @keydown.enter.exact.prevent="submitReviewAttempt"
+            @keydown.enter.exact.prevent="submitReviewAttempt()"
           />
         </div>
 
@@ -159,11 +166,20 @@ const goToNextCard = (): void => {
             v-if="!answered"
             class="btn-primary w-full sm:w-auto"
             :disabled="assessMutation.isPending.value || !form.userAnswerText.trim()"
-            @click="submitReviewAttempt"
+            @click="submitReviewAttempt()"
           >
             <Loader2 v-if="assessMutation.isPending.value" class="h-4 w-4 animate-spin" />
             <CheckCircle2 v-else class="h-4 w-4" />
             {{ t.alltagReview.submit() }}
+          </button>
+          <button
+            v-if="!answered"
+            class="btn-ghost px-3 text-xs"
+            :disabled="assessMutation.isPending.value"
+            @click="handleIDontKnow"
+          >
+            <CircleHelp class="h-3.5 w-3.5" />
+            {{ t.alltag.idk() }}
           </button>
           <button v-else class="btn-primary w-full sm:w-auto" @click="goToNextCard">
             {{ hasMoreAfterCurrent ? t.alltagReview.nextCard() : t.alltagReview.checked() }}
