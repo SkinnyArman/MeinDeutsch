@@ -4,19 +4,20 @@ import type { DashboardActivityDay } from "@/types/ApiTypes";
 
 const props = defineProps<{
   days: DashboardActivityDay[];
-  labels: { dailyTalk: string; alltagssprache: string; kollokationen: string; vocabulary: string };
+  labels: { dailyTalk: string; alltagssprache: string; kollokationen: string; vocabulary: string; gespraech: string };
 }>();
 
 const SECTIONS = [
   { key: "dailyTalk", color: "var(--accent)" },
   { key: "alltagssprache", color: "#8b5cf6" },
   { key: "kollokationen", color: "#f59e0b" },
+  { key: "gespraech", color: "#ec4899" },
   { key: "vocabulary", color: "#10b981" }
 ] as const;
 
 const maxTotal = computed(() => {
   const totals = props.days.map(
-    (day) => day.dailyTalk + day.alltagssprache + day.kollokationen + day.vocabulary
+    (day) => day.dailyTalk + day.alltagssprache + day.kollokationen + day.vocabulary + day.gespraech
   );
   return Math.max(1, ...totals);
 });
@@ -25,7 +26,7 @@ const dayLabel = (date: string): string =>
   new Intl.DateTimeFormat("de-DE", { weekday: "short" }).format(new Date(`${date}T00:00:00Z`)).slice(0, 2);
 
 const dayTotal = (day: DashboardActivityDay): number =>
-  day.dailyTalk + day.alltagssprache + day.kollokationen + day.vocabulary;
+  day.dailyTalk + day.alltagssprache + day.kollokationen + day.vocabulary + day.gespraech;
 
 const segments = (day: DashboardActivityDay): Array<{ key: string; color: string; pct: number }> =>
   SECTIONS.map((section) => ({
@@ -35,7 +36,7 @@ const segments = (day: DashboardActivityDay): Array<{ key: string; color: string
   })).filter((segment) => segment.pct > 0);
 
 const tooltip = (day: DashboardActivityDay): string =>
-  `${day.date} · ${props.labels.dailyTalk}: ${day.dailyTalk} · ${props.labels.alltagssprache}: ${day.alltagssprache} · ${props.labels.kollokationen}: ${day.kollokationen} · ${props.labels.vocabulary}: ${day.vocabulary}`;
+  `${day.date} · ${props.labels.dailyTalk}: ${day.dailyTalk} · ${props.labels.alltagssprache}: ${day.alltagssprache} · ${props.labels.kollokationen}: ${day.kollokationen} · ${props.labels.gespraech}: ${day.gespraech} · ${props.labels.vocabulary}: ${day.vocabulary}`;
 </script>
 
 <template>

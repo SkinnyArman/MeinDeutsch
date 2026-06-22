@@ -10,6 +10,7 @@ import {
   Flame,
   Languages,
   MessageCircle,
+  MessagesSquare,
   Puzzle,
   Target
 } from "lucide-vue-next";
@@ -37,6 +38,7 @@ const stepMeta = computed<StepMeta[]>(() => [
   { key: "dailyTalk", label: t.dailyTalk.title(), icon: MessageCircle, path: "/daily-talk/new" },
   { key: "alltagssprache", label: t.alltag.title(), icon: Languages, path: "/alltagssprache" },
   { key: "kollokationen", label: t.kollok.title(), icon: Puzzle, path: "/kollokationen" },
+  { key: "gespraech", label: t.gespraech.title(), icon: MessagesSquare, path: "/gespraech" },
   { key: "vocabulary", label: t.vocab.title(), icon: BookOpen, path: "/vocabulary/review" }
 ]);
 
@@ -64,7 +66,7 @@ const remainingMs = computed(() => {
 
 const activityHasData = computed(() =>
   (overview.value?.activity ?? []).some(
-    (day) => day.dailyTalk + day.alltagssprache + day.kollokationen + day.vocabulary > 0
+    (day) => day.dailyTalk + day.alltagssprache + day.kollokationen + day.vocabulary + day.gespraech > 0
   )
 );
 
@@ -118,6 +120,7 @@ const activityLabels = computed(() => ({
   dailyTalk: t.dailyTalk.title(),
   alltagssprache: t.alltag.title(),
   kollokationen: t.kollok.title(),
+  gespraech: t.gespraech.title(),
   vocabulary: t.vocab.title()
 }));
 </script>

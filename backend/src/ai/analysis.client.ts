@@ -446,6 +446,178 @@ export const assessLevel = async (
   }
 };
 
+export interface ConversationScenarioInput {
+  aiRole: string;
+  setting: string;
+}
+
+export interface ConversationDebriefResult {
+  summary: string;
+  corrections: Array<{ original: string; correction: string; note: string }>;
+  suggestions: Array<{ word: string; description: string; examples: string[] }>;
+}
+
+// Pedagogy (see SLA research): comprehensible input at i+1, output focus,
+// low anxiety = NO mid-conversation error correction (recast silently instead),
+// short turns, always invite a reply. Correction happens later in the debrief.
+const conversationSystemPrompt = (scenario: ConversationScenarioInput, level: string | null): string => `
+You are role-playing a natural spoken German conversation to help a learner practice.
+Your role: ${scenario.aiRole}. Setting: ${scenario.setting}
+Learner's CEFR level: ${level ?? "B1"}.
+Rules:
+- Speak ONLY German. Stay fully in character.
+- STAY ON THE SCENE. Keep the conversation anchored to this setting and its purpose. Follow the
+  learner's lead within the scene, but do NOT change the location, jump to an unrelated topic, or
+  invent a new situation. If the learner says something off-topic or makes a side remark (e.g. a
+  comparison or an aside), acknowledge it briefly in one clause and steer naturally back to what
+  you are both doing here.
+- Pitch your language to the learner's level and just slightly above (i+1): keep it ~95% understandable at their level. Simpler for A1/A2, richer for C1/C2.
+- Keep each turn SHORT (1-3 sentences) and end with a natural question or prompt that moves THIS interaction forward.
+- Do NOT correct the learner's mistakes or break character to teach. If they err, just respond naturally and, where easy, model the correct phrasing by using it yourself (a gentle recast).
+- If the learner writes in English or is stuck, gently encourage them in simple German and offer an easier way in, still in character.
+- Never mention that you are an AI or that this is an exercise.
+- Output only your spoken line (no quotes, no labels).`;
+
+export const openConversation = async (
+  scenario: ConversationScenarioInput,
+  level: string | null,
+  angle?: string
+): Promise<string> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+  try {
+    const completion = await openai.responses.create({
+      model: modelFor("default"),
+      instructions: conversationSystemPrompt(scenario, level),
+      input: [
+        angle ? `Opening mood/variation for THIS conversation: ${angle}` : null,
+        "Begin the conversation with a warm, natural opening line in character. One or two sentences, ending with a question to the learner.",
+        "Make this opening feel fresh and specific to the moment (avoid a generic, formulaic greeting)."
+      ]
+        .filter(Boolean)
+        .join("\n")
+    });
+    return completion.output_text.trim();
+  } catch (error) {
+    logger.error("OpenAI conversation open failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return "Hallo! Schön, dich zu sehen. Wie geht es dir heute?";
+    }
+    throw new AppError(502, "AI_CONVERSATION_FAILED", API_MESSAGES.errors.aiConversationFailed);
+  }
+};
+
+export const replyInConversation = async (input: {
+  scenario: ConversationScenarioInput;
+  level: string | null;
+  transcript: string;
+}): Promise<string> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+  try {
+    const completion = await openai.responses.create({
+      model: modelFor("default"),
+      instructions: conversationSystemPrompt(input.scenario, input.level),
+      input: `Conversation so far:\n${input.transcript}\n\nReply as your character (one short German turn ending with a question or prompt).`
+    });
+    return completion.output_text.trim();
+  } catch (error) {
+    logger.error("OpenAI conversation reply failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return "Interessant! Erzähl mir mehr davon. Was denkst du?";
+    }
+    throw new AppError(502, "AI_CONVERSATION_FAILED", API_MESSAGES.errors.aiConversationFailed);
+  }
+};
+
+const CONVERSATION_DEBRIEF_PROMPT = `You are a supportive German coach reviewing a finished practice conversation.
+Look ONLY at the learner's (user) turns. Return strict JSON only:
+{
+  "summary": "string",
+  "corrections": [{ "original": "string", "correction": "string", "note": "string" }],
+  "suggestions": [{ "word": "string", "description": "string", "examples": ["string"] }]
+}
+Rules:
+- summary: 1-2 encouraging sentences in English about how the conversation went and the single biggest thing to work on.
+- corrections: the 2-5 MOST useful fixes from the learner's German turns. "original" = their exact phrase, "correction" = the natural German, "note" = a short English why. Skip trivial typos; prioritise errors that affect naturalness/meaning. Empty array if the learner barely produced German.
+- suggestions: 3-6 useful German words/collocations that fit this conversation's topic and would level the learner up. For nouns include the article; "description" in English; 1-2 German "examples". These feed the learner's vocabulary deck.
+- No extra fields.`;
+
+export const debriefConversation = async (input: {
+  level: string | null;
+  transcript: string;
+}): Promise<ConversationDebriefResult> => {
+  if (!openai) {
+    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
+      provider: "openai",
+      reason: "OPENAI_API_KEY is missing"
+    });
+  }
+  try {
+    const completion = await openai.responses.create({
+      model: modelFor("default"),
+      instructions: CONVERSATION_DEBRIEF_PROMPT,
+      input: `Learner CEFR level: ${input.level ?? "B1"}\n\nConversation transcript:\n${input.transcript}`,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "conversation_debrief",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["summary", "corrections", "suggestions"],
+            properties: {
+              summary: { type: "string" },
+              corrections: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["original", "correction", "note"],
+                  properties: {
+                    original: { type: "string" },
+                    correction: { type: "string" },
+                    note: { type: "string" }
+                  }
+                }
+              },
+              suggestions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["word", "description", "examples"],
+                  properties: {
+                    word: { type: "string" },
+                    description: { type: "string" },
+                    examples: { type: "array", items: { type: "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    return JSON.parse(completion.output_text) as ConversationDebriefResult;
+  } catch (error) {
+    logger.error("OpenAI conversation debrief failed", error);
+    if (env.AI_FALLBACK_ENABLED) {
+      return { summary: "Nice work keeping the conversation going!", corrections: [], suggestions: [] };
+    }
+    throw new AppError(502, "AI_CONVERSATION_DEBRIEF_FAILED", API_MESSAGES.errors.aiConversationDebriefFailed);
+  }
+};
+
 export const generateEverydayExpression = async (
   category: ExpressionGenerationCategory = "random",
   options?: { avoidEnglishTexts?: string[] }

@@ -2,6 +2,8 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 import { env } from "../config/env.js";
 import { AnswerLog } from "../models/answer-log.model.js";
+import { Conversation } from "../models/conversation.model.js";
+import { ConversationMessage } from "../models/conversation-message.model.js";
 import { CollocationAttempt } from "../models/collocation-attempt.model.js";
 import { CollocationPrompt } from "../models/collocation-prompt.model.js";
 import { CollocationPromptView } from "../models/collocation-prompt-view.model.js";
@@ -27,6 +29,7 @@ import { AddCollocationTables1780885000000 } from "./migrations/1780885000000-Ad
 import { AddExpressionSituation1780886000000 } from "./migrations/1780886000000-AddExpressionSituation.js";
 import { AddExpressionRecognition1780887000000 } from "./migrations/1780887000000-AddExpressionRecognition.js";
 import { AddUserCefrLevel1780888000000 } from "./migrations/1780888000000-AddUserCefrLevel.js";
+import { AddConversations1780889000000 } from "./migrations/1780889000000-AddConversations.js";
 
 export const appDataSource = new DataSource({
   type: "postgres",
@@ -48,6 +51,8 @@ export const appDataSource = new DataSource({
     CollocationPromptView,
     CollocationAttempt,
     CollocationReviewItem,
+    Conversation,
+    ConversationMessage,
     VocabularyReviewLog
   ],
   migrations: [
@@ -59,7 +64,8 @@ export const appDataSource = new DataSource({
     AddCollocationTables1780885000000,
     AddExpressionSituation1780886000000,
     AddExpressionRecognition1780887000000,
-    AddUserCefrLevel1780888000000
+    AddUserCefrLevel1780888000000,
+    AddConversations1780889000000
   ],
   migrationsRun: true,
   synchronize: false,

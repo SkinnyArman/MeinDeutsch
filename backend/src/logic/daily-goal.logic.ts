@@ -6,6 +6,7 @@ export interface DailyGoalInputs {
     alltagssprache: number;
     kollokationen: number;
     vocabulary: number;
+    gespraech: number;
   };
   vocabularyDueNow: number;
 }
@@ -14,7 +15,8 @@ export const DAILY_GOAL_STEP_KEYS: DailyGoalStepKey[] = [
   "dailyTalk",
   "alltagssprache",
   "kollokationen",
-  "vocabulary"
+  "vocabulary",
+  "gespraech"
 ];
 
 /**
@@ -32,7 +34,8 @@ export const computeDailyGoalSteps = (inputs: DailyGoalInputs): DailyGoalStepSta
       key: "vocabulary",
       done: countsToday.vocabulary > 0 || vocabularyDueNow === 0,
       countToday: countsToday.vocabulary
-    }
+    },
+    { key: "gespraech", done: countsToday.gespraech > 0, countToday: countsToday.gespraech }
   ];
 };
 

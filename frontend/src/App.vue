@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageCircle,
+  MessagesSquare,
   PanelLeft,
   Puzzle,
   Settings
@@ -20,7 +21,7 @@ import { clearSession, getAuthToken, getSessionUser } from "./utils/auth";
 import { examOpen, levelKnown, markLeveled, refreshLevel, resetLevel } from "./utils/level";
 import OnboardingExamModal from "./components/OnboardingExamModal.vue";
 
-type ViewKey = "dashboard" | "daily-talk" | "alltagssprache" | "kollokationen" | "vocabulary" | "settings";
+type ViewKey = "dashboard" | "daily-talk" | "alltagssprache" | "kollokationen" | "gespraech" | "vocabulary" | "settings";
 
 const route = useRoute();
 const router = useRouter();
@@ -61,6 +62,13 @@ const navItems = computed(() => [
     shortTitle: t.kollok.tab(),
     path: "/kollokationen",
     icon: Puzzle
+  },
+  {
+    key: "gespraech" as ViewKey,
+    title: t.gespraech.title(),
+    shortTitle: t.tabs.gespraech(),
+    path: "/gespraech",
+    icon: MessagesSquare
   },
   {
     key: "vocabulary" as ViewKey,
@@ -205,6 +213,9 @@ const activeNavKey = computed<ViewKey | "">(() => {
   }
   if (route.path.startsWith("/kollokationen")) {
     return "kollokationen";
+  }
+  if (route.path.startsWith("/gespraech")) {
+    return "gespraech";
   }
   return "daily-talk";
 });
@@ -431,7 +442,7 @@ const logout = async (): Promise<void> => {
       class="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-[color-mix(in_srgb,var(--panel)_92%,transparent)] backdrop-blur-md lg:hidden"
       style="padding-bottom: env(safe-area-inset-bottom)"
     >
-      <div class="mx-auto grid max-w-md grid-cols-5">
+      <div class="mx-auto grid max-w-md grid-cols-6">
         <RouterLink
           v-for="item in navItems.filter((n) => n.key !== 'settings')"
           :key="`tab-${item.key}`"

@@ -321,7 +321,60 @@ export interface LevelExamPayload {
   questions: LevelExamQuestion[];
 }
 
-export type DailyGoalStepKey = "dailyTalk" | "alltagssprache" | "kollokationen" | "vocabulary";
+export interface ConversationScenarioRecord {
+  id: string;
+  label: string;
+  category: string;
+}
+
+export type ConversationRole = "assistant" | "user";
+
+export interface ConversationMessageRecord {
+  id: number;
+  role: ConversationRole;
+  content: string;
+  createdAt: string;
+}
+
+export interface ConversationCorrection {
+  original: string;
+  correction: string;
+  note: string;
+}
+
+export interface ConversationVocabSuggestion {
+  word: string;
+  description: string;
+  examples: string[];
+}
+
+export interface ConversationDebrief {
+  summary: string;
+  corrections: ConversationCorrection[];
+  suggestions: ConversationVocabSuggestion[];
+}
+
+export interface ConversationRecord {
+  id: number;
+  scenarioId: string;
+  scenarioLabel: string;
+  status: "active" | "ended";
+  cefrLevel: string | null;
+  debrief: ConversationDebrief | null;
+  createdAt: string;
+  endedAt: string | null;
+}
+
+export interface ConversationWithMessages extends ConversationRecord {
+  messages: ConversationMessageRecord[];
+}
+
+export interface ConversationListItem extends ConversationRecord {
+  messageCount: number;
+  preview: string | null;
+}
+
+export type DailyGoalStepKey = "dailyTalk" | "alltagssprache" | "kollokationen" | "vocabulary" | "gespraech";
 
 export interface DailyGoalStepState {
   key: DailyGoalStepKey;
@@ -343,6 +396,7 @@ export interface DashboardActivityDay {
   alltagssprache: number;
   kollokationen: number;
   vocabulary: number;
+  gespraech: number;
 }
 
 export interface DashboardScorePoint {

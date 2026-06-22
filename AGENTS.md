@@ -222,6 +222,44 @@ on top. Format:
   enter the pool. NOTE: same English gloss with different German collocation (Entscheidung
   treffen vs Entschluss fassen) is allowed on purpose.
 
+### 2026-06-21 — Gespräch fixes: delete, anti-drift, variety, more scenes, reopen review (Claude Code)
+- Delete conversations: `DELETE /api/conversations/:id` (cascades messages) + trash button in the
+  Gespräch history with a `BaseModal` confirm.
+- Anti-drift: conversation system prompt now hard-anchors to the scene — acknowledge off-topic
+  asides briefly then steer back; never change location/topic/situation. (Fixes "pants cheaper in
+  Iran" derailing a shopping scene.)
+- Variety: scenarios expanded 8→19, grouped by `category` (Alltag / Dienstleistungen / Arbeit &
+  Schule / Reisen / Sozial / Gesundheit); picker now renders grouped. Each start injects a random
+  `CONVERSATION_OPENING_ANGLES` seed so the same scene opens differently.
+- FIXED reopen-from-history showing nothing: `GET /api/conversations/:id` returned nested
+  `{conversation, messages}` but the client read it flat — `getConversation` now returns a FLAT
+  `ConversationWithMessages` (matches start which stays nested). Reopening an ended chat shows its
+  debrief again.
+- NOTE (deferred, user's call): rename Daily Talk → "Writing" and rework it as writing practice
+  (vs Gespräch = speaking-style). Not started.
+
+### 2026-06-21 — NEW FEATURE: Gespräch (AI conversation mode, text-only) (Claude Code)
+- The "daily-habit pillar": a level-scaled role-play chat. Standalone feature (NOT folded into
+  Daily Talk, which stays for now). Routes `/gespraech`; nav is now 6 tabs (mobile bottom nav
+  grid-cols-6, short label "Chat").
+- Pedagogy baked into prompts (`analysis.client.ts`): comprehensible input at i+1 (uses the
+  user's stored CEFR level), short turns that always invite a reply, NO mid-conversation
+  correction (silent recasts) for low anxiety — correction happens only in the post-chat
+  DEBRIEF (`debriefConversation`: summary + corrections + vocab suggestions). All conversation
+  AI uses the cheap `modelFor("default")`.
+- Backend: `conversations` + `conversation_messages` tables (migration `AddConversations`),
+  repository/service/controller, routes under `/api/conversations` (scenarios, start, :id/message,
+  :id/end, list, get). Scenarios in `constants/conversation-scenarios.config.ts` (cafe, colleague,
+  doctor, …). Debrief stored as jsonb on the conversation.
+- Integrated into the DAILY GOAL as a 5th step `gespraech` (done = ≥1 user message today):
+  touched `daily-goal.logic`, `dashboard.repository` (counts + 14-day activity series, pink),
+  contract `DailyGoalStepKey`/`DashboardActivityDay`, dashboard stepper + ActivityChart.
+- Frontend `GespraechView`: scenario picker + past-conversation list → chat (bubbles, typing
+  indicator, Enter-to-send) → review (debrief with one-click vocab harvest reusing the Daily
+  Talk save-word mutation into the "Gespräch" vocab category). Uses the new `ui/BaseButton`+`BaseModal`.
+- Voice is DEFERRED (text-only v1, per user). RAG still the final step.
+- Verified: both typechecks clean; 45 backend tests pass; migration applied.
+
 ### 2026-06-21 — Reusable UI components + CEFR-grounded assessment (Claude Code)
 - NEW: `src/components/ui/` reusable primitives — `BaseModal` (backdrop, Esc/scroll-lock,
   `dismissable` flag for blocking flows) and `BaseButton` (variant→shared style classes,

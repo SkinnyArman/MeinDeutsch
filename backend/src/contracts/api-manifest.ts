@@ -442,6 +442,62 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     ]
   },
   {
+    id: "list-conversation-scenarios",
+    method: "GET",
+    path: "/api/conversations/scenarios",
+    title: "List Conversation Scenarios",
+    description: "Returns the available Gespräch role-play scenarios.",
+    requestFields: []
+  },
+  {
+    id: "start-conversation",
+    method: "POST",
+    path: "/api/conversations",
+    title: "Start Conversation",
+    description: "Starts a level-scaled role-play conversation and returns the AI's opening turn.",
+    requestFields: [{ name: "scenarioId", label: "Scenario ID", type: "text", required: true, placeholder: "cafe" }]
+  },
+  {
+    id: "send-conversation-message",
+    method: "POST",
+    path: "/api/conversations/:id/message",
+    title: "Send Conversation Message",
+    description: "Sends the learner's German turn and returns the AI character's reply.",
+    requestFields: [{ name: "content", label: "Your German message", type: "textarea", required: true }]
+  },
+  {
+    id: "end-conversation",
+    method: "POST",
+    path: "/api/conversations/:id/end",
+    title: "End Conversation",
+    description: "Ends the conversation and returns a debrief (corrections + vocab suggestions).",
+    requestFields: []
+  },
+  {
+    id: "list-conversations",
+    method: "GET",
+    path: "/api/conversations?limit=...&offset=...",
+    title: "List Conversations",
+    description: "Lists the user's past conversations with previews.",
+    requestFields: []
+  },
+  {
+    id: "get-conversation",
+    method: "GET",
+    path: "/api/conversations/:id",
+    title: "Get Conversation",
+    description: "Fetches one conversation with all its messages (and debrief if ended).",
+    requestFields: []
+  },
+  {
+    id: "delete-conversation",
+    method: "POST",
+    path: "/api/conversations/:id (DELETE)",
+    title: "Delete Conversation",
+    description: "Deletes a conversation and its messages.",
+    requestFields: []
+  },
+  {
     id: "get-level",
     method: "GET",
     path: "/api/level",

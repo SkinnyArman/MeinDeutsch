@@ -59,5 +59,10 @@ export const API_PATHS = {
   dashboardOverview: "/api/dashboard/overview",
   level: "/api/level",
   levelExam: "/api/level/exam",
-  levelAssess: "/api/level/assess"
+  levelAssess: "/api/level/assess",
+  conversationScenarios: "/api/conversations/scenarios",
+  conversations: "/api/conversations",
+  conversation: (id: number) => `/api/conversations/${id}`,
+  conversationMessage: (id: number) => `/api/conversations/${id}/message`,
+  conversationEnd: (id: number) => `/api/conversations/${id}/end`
 } as const;

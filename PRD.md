@@ -129,6 +129,16 @@ Build a personal German learning MVP where:
   - Planned next: progress view toward the next CEFR level; an AI conversation ("Gespräch")
     mode as the daily-habit pillar; then RAG.
 
+- New feature: Gespräch (AI conversation mode)
+  - Level-scaled role-play chat (text-only for now; voice later). The learner picks a scene
+    (café, colleague, doctor, …); the AI stays in character and converses in German.
+  - Research-based: comprehensible input at i+1 (uses the user's stored CEFR), output focus,
+    low anxiety = NO mid-conversation correction (gentle recasts only). Correction is deferred to
+    a post-conversation debrief (summary + targeted corrections + vocabulary suggestions).
+  - Debrief vocabulary is one-click savable into the SRS deck ("Gespräch" category), tying the
+    feature into the rest of the app.
+  - Counts as the 5th daily-goal step (≥1 message that day), making it the daily-habit pillar.
+
 ### Out of scope (post-MVP)
 - Any feature not required for this loop:
   topics -> AI questions -> answers -> mistakes + CEFR + tips -> knowledge base.

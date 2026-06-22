@@ -36,6 +36,15 @@ export const API_MESSAGES = {
     assessed: "Level assessed successfully",
     updated: "Level updated successfully"
   },
+  conversation: {
+    scenariosListed: "Conversation scenarios fetched successfully",
+    started: "Conversation started successfully",
+    replied: "Conversation reply generated successfully",
+    ended: "Conversation ended successfully",
+    fetched: "Conversation fetched successfully",
+    listed: "Conversations fetched successfully",
+    deleted: "Conversation deleted successfully"
+  },
   vocabulary: {
     saved: "Vocabulary item saved successfully",
     listed: "Vocabulary items fetched successfully",
@@ -74,6 +83,8 @@ export const API_MESSAGES = {
     aiCollocationReviewAssessmentFailed: "AI collocation review assessment failed",
     aiLevelExamFailed: "AI level exam generation failed",
     aiLevelAssessmentFailed: "AI level assessment failed",
+    aiConversationFailed: "AI conversation failed",
+    aiConversationDebriefFailed: "AI conversation debrief failed",
     authMissingToken: "Authentication token is required",
     authInvalidGoogleToken: "Google sign-in failed",
     authGoogleUpstreamUnavailable: "Google sign-in is blocked by your network (403). Please try turning on a VPN and sign in again.",
@@ -92,6 +103,8 @@ export const API_MESSAGES = {
     collocationPromptNotFound: "Collocation prompt not found",
     collocationReviewItemNotFound: "Collocation review item not found",
     collocationReviewItemNotDue: "Collocation review item is not due yet",
+    conversationNotFound: "Conversation not found",
+    conversationEnded: "This conversation has already ended",
     vocabularyNotFound: "Vocabulary item not found",
     vocabularyNotDue: "Vocabulary item is not due for review yet",
     internalServerError: "Internal server error",

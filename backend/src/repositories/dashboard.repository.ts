@@ -2,6 +2,7 @@ import { MoreThanOrEqual } from "typeorm";
 import { appDataSource } from "../db/pool.js";
 import { AnswerLog } from "../models/answer-log.model.js";
 import { CollocationAttempt } from "../models/collocation-attempt.model.js";
+import { ConversationMessage } from "../models/conversation-message.model.js";
 import { ExpressionAttempt } from "../models/expression-attempt.model.js";
 import { VocabularyItem } from "../models/vocabulary-item.model.js";
 import { VocabularyReviewLog } from "../models/vocabulary-review-log.model.js";
@@ -12,6 +13,7 @@ export interface SectionCountsToday {
   alltagssprache: number;
   kollokationen: number;
   vocabulary: number;
+  gespraech: number;
 }
 
 const countSince = async (
@@ -26,16 +28,19 @@ const countSince = async (
 
 export const dashboardRepository = {
   async getSectionCountsSince(userId: number, since: Date): Promise<SectionCountsToday> {
-    const [dailyTalk, alltagssprache, kollokationen, vocabulary] = await Promise.all([
+    const [dailyTalk, alltagssprache, kollokationen, vocabulary, gespraech] = await Promise.all([
       countSince(AnswerLog, userId, since),
       countSince(ExpressionAttempt, userId, since),
       countSince(CollocationAttempt, userId, since),
       appDataSource.getRepository(VocabularyReviewLog).count({
         where: { userId: String(userId), reviewedAt: MoreThanOrEqual(since) }
-      })
+      }),
+      appDataSource
+        .getRepository(ConversationMessage)
+        .count({ where: { userId: String(userId), role: "user", createdAt: MoreThanOrEqual(since) } })
     ]);
 
-    return { dailyTalk, alltagssprache, kollokationen, vocabulary };
+    return { dailyTalk, alltagssprache, kollokationen, vocabulary, gespraech };
   },
 
   async getActivitySeries(userId: number, days: number, now: Date): Promise<DashboardActivityDay[]> {
@@ -53,11 +58,23 @@ export const dashboardRepository = {
       return new Map(rows.map((row) => [row.day, Number(row.count)]));
     };
 
-    const [talk, alltag, kollok, vocab] = await Promise.all([
+    const groupedConversations = async (): Promise<Map<string, number>> => {
+      const rows: Array<{ day: string; count: string }> = await appDataSource.query(
+        `SELECT to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, count(*) AS count
+         FROM conversation_messages
+         WHERE user_id = $1 AND role = 'user' AND created_at >= $2
+         GROUP BY 1`,
+        [String(userId), since.toISOString()]
+      );
+      return new Map(rows.map((row) => [row.day, Number(row.count)]));
+    };
+
+    const [talk, alltag, kollok, vocab, gespraech] = await Promise.all([
       grouped("answer_logs", "created_at"),
       grouped("expression_attempts", "created_at"),
       grouped("collocation_attempts", "created_at"),
-      grouped("vocabulary_review_logs", "reviewed_at")
+      grouped("vocabulary_review_logs", "reviewed_at"),
+      groupedConversations()
     ]);
 
     const series: DashboardActivityDay[] = [];
@@ -69,7 +86,8 @@ export const dashboardRepository = {
         dailyTalk: talk.get(key) ?? 0,
         alltagssprache: alltag.get(key) ?? 0,
         kollokationen: kollok.get(key) ?? 0,
-        vocabulary: vocab.get(key) ?? 0
+        vocabulary: vocab.get(key) ?? 0,
+        gespraech: gespraech.get(key) ?? 0
       });
     }
     return series;

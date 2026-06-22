@@ -198,6 +198,38 @@ export const messages = {
       loadFailed: "Could not load review queue",
       submitFailed: "Could not submit review attempt"
     },
+    gespraech: {
+      title: "Gespräch",
+      subtitle: "Practice a real German conversation. Pick a scene and start talking.",
+      tab: "Gespräch",
+      pickScenario: "Choose a scene",
+      start: "Start conversation",
+      starting: "Starting...",
+      inputPlaceholder: "Schreib auf Deutsch...",
+      send: "Send",
+      end: "End & review",
+      ending: "Reviewing...",
+      partner: "Partner",
+      you: "You",
+      typing: "Partner is typing...",
+      newChat: "New conversation",
+      history: "Past conversations",
+      noHistory: "No conversations yet — start your first one above.",
+      messages: "{count} messages",
+      continueChat: "Continue",
+      review: "Conversation review",
+      summary: "How it went",
+      corrections: "Corrections",
+      suggestions: "Words to take with you",
+      noCorrections: "No major corrections — nicely done!",
+      save: "Save",
+      saved: "Saved",
+      backToStart: "Start a new conversation",
+      loadFailed: "Could not load the conversation.",
+      ended: "This conversation has ended.",
+      deleteConfirmTitle: "Delete this conversation?",
+      deleteConfirmBody: "This permanently removes the conversation and its review."
+    },
     onboarding: {
       title: "Let's find your level",
       subtitle: "Answer a few short questions in German. Your answers set the difficulty across the app — there are no wrong answers, just write what you can.",
@@ -226,7 +258,8 @@ export const messages = {
       home: "Home",
       dailyTalk: "Talk",
       alltag: "Alltag",
-      vocab: "Vocab"
+      vocab: "Vocab",
+      gespraech: "Chat"
     },
     dashboard: {
       title: "Dashboard",

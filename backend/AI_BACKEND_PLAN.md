@@ -91,6 +91,14 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Per-user phase state on `expression_prompt_views`; delivery priority due-production → unseen(recognition) → recycle(production)
 - [x] `POST /api/expressions/recognition`; `expression_attempts.phase` keeps recognition out of history/trends/review but in daily-goal count
 
+## 6e) Gespräch — AI conversation mode (Implemented, text-only)
+- [x] Scenario config + `GET /api/conversations/scenarios`
+- [x] `conversations` + `conversation_messages` tables (migration `AddConversations`)
+- [x] Start / send-message / end endpoints; level-scaled in-character replies (i+1, no mid-correction)
+- [x] Post-conversation debrief (summary + corrections + vocab suggestions) stored as jsonb
+- [x] One-click vocab harvest into SRS; 5th daily-goal step (`gespraech`); dashboard stepper + activity
+- [ ] Voice (speech in/out) — deferred
+
 ## 7) Vocabulary SRS (Implemented)
 - [x] Save vocabulary from contextual suggestions
 - [x] Category list + icon metadata
