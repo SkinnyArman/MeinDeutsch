@@ -7,7 +7,9 @@ import { useAssessLevelMutation, useLevelExamQuery } from "@/queries/level";
 import { markLeveled } from "@/utils/level";
 import { BaseButton, BaseModal } from "./ui";
 
-const emit = defineEmits<{ done: [] }>();
+// Blocking on first-time onboarding; dismissable when retaking (a level already exists).
+withDefaults(defineProps<{ dismissable?: boolean }>(), { dismissable: false });
+const emit = defineEmits<{ done: []; close: [] }>();
 const { t } = useLanguage();
 
 const examQuery = useLevelExamQuery();
@@ -58,8 +60,7 @@ const finish = (): void => {
 </script>
 
 <template>
-  <!-- Blocking: cannot be dismissed until the exam is finished. -->
-  <BaseModal :open="true" :dismissable="false" size="md">
+  <BaseModal :open="true" :dismissable="dismissable" size="md" @close="emit('close')">
     <!-- Result -->
     <div v-if="result" class="flex flex-col items-center text-center">
       <span class="flex h-16 w-16 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--accent)_16%,transparent)]">
@@ -126,10 +127,11 @@ const finish = (): void => {
         <p v-if="notice" class="notice-error mt-3">{{ notice }}</p>
 
         <div class="mt-5 flex items-center justify-between gap-3">
-          <BaseButton variant="ghost" :disabled="currentIndex === 0" @click="goBack">
+          <BaseButton v-if="currentIndex > 0" variant="ghost" @click="goBack">
             <template #icon><ArrowLeft class="h-4 w-4" /></template>
             {{ t.onboarding.back() }}
           </BaseButton>
+          <span v-else />
           <BaseButton v-if="!isLast" @click="goNext">
             {{ t.onboarding.next() }}
             <template #icon><ArrowRight class="h-4 w-4" /></template>

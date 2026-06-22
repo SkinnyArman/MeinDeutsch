@@ -227,6 +227,12 @@ const showExamModal = computed(
   () => route.path !== "/login" && Boolean(getAuthToken()) && (levelKnown.value === false || examOpen.value)
 );
 
+// First-time onboarding (no level yet) is blocking; an explicit retake is dismissable.
+const examDismissable = computed(() => levelKnown.value === true);
+const cancelExam = (): void => {
+  examOpen.value = false;
+};
+
 const ensureLevelChecked = (): void => {
   if (route.path !== "/login" && getAuthToken() && levelKnown.value === null) {
     void refreshLevel();
@@ -256,7 +262,7 @@ const logout = async (): Promise<void> => {
 </script>
 
 <template>
-  <OnboardingExamModal v-if="showExamModal" @done="markLeveled" />
+  <OnboardingExamModal v-if="showExamModal" :dismissable="examDismissable" @done="markLeveled" @close="cancelExam" />
 
   <RouterView v-if="!showMainLayout" />
 
