@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Sparkles } from "lucide-v
 import type { UserLevelState } from "@/types/ApiTypes";
 import { useAssessLevelMutation, useLevelExamQuery } from "@/queries/level";
 import { markLeveled } from "@/utils/level";
+import { BaseButton, BaseModal } from "./ui";
 
 const emit = defineEmits<{ done: [] }>();
 const { t } = useLanguage();
@@ -51,107 +52,94 @@ const submit = async (): Promise<void> => {
 };
 
 const finish = (): void => {
-  // Keep the result visible until the user dismisses it, then drop the overlay.
   markLeveled();
   emit("done");
 };
 </script>
 
 <template>
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] px-4 py-8 backdrop-blur-md"
-    role="dialog"
-    aria-modal="true"
-  >
-    <div
-      class="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full opacity-25 blur-3xl"
-      style="background-image: linear-gradient(135deg, var(--accent), var(--accent-strong))"
-    />
+  <!-- Blocking: cannot be dismissed until the exam is finished. -->
+  <BaseModal :open="true" :dismissable="false" size="md">
+    <!-- Result -->
+    <div v-if="result" class="flex flex-col items-center text-center">
+      <span class="flex h-16 w-16 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--accent)_16%,transparent)]">
+        <CheckCircle2 class="h-8 w-8 text-[var(--accent)]" />
+      </span>
+      <p class="mt-5 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.onboarding.resultTitle() }}</p>
+      <p class="mt-2 font-serif text-6xl font-semibold">{{ result.cefrLevel }}</p>
+      <p v-if="result.cefrRationale" class="mt-4 max-w-md text-sm leading-relaxed text-[var(--muted)]">
+        {{ result.cefrRationale }}
+      </p>
+      <BaseButton class="mt-7" @click="finish">
+        {{ t.onboarding.resultContinue() }}
+        <template #icon><ArrowRight class="h-4 w-4" /></template>
+      </BaseButton>
+    </div>
 
-    <section class="card relative my-auto w-full max-w-xl animate-fade-up p-6 sm:p-8">
-      <!-- Result -->
-      <div v-if="result" class="flex flex-col items-center text-center">
-        <span class="flex h-16 w-16 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--accent)_16%,transparent)]">
-          <CheckCircle2 class="h-8 w-8 text-[var(--accent)]" />
-        </span>
-        <p class="mt-5 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{{ t.onboarding.resultTitle() }}</p>
-        <p class="mt-2 font-serif text-6xl font-semibold">{{ result.cefrLevel }}</p>
-        <p v-if="result.cefrRationale" class="mt-4 max-w-md text-sm leading-relaxed text-[var(--muted)]">
-          {{ result.cefrRationale }}
-        </p>
-        <button class="btn-primary mt-7" @click="finish">
-          {{ t.onboarding.resultContinue() }}
-          <ArrowRight class="h-4 w-4" />
-        </button>
-      </div>
+    <!-- Assessing -->
+    <div v-else-if="assessMutation.isPending.value" class="flex flex-col items-center py-10 text-center">
+      <Loader2 class="h-8 w-8 animate-spin text-[var(--accent)]" />
+      <p class="mt-4 text-sm text-[var(--muted)]">{{ t.onboarding.assessing() }}</p>
+    </div>
 
-      <!-- Assessing -->
-      <div v-else-if="assessMutation.isPending.value" class="flex flex-col items-center py-10 text-center">
-        <Loader2 class="h-8 w-8 animate-spin text-[var(--accent)]" />
-        <p class="mt-4 text-sm text-[var(--muted)]">{{ t.onboarding.assessing() }}</p>
-      </div>
-
-      <!-- Exam -->
-      <div v-else>
-        <div class="flex items-center gap-2.5">
-          <div
-            class="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white"
-            style="background-image: linear-gradient(135deg, var(--accent), var(--accent-strong))"
-          >
-            M
-          </div>
-          <div>
-            <h1 class="font-serif text-xl font-semibold leading-tight">{{ t.onboarding.title() }}</h1>
-          </div>
+    <!-- Exam -->
+    <div v-else>
+      <div class="flex items-center gap-2.5">
+        <div
+          class="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white"
+          style="background-image: linear-gradient(135deg, var(--accent), var(--accent-strong))"
+        >
+          M
         </div>
-        <p class="mt-3 text-sm leading-relaxed text-[var(--muted)]">{{ t.onboarding.subtitle() }}</p>
+        <h1 class="font-serif text-xl font-semibold leading-tight">{{ t.onboarding.title() }}</h1>
+      </div>
+      <p class="mt-3 text-sm leading-relaxed text-[var(--muted)]">{{ t.onboarding.subtitle() }}</p>
 
-        <div v-if="examQuery.isFetching.value && !questions.length" class="flex items-center gap-2 py-10 text-sm text-[var(--muted)]">
-          <Loader2 class="h-4 w-4 animate-spin" /> {{ t.common.loading() }}
-        </div>
-        <p v-else-if="examQuery.error.value" class="notice-error mt-6">{{ t.onboarding.loadFailed() }}</p>
+      <div v-if="examQuery.isFetching.value && !questions.length" class="flex items-center gap-2 py-10 text-sm text-[var(--muted)]">
+        <Loader2 class="h-4 w-4 animate-spin" /> {{ t.common.loading() }}
+      </div>
+      <p v-else-if="examQuery.error.value" class="notice-error mt-6">{{ t.onboarding.loadFailed() }}</p>
 
-        <div v-else-if="currentQuestion" class="mt-6">
-          <!-- Progress dots -->
-          <div class="mb-4 flex items-center gap-1.5">
-            <span
-              v-for="(_, i) in questions"
-              :key="`dot-${i}`"
-              class="h-1.5 flex-1 rounded-full transition"
-              :class="i <= currentIndex ? 'bg-[var(--accent)]' : 'bg-[var(--line)]'"
-            />
-          </div>
-
-          <p class="eyebrow">
-            <span class="eyebrow-icon"><Sparkles class="h-3 w-3" /></span>
-            {{ t.onboarding.questionLabel({ n: currentIndex + 1, total }) }}
-          </p>
-          <p class="mt-3 font-serif text-xl leading-relaxed">{{ currentQuestion.questionText }}</p>
-
-          <textarea
-            v-model="answers[currentIndex]"
-            class="input mt-4 min-h-[120px] resize-y"
-            :placeholder="t.onboarding.answerPlaceholder()"
+      <div v-else-if="currentQuestion" class="mt-6">
+        <!-- Progress dots -->
+        <div class="mb-4 flex items-center gap-1.5">
+          <span
+            v-for="(_, i) in questions"
+            :key="`dot-${i}`"
+            class="h-1.5 flex-1 rounded-full transition"
+            :class="i <= currentIndex ? 'bg-[var(--accent)]' : 'bg-[var(--line)]'"
           />
+        </div>
 
-          <p v-if="notice" class="notice-error mt-3">{{ notice }}</p>
+        <p class="eyebrow">
+          <span class="eyebrow-icon"><Sparkles class="h-3 w-3" /></span>
+          {{ t.onboarding.questionLabel({ n: currentIndex + 1, total }) }}
+        </p>
+        <p class="mt-3 font-serif text-xl leading-relaxed">{{ currentQuestion.questionText }}</p>
 
-          <div class="mt-5 flex items-center justify-between gap-3">
-            <button class="btn-ghost" :disabled="currentIndex === 0" @click="goBack">
-              <ArrowLeft class="h-4 w-4" />
-              {{ t.onboarding.back() }}
-            </button>
-            <button v-if="!isLast" class="btn-primary" @click="goNext">
-              {{ t.onboarding.next() }}
-              <ArrowRight class="h-4 w-4" />
-            </button>
-            <button v-else class="btn-primary" @click="submit">
-              <CheckCircle2 class="h-4 w-4" />
-              {{ t.onboarding.submit() }}
-            </button>
-          </div>
+        <textarea
+          v-model="answers[currentIndex]"
+          class="input mt-4 min-h-[120px] resize-y"
+          :placeholder="t.onboarding.answerPlaceholder()"
+        />
+
+        <p v-if="notice" class="notice-error mt-3">{{ notice }}</p>
+
+        <div class="mt-5 flex items-center justify-between gap-3">
+          <BaseButton variant="ghost" :disabled="currentIndex === 0" @click="goBack">
+            <template #icon><ArrowLeft class="h-4 w-4" /></template>
+            {{ t.onboarding.back() }}
+          </BaseButton>
+          <BaseButton v-if="!isLast" @click="goNext">
+            {{ t.onboarding.next() }}
+            <template #icon><ArrowRight class="h-4 w-4" /></template>
+          </BaseButton>
+          <BaseButton v-else @click="submit">
+            <template #icon><CheckCircle2 class="h-4 w-4" /></template>
+            {{ t.onboarding.submit() }}
+          </BaseButton>
         </div>
       </div>
-    </section>
-  </div>
+    </div>
+  </BaseModal>
 </template>

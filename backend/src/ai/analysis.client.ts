@@ -256,8 +256,16 @@ export interface LevelExamQuestion {
   questionText: string;
 }
 
+export interface LevelDimensionScores {
+  range: string;
+  accuracy: string;
+  coherence: string;
+  fluency: string;
+}
+
 export interface LevelAssessmentResult {
   cefrLevel: string;
+  dimensions?: LevelDimensionScores;
   rationale: string;
 }
 
@@ -270,14 +278,42 @@ Rules:
 - Cover varied everyday/abstract topics; no meta-questions about grammar.
 - Keep each question to one sentence.`;
 
-const LEVEL_ASSESSMENT_PROMPT = `You are a CEFR examiner for German.
-You receive several placement questions (each with a target level) and the learner's German answers.
-Estimate the learner's overall CEFR level from the PRODUCED language: range of structures, accuracy,
-vocabulary, complexity, and how well they handle the higher-level items. Be calibrated and slightly
-conservative; unanswered or empty answers are evidence of not reaching that level.
+const LEVEL_ASSESSMENT_PROMPT = `You are a certified CEFR examiner for German, applying the official CEFR
+qualitative scale for written/spoken production. You receive placement questions (each tagged with a
+target level) and the learner's German answers. Rate the PRODUCED language on the five CEFR dimensions,
+then derive the overall level. Use these calibrated band descriptors:
+
+RANGE (vocabulary + structures):
+- A1: memorised words/phrases. A2: basic everyday vocab, simple structures. B1: enough for familiar
+  topics, some complex sentences. B2: broad range, varied structures, little obvious searching.
+  C1/C2: wide, precise, idiomatic; flexible reformulation.
+ACCURACY (grammar: cases, verb forms, word order, agreement):
+- A1/A2: frequent basic errors. B1: reasonable control of routine forms, errors when expressing complex
+  thought. B2: good control, no errors causing misunderstanding. C1/C2: consistently high/near-native.
+COHERENCE (connectors, structure, paragraphing):
+- A2: simple linking (und/aber/weil). B1: linear connected text. B2: clear organised text with varied
+  connectors. C1/C2: smooth, controlled cohesive devices.
+FLUENCY/COMPLEXITY (sentence length & subordination, depth of ideas):
+- A2: short isolated clauses. B1: 8-12 word sentences, some subordination. B2: 12-18 words, relative/
+  subordinate clauses, Konjunktiv. C1+: long, nuanced, abstract.
+TASK/CONTENT (did they actually address the question, and at what depth):
+- penalise off-topic or one-line answers; reward developed, relevant responses.
+
+Rules:
+- Weight the HIGHER-level items: handling B2/C1 questions well is required for a B2/C1 verdict; strong
+  A2/B1 answers but empty/weak high-level answers cap the level around B1.
+- Empty / "I don't know" / non-German answers are evidence of NOT reaching that item's level.
+- Be calibrated and slightly conservative; do not over-credit a single good sentence.
+- If answers are inconsistent across dimensions, the overall level is roughly the lowest dimension that
+  still holds across most answers (CEFR is criterion-referenced, not an average).
 Return strict JSON only:
-{ "cefrLevel": "A1|A2|B1|B2|C1|C2", "rationale": "string" }
-- rationale: 1-2 sentences, concrete, naming what they can/can't yet do. Address the learner as "you".`;
+{
+  "cefrLevel": "A1|A2|B1|B2|C1|C2",
+  "dimensions": { "range": "A1|A2|B1|B2|C1|C2", "accuracy": "A1|A2|B1|B2|C1|C2", "coherence": "A1|A2|B1|B2|C1|C2", "fluency": "A1|A2|B1|B2|C1|C2" },
+  "rationale": "string"
+}
+- rationale: 2-3 sentences addressed to the learner ("you"), naming concretely what you can do and the
+  main thing holding you at this level (cite a dimension).`;
 
 export const generateLevelExam = async (): Promise<LevelExamQuestion[]> => {
   if (!openai) {
@@ -372,9 +408,22 @@ export const assessLevel = async (
           schema: {
             type: "object",
             additionalProperties: false,
-            required: ["cefrLevel", "rationale"],
+            required: ["cefrLevel", "dimensions", "rationale"],
             properties: {
               cefrLevel: { type: "string", enum: [...CEFR_LEVELS] },
+              // Forces the model to rate each CEFR dimension before the overall
+              // verdict (improves calibration). Stored on the result for audit.
+              dimensions: {
+                type: "object",
+                additionalProperties: false,
+                required: ["range", "accuracy", "coherence", "fluency"],
+                properties: {
+                  range: { type: "string", enum: [...CEFR_LEVELS] },
+                  accuracy: { type: "string", enum: [...CEFR_LEVELS] },
+                  coherence: { type: "string", enum: [...CEFR_LEVELS] },
+                  fluency: { type: "string", enum: [...CEFR_LEVELS] }
+                }
+              },
               rationale: { type: "string", minLength: 1 }
             }
           }

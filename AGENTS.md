@@ -222,6 +222,22 @@ on top. Format:
   enter the pool. NOTE: same English gloss with different German collocation (Entscheidung
   treffen vs Entschluss fassen) is allowed on purpose.
 
+### 2026-06-21 — Reusable UI components + CEFR-grounded assessment (Claude Code)
+- NEW: `src/components/ui/` reusable primitives — `BaseModal` (backdrop, Esc/scroll-lock,
+  `dismissable` flag for blocking flows) and `BaseButton` (variant→shared style classes,
+  loading state). Re-export via `ui/index.ts`. New UI should use these; migrate existing
+  `btn-*`/ad-hoc modals to them incrementally.
+- Placement exam is now a BLOCKING MODAL (not a route): `OnboardingExamModal` (uses BaseModal
+  dismissable=false) rendered in App.vue, gated by reactive `utils/level.ts`
+  (levelKnown/examOpen/refreshLevel/markLeveled/resetLevel/requestRetake). The /onboarding
+  route + async router guard were removed. Settings "retake" calls `requestRetake()`.
+- CEFR assessment hardened to the official 5-dimension qualitative scale (range, accuracy,
+  coherence, fluency/complexity, + task/content) with per-band descriptors; the smart model
+  now rates each dimension (forced via json_schema `dimensions`) before the overall verdict,
+  weights higher-level items, and is criterion-referenced (not an average). Honest limit: this
+  is a calibrated LLM estimate, not a psychometric test — see chat note.
+- DEFERRED still: Alltag/Kollok pool level-segmentation, progress view (#4), Gespräch (#6), RAG.
+
 ### 2026-06-21 — Level foundation: per-task models, placement exam, level-aware Daily Talk (Claude Code)
 - Per-task model registry: `modelFor(task)` in `analysis.client.ts` + `OPENAI_MODEL_SMART`
   env (default `gpt-4.1`). Level assessment uses the smart model; everything else the cheap
