@@ -20,6 +20,7 @@ import { logger } from "../config/logger.js";
 import { collocationReviewRepository } from "../repositories/collocation-review.repository.js";
 import { collocationRepository, normalizeCollocationText } from "../repositories/collocation.repository.js";
 import { dailyGoalService } from "./daily-goal.service.js";
+import { buildLearnerContext } from "./learner-context.service.js";
 import { AppError } from "../utils/app-error.js";
 import { createRefillQueue } from "../utils/refill-queue.js";
 
@@ -203,13 +204,15 @@ export const collocationService = {
       throw new AppError(404, "COLLOCATION_PROMPT_NOT_FOUND", API_MESSAGES.errors.collocationPromptNotFound);
     }
 
+    const { profileText } = await buildLearnerContext(input.userId);
     const isSkipAnswer = isIDontKnowAnswer(input.userAnswerText);
     const assessment = await assessCollocationAttempt({
       germanText: prompt.germanText,
       englishText: prompt.englishText,
       clozeSentence: prompt.clozeSentence,
       clozeAnswer: prompt.clozeAnswer,
-      userAnswerText: input.userAnswerText
+      userAnswerText: input.userAnswerText,
+      learnerProfile: profileText
     });
     if (isSkipAnswer) {
       assessment.feedback = "";

@@ -17,6 +17,7 @@ import { logger } from "../config/logger.js";
 import { expressionReviewRepository } from "../repositories/expression-review.repository.js";
 import { expressionRepository } from "../repositories/expression.repository.js";
 import { dailyGoalService } from "./daily-goal.service.js";
+import { buildLearnerContext } from "./learner-context.service.js";
 import { AppError } from "../utils/app-error.js";
 import { createRefillQueue } from "../utils/refill-queue.js";
 
@@ -285,12 +286,14 @@ export const expressionService = {
     }
 
     const answer = await expressionRepository.findPromptAnswerById({ promptId: input.promptId });
+    const { profileText } = await buildLearnerContext(input.userId);
     const isSkipAnswer = isIDontKnowAnswer(input.userAnswerText);
     const assessment = await assessExpressionAttempt({
       englishText: prompt.englishText,
       situationText: prompt.situationText,
       referenceAnswer: answer?.nativeAnswer ?? null,
-      userAnswerText: input.userAnswerText
+      userAnswerText: input.userAnswerText,
+      learnerProfile: profileText
     });
     if (isSkipAnswer) {
       assessment.feedback = "";

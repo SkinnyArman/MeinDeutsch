@@ -9,6 +9,7 @@ import { questionRepository } from "../repositories/question.repository.js";
 import { submissionRepository } from "../repositories/submission.repository.js";
 import { dailyGoalService } from "./daily-goal.service.js";
 import { streakService } from "./streak.service.js";
+import { buildLearnerContext } from "./learner-context.service.js";
 import { AppError } from "../utils/app-error.js";
 
 interface PersistAnalyzedSubmissionInput {
@@ -66,6 +67,8 @@ export const submissionService = {
     const topicName = question.topicName;
 
     const context = await submissionRepository.getAssessmentContext(userId);
+    const { profileText } = await buildLearnerContext(userId);
+    context.learnerProfile = profileText;
     const analysis = await analyzeSubmission(
       {
         questionText,

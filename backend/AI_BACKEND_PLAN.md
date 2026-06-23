@@ -39,10 +39,16 @@ Use this checklist and mark done items as `- [x]`.
 - [x] Add simple retrieval query by topic + recency
 - [x] Add API endpoint for KB inspection (`GET /api/knowledge`)
 
-## 5) RAG Foundation (Next after MVP data is stable)
-- [ ] Add embeddings for `knowledge_items`
+## 5) Personalization
+### 5a) Profile injection — structured, no embeddings (Implemented)
+- [x] `buildLearnerContext(userId)` seam → compact profile (CEFR + recurring mistakes + target vocab)
+- [x] Injected into all per-user AI surfaces (Daily Talk gen+analysis, Gespräch open/reply/debrief, Alltag+Kollok assessment) via one `withLearnerProfile` helper
+- [x] Skipped on shared pools (Alltag/Kollok generation) + level exam by design
+
+### 5b) Embedding RAG (Next — add as a source inside buildLearnerContext)
+- [ ] Add embeddings for `knowledge_items` / answers (pgvector)
 - [ ] Store embedding vectors
-- [ ] Retrieve top-k relevant memories for new prompts
+- [ ] Retrieve top-k semantically relevant memories; inject through the same seam
 
 ## 6) Alltagssprache (Implemented)
 - [x] `POST /api/expressions/generate` for B2+ everyday expressions

@@ -13,8 +13,10 @@ import {
 import type { ConversationMessageRecord } from "../models/conversation-message.model.js";
 import type { ConversationDebrief, ConversationRecord } from "../models/conversation.model.js";
 import { conversationRepository } from "../repositories/conversation.repository.js";
+import { learnerProfileRepository } from "../repositories/learner-profile.repository.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/app-error.js";
+import { buildLearnerContext } from "./learner-context.service.js";
 import { dailyGoalService } from "./daily-goal.service.js";
 
 const scenarioInput = (scenarioId: string): ConversationScenarioInput => {
@@ -50,7 +52,8 @@ export const conversationService = {
     });
 
     const angle = CONVERSATION_OPENING_ANGLES[Math.floor(Math.random() * CONVERSATION_OPENING_ANGLES.length)];
-    const opener = await openConversation(scenarioInput(scenario.id), level, angle);
+    const { profileText } = await buildLearnerContext(input.userId);
+    const opener = await openConversation(scenarioInput(scenario.id), level, angle, profileText);
     const message = await conversationRepository.addMessage({
       userId: input.userId,
       conversationId: conversation.id,
@@ -85,10 +88,12 @@ export const conversationService = {
     });
 
     const history = await conversationRepository.listMessages({ conversationId: input.conversationId });
+    const { profileText } = await buildLearnerContext(input.userId);
     const replyText = await replyInConversation({
       scenario: scenarioInput(conversation.scenarioId),
       level: conversation.cefrLevel,
-      transcript: buildTranscript(history)
+      transcript: buildTranscript(history),
+      learnerProfile: profileText
     });
     const reply = await conversationRepository.addMessage({
       userId: input.userId,
@@ -113,8 +118,15 @@ export const conversationService = {
     const history = await conversationRepository.listMessages({ conversationId: input.conversationId });
     const hasUserTurns = history.some((m) => m.role === "user");
 
+    // Exclude everything already in the learner's deck so suggestions are fresh,
+    // context-relevant items they could have used — not their saved words echoed back.
+    const knownWords = hasUserTurns ? await learnerProfileRepository.listTargetWords(input.userId, 100) : [];
     const debrief: ConversationDebrief = hasUserTurns
-      ? await debriefConversation({ level: conversation.cefrLevel, transcript: buildTranscript(history) })
+      ? await debriefConversation({
+          level: conversation.cefrLevel,
+          transcript: buildTranscript(history),
+          knownWords
+        })
       : { summary: "", corrections: [], suggestions: [] };
 
     const updated = await conversationRepository.endConversation({

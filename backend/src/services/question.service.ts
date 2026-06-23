@@ -7,6 +7,7 @@ import { questionRepository } from "../repositories/question.repository.js";
 import { topicRepository } from "../repositories/topic.repository.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/app-error.js";
+import { buildLearnerContext } from "./learner-context.service.js";
 import { createRefillQueue } from "../utils/refill-queue.js";
 
 const QUESTION_POOL_GENERATION_SIZE = 8;
@@ -34,6 +35,7 @@ const generateQuestionsForTopic = async (input: {
   // placement exam, adjustable). Falls back to the B1-C1 ladder if unset.
   const user = await userRepository.findById(input.userId);
   const userLevel = user?.cefrLevel ?? null;
+  const { profileText } = await buildLearnerContext(input.userId);
 
   const avoidTexts = new Set(
     (
@@ -52,7 +54,8 @@ const generateQuestionsForTopic = async (input: {
       topicDescription: topic.description,
       generationPrompt: QUESTION_GENERATION_TEMPLATE,
       cefrTarget: userLevel ?? pickPoolCefrTarget(),
-      avoidQuestionTexts: Array.from(avoidTexts)
+      avoidQuestionTexts: Array.from(avoidTexts),
+      learnerProfile: profileText
     });
 
     if (avoidTexts.has(generated.questionText.trim())) {

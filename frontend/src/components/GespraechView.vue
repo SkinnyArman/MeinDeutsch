@@ -287,6 +287,26 @@ const reset = (): void => {
       <!-- REVIEW -->
       <template v-else>
         <div v-if="debrief" class="space-y-4">
+          <!-- The full transcript, read-only -->
+          <div v-if="messages.length" class="card p-4">
+            <span class="eyebrow mb-3"><span class="eyebrow-icon"><MessagesSquare class="h-3 w-3" /></span>{{ t.gespraech.transcript() }}</span>
+            <div class="max-h-[40vh] space-y-3 overflow-y-auto">
+              <div
+                v-for="m in messages"
+                :key="m.id"
+                class="flex"
+                :class="m.role === 'user' ? 'justify-end' : 'justify-start'"
+              >
+                <div
+                  class="max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed"
+                  :class="m.role === 'user' ? 'bg-[var(--accent)] text-white rounded-br-sm' : 'panel-inset rounded-bl-sm'"
+                >
+                  {{ m.content }}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div v-if="debrief.summary" class="card-hero p-5">
             <span class="eyebrow"><span class="eyebrow-icon"><CheckCircle2 class="h-3 w-3" /></span>{{ t.gespraech.summary() }}</span>
             <p class="mt-3 text-sm leading-relaxed">{{ debrief.summary }}</p>

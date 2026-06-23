@@ -36,6 +36,11 @@ const modelFor = (task: ModelTask): string => {
   }
 };
 
+// Appends the learner profile (from buildLearnerContext) to a prompt when present.
+// Single helper so personalization is injected identically everywhere.
+const withLearnerProfile = (instructions: string, profile?: string | null): string =>
+  profile && profile.trim().length > 0 ? `${instructions}\n\n${profile}` : instructions;
+
 const ANALYSIS_FIELD_CEFR_LEVEL = `"cefrLevel": "A1|A2|B1|B2|C1|C2"`;
 const ANALYSIS_FIELD_CORRECTED_TEXT = `"correctedText": "string"`;
 const ANALYSIS_FIELD_CONTEXTUAL_WORDS =
@@ -190,6 +195,7 @@ export const generateQuestion = async (input: {
   cefrTarget?: string;
   generationPrompt: string;
   avoidQuestionTexts?: string[];
+  learnerProfile?: string | null;
 }): Promise<{ questionText: string; cefrTarget: string | null }> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
@@ -206,7 +212,7 @@ export const generateQuestion = async (input: {
   try {
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
-      instructions: QUESTION_GENERATION_SYSTEM_PROMPT,
+      instructions: withLearnerProfile(QUESTION_GENERATION_SYSTEM_PROMPT, input.learnerProfile),
       input: [
         `Topic: ${input.topicName}`,
         `Topic description: ${input.topicDescription ?? "None"}`,
@@ -460,7 +466,13 @@ export interface ConversationDebriefResult {
 // Pedagogy (see SLA research): comprehensible input at i+1, output focus,
 // low anxiety = NO mid-conversation error correction (recast silently instead),
 // short turns, always invite a reply. Correction happens later in the debrief.
-const conversationSystemPrompt = (scenario: ConversationScenarioInput, level: string | null): string => `
+const conversationSystemPrompt = (
+  scenario: ConversationScenarioInput,
+  level: string | null,
+  learnerProfile?: string | null
+): string =>
+  withLearnerProfile(
+    `
 You are role-playing a natural spoken German conversation to help a learner practice.
 Your role: ${scenario.aiRole}. Setting: ${scenario.setting}
 Learner's CEFR level: ${level ?? "B1"}.
@@ -476,12 +488,15 @@ Rules:
 - Do NOT correct the learner's mistakes or break character to teach. If they err, just respond naturally and, where easy, model the correct phrasing by using it yourself (a gentle recast).
 - If the learner writes in English or is stuck, gently encourage them in simple German and offer an easier way in, still in character.
 - Never mention that you are an AI or that this is an exercise.
-- Output only your spoken line (no quotes, no labels).`;
+- Output only your spoken line (no quotes, no labels).`,
+    learnerProfile
+  );
 
 export const openConversation = async (
   scenario: ConversationScenarioInput,
   level: string | null,
-  angle?: string
+  angle?: string,
+  learnerProfile?: string | null
 ): Promise<string> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
@@ -492,7 +507,7 @@ export const openConversation = async (
   try {
     const completion = await openai.responses.create({
       model: modelFor("default"),
-      instructions: conversationSystemPrompt(scenario, level),
+      instructions: conversationSystemPrompt(scenario, level, learnerProfile),
       input: [
         angle ? `Opening mood/variation for THIS conversation: ${angle}` : null,
         "Begin the conversation with a warm, natural opening line in character. One or two sentences, ending with a question to the learner.",
@@ -515,6 +530,7 @@ export const replyInConversation = async (input: {
   scenario: ConversationScenarioInput;
   level: string | null;
   transcript: string;
+  learnerProfile?: string | null;
 }): Promise<string> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
@@ -525,7 +541,7 @@ export const replyInConversation = async (input: {
   try {
     const completion = await openai.responses.create({
       model: modelFor("default"),
-      instructions: conversationSystemPrompt(input.scenario, input.level),
+      instructions: conversationSystemPrompt(input.scenario, input.level, input.learnerProfile),
       input: `Conversation so far:\n${input.transcript}\n\nReply as your character (one short German turn ending with a question or prompt).`
     });
     return completion.output_text.trim();
@@ -547,13 +563,16 @@ Look ONLY at the learner's (user) turns. Return strict JSON only:
 }
 Rules:
 - summary: 1-2 encouraging sentences in English about how the conversation went and the single biggest thing to work on.
-- corrections: the 2-5 MOST useful fixes from the learner's German turns. "original" = their exact phrase, "correction" = the natural German, "note" = a short English why. Skip trivial typos; prioritise errors that affect naturalness/meaning. Empty array if the learner barely produced German.
-- suggestions: 3-6 useful German words/collocations that fit this conversation's topic and would level the learner up. For nouns include the article; "description" in English; 1-2 German "examples". These feed the learner's vocabulary deck.
+- corrections: EVERY meaningful error from the learner's German turns — do NOT limit the number, list them all. "original" = their exact phrase, "correction" = the natural German, "note" = a short English why. Skip only trivial typos/punctuation. Empty array only if the learner barely produced German.
+- suggestions: NEW German that would have been USEFUL in THIS specific conversation/situation and that the learner did NOT already use. They do not have to be single words — prefer whatever is most useful: a collocation, a verb+noun pair, an adjective+noun combo, a fixed phrase, an idiom, or a single word. Derive them from this conversation's topic and what the learner was trying to express. For nouns include the article; "description" in English; 1-2 German "examples".
+- HARD EXCLUSION: never suggest anything the learner already knows (a list is provided in the input). Those are already in their deck.
+- Aim for 4-8 suggestions; fewer is fine if the conversation was short.
 - No extra fields.`;
 
 export const debriefConversation = async (input: {
   level: string | null;
   transcript: string;
+  knownWords?: string[];
 }): Promise<ConversationDebriefResult> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
@@ -565,7 +584,15 @@ export const debriefConversation = async (input: {
     const completion = await openai.responses.create({
       model: modelFor("default"),
       instructions: CONVERSATION_DEBRIEF_PROMPT,
-      input: `Learner CEFR level: ${input.level ?? "B1"}\n\nConversation transcript:\n${input.transcript}`,
+      input: [
+        `Learner CEFR level: ${input.level ?? "B1"}`,
+        input.knownWords && input.knownWords.length > 0
+          ? `Words the learner ALREADY knows (never suggest these): ${input.knownWords.join(", ")}`
+          : null,
+        `Conversation transcript:\n${input.transcript}`
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       text: {
         format: {
           type: "json_schema",
@@ -747,6 +774,7 @@ export const assessExpressionAttempt = async (input: {
   situationText?: string | null;
   referenceAnswer?: string | null;
   userAnswerText: string;
+  learnerProfile?: string | null;
 }): Promise<ExpressionAssessmentResult> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
@@ -758,7 +786,7 @@ export const assessExpressionAttempt = async (input: {
   try {
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
-      instructions: EXPRESSION_ASSESSMENT_PROMPT,
+      instructions: withLearnerProfile(EXPRESSION_ASSESSMENT_PROMPT, input.learnerProfile),
       input: [
         input.situationText ? `Situation (German): ${input.situationText}` : null,
         `English hint: ${input.englishText}`,
@@ -1054,6 +1082,7 @@ export const assessCollocationAttempt = async (input: {
   clozeSentence: string;
   clozeAnswer: string;
   userAnswerText: string;
+  learnerProfile?: string | null;
 }): Promise<CollocationAssessmentResult> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
@@ -1065,7 +1094,7 @@ export const assessCollocationAttempt = async (input: {
   try {
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
-      instructions: COLLOCATION_ASSESSMENT_PROMPT,
+      instructions: withLearnerProfile(COLLOCATION_ASSESSMENT_PROMPT, input.learnerProfile),
       input: [
         `Cloze sentence: ${input.clozeSentence}`,
         `English equivalent: ${input.englishText}`,
@@ -1198,7 +1227,7 @@ export const analyzeSubmission = async (
   try {
     const completion = await openai.responses.create({
       model: env.OPENAI_MODEL,
-      instructions: SYSTEM_PROMPT,
+      instructions: withLearnerProfile(SYSTEM_PROMPT, context.learnerProfile),
       input: `Question: ${input.questionText}\n\nSubmission: ${input.answerText}`,
       text: {
         format: {

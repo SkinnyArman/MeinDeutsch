@@ -35,6 +35,8 @@ export interface SubmissionAssessmentInput {
 }
 
 export interface AssessmentContext {
+  // Injected learner profile (from buildLearnerContext) for personalized correction.
+  learnerProfile?: string;
   topMistakes: Array<{
     type: MistakeType;
     frequency: number;

@@ -222,6 +222,38 @@ on top. Format:
   enter the pool. NOTE: same English gloss with different German collocation (Entscheidung
   treffen vs Entschluss fassen) is allowed on purpose.
 
+### 2026-06-23 — Gespräch debrief fixes (Claude Code)
+- BUG (from profile injection): the debrief was echoing the learner's SAVED vocab as "suggestions"
+  because the learner profile (which lists their target words) was injected into the debrief prompt.
+  Fix: debrief no longer receives the generic profile; instead it gets an explicit `knownWords`
+  EXCLUSION list (the user's deck, up to 100) and must suggest only NEW, context-derived items.
+- Suggestions are no longer single-words-only: prompt now allows collocations / verb+noun /
+  adj+noun / fixed phrases / idioms / single words — whatever was most useful in THAT conversation.
+  Label changed to "Useful for next time — take these with you".
+- Corrections cap removed: was "2-5 most useful"; now lists EVERY meaningful error (skip only trivial
+  typos). Schema already had no maxItems, so this was prompt-only.
+- Reopening a conversation now shows the full read-only TRANSCRIPT in review mode (previously only the
+  debrief was shown).
+- Reminder: profile injection elsewhere (chat open/reply, Daily Talk, Alltag/Kollok assess) is
+  unchanged and fine; only the debrief's suggestions slot was misusing it.
+
+### 2026-06-23 — User-aware coach: learner-profile injection (the "80% of RAG") (Claude Code)
+- THE SEAM: `services/learner-context.service.ts` → `buildLearnerContext(userId)` returns a compact
+  injectable `profileText` (CEFR level + top recurring mistakes from `mistake_stats` + saved target
+  vocab). Single place that assembles "what we know about you"; returns "" for new users (no signal →
+  prompts behave as before). Data via `repositories/learner-profile.repository.ts`.
+- Injected into EVERY per-user AI surface via one helper `withLearnerProfile(instructions, profile)`
+  in `analysis.client.ts`: Daily Talk question gen + answer analysis (finally uses the long-dead
+  `AssessmentContext` param — added `learnerProfile` to it), Gespräch open/reply/debrief, and
+  Alltag + Kollok attempt ASSESSMENT. Each AI fn takes an optional `learnerProfile?: string | null`.
+- NOT injected into Alltag/Kollok POOL GENERATION (shared pool across users — per-user bias would
+  pollute it) or the level exam (measures from scratch). Documented intent.
+- This is structured "profile injection," NOT embedding RAG. It deliberately paves the way for #2:
+  to add semantic retrieval later, add a source inside `buildLearnerContext` — zero call-site changes.
+- Backend-only, invisible (no UI, no contract change). Verified: typecheck clean, 45 tests pass.
+- Possible follow-ups: cache the profile (chat re-queries per turn — fine for 1 user); surface
+  "focus areas" on the dashboard to make the coaching visible; then embedding-RAG (#2).
+
 ### 2026-06-21 — Gespräch fixes: delete, anti-drift, variety, more scenes, reopen review (Claude Code)
 - Delete conversations: `DELETE /api/conversations/:id` (cascades messages) + trash button in the
   Gespräch history with a `BaseModal` confirm.
