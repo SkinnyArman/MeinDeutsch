@@ -129,10 +129,21 @@ export const questionService = {
     });
   },
 
-  async getNextQuestion(input: { userId: number; topicId: number }): Promise<QuestionRecord> {
+  async getNextQuestion(input: { userId: number; topicId?: number }): Promise<QuestionRecord> {
+    // Writing practice no longer asks the learner to pick a topic — if none is
+    // given, rotate through their topics so prompts stay varied.
+    let topicId = input.topicId;
+    if (!topicId) {
+      const topics = await topicRepository.list(input.userId);
+      if (topics.length === 0) {
+        throw new AppError(404, "TOPIC_NOT_FOUND", API_MESSAGES.errors.topicNotFound);
+      }
+      topicId = topics[Math.floor(Math.random() * topics.length)].id;
+    }
+
     const unseen = await questionRepository.listUnseenByTopic({
       userId: input.userId,
-      topicId: input.topicId,
+      topicId,
       limit: QUESTION_MIN_UNSEEN_BUFFER
     });
 
@@ -140,14 +151,14 @@ export const questionService = {
     if (!nextQuestion) {
       nextQuestion = await questionRepository.findLeastRecentlyViewed({
         userId: input.userId,
-        topicId: input.topicId
+        topicId
       });
     }
 
     if (!nextQuestion) {
       const generated = await generateQuestionsForTopic({
         userId: input.userId,
-        topicId: input.topicId,
+        topicId,
         count: 1
       });
       nextQuestion = generated[0] ?? null;
@@ -160,7 +171,7 @@ export const questionService = {
     await questionRepository.markViewed({ userId: input.userId, questionId: nextQuestion.id });
 
     if (unseen.length < QUESTION_MIN_UNSEEN_BUFFER) {
-      questionPoolRefillScheduler.schedule(input);
+      questionPoolRefillScheduler.schedule({ userId: input.userId, topicId });
     }
 
     return nextQuestion;

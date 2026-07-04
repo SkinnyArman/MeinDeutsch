@@ -33,11 +33,15 @@ export const conversationService = {
     return CONVERSATION_SCENARIOS.map((s) => ({ id: s.id, label: s.label, category: s.category }));
   },
 
-  async start(input: { userId: number; scenarioId: string }): Promise<{
+  async start(input: { userId: number; scenarioId?: string }): Promise<{
     conversation: ConversationRecord;
     messages: ConversationMessageRecord[];
   }> {
-    const scenario = CONVERSATION_SCENARIO_BY_ID[input.scenarioId];
+    // No scenario (or "random") → surprise the learner with a random scene.
+    const scenario =
+      !input.scenarioId || input.scenarioId === "random"
+        ? CONVERSATION_SCENARIOS[Math.floor(Math.random() * CONVERSATION_SCENARIOS.length)]
+        : CONVERSATION_SCENARIO_BY_ID[input.scenarioId];
     if (!scenario) {
       throw new AppError(400, "VALIDATION_FAILED", API_MESSAGES.errors.validationFailed);
     }

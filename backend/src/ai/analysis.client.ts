@@ -87,10 +87,10 @@ Rules:
 - If the answer does not address the question directly, include at least one error with type "relevance" explaining which part of the question was not answered and cite the missing aspect in the message/description.
 Allowed error types: ${MISTAKE_TYPES.join(", ")}.`;
 
-const QUESTION_GENERATION_SYSTEM_PROMPT = `You generate exactly one German practice question.
+const QUESTION_GENERATION_SYSTEM_PROMPT = `You generate exactly one German writing prompt.
 Rules:
 - Output strict JSON only.
-- Question must be answerable in 3-7 sentences.
+- The prompt should invite a written response of a paragraph or two.
 - Keep it tied only to the provided topic.
 - Respect custom prompt constraints exactly.`;
 

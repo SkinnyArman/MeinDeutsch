@@ -6,6 +6,7 @@ import AlltagsspracheReviewView from "./components/AlltagsspracheReviewView.vue"
 import KollokationenView from "./components/KollokationenView.vue";
 import KollokationenReviewView from "./components/KollokationenReviewView.vue";
 import GespraechView from "./components/GespraechView.vue";
+import ProgressView from "./components/ProgressView.vue";
 import DailyTalkView from "./components/DailyTalkView.vue";
 import DailyTalkNewView from "./components/DailyTalkNewView.vue";
 import DailyTalkDetailView from "./components/DailyTalkDetailView.vue";
@@ -24,14 +25,15 @@ export const router = createRouter({
   routes: [
     { path: "/login", component: LoginView, meta: { public: true } },
     { path: "/", component: DashboardView },
-    { path: "/daily-talk", component: DailyTalkView },
+    { path: "/writing", component: DailyTalkView },
     { path: "/alltagssprache", component: AlltagsspracheView },
     { path: "/alltagssprache/review", component: AlltagsspracheReviewView },
     { path: "/kollokationen", component: KollokationenView },
     { path: "/kollokationen/review", component: KollokationenReviewView },
     { path: "/gespraech", component: GespraechView },
-    { path: "/daily-talk/new", component: DailyTalkNewView },
-    { path: "/daily-talk/:id", component: DailyTalkDetailView, props: true },
+    { path: "/progress", component: ProgressView },
+    { path: "/writing/new", component: DailyTalkNewView },
+    { path: "/writing/:id", component: DailyTalkDetailView, props: true },
     { path: "/vocabulary", component: VocabularyView },
     { path: "/vocabulary/review", component: VocabularyReviewView },
     { path: "/settings", component: SettingsHomeView },

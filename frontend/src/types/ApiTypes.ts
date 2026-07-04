@@ -312,6 +312,25 @@ export interface UserLevelState {
   cefrAssessedAt: string | null;
 }
 
+export interface ProgressReadinessBreakdown {
+  accuracy: number;
+  production: number;
+  consistency: number;
+}
+
+export interface ProgressOverview {
+  currentLevel: string | null;
+  nextLevel: string | null;
+  readinessPercent: number;
+  breakdown: ProgressReadinessBreakdown;
+  recentScores: number[];
+  recentAnswerLevels: string[];
+  topMistakes: Array<{ mistakeType: string; frequency: number }>;
+  activeDaysLast14: number;
+  longestStreak: number;
+  currentStreak: number;
+}
+
 export interface LevelExamQuestion {
   targetLevel: string;
   questionText: string;
@@ -386,6 +405,8 @@ export interface DailyGoalState {
   steps: DailyGoalStepState[];
   completedCount: number;
   totalSteps: number;
+  // Sections needed to complete the day (may be less than totalSteps).
+  target: number;
   allDone: boolean;
   streak: StreakRecord;
 }

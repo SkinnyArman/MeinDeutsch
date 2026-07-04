@@ -1,46 +1,37 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { computeDailyGoalSteps, isDailyGoalComplete } from "../logic/daily-goal.logic.js";
+import { DAILY_GOAL_TARGET, computeDailyGoalSteps, countCompleted, isDailyGoalComplete } from "../logic/daily-goal.logic.js";
 
-test("goal is incomplete when any section has no activity", () => {
-  const steps = computeDailyGoalSteps({
-    countsToday: { dailyTalk: 1, alltagssprache: 2, kollokationen: 0, vocabulary: 1, gespraech: 1 },
-    vocabularyDueNow: 3
-  });
-  assert.equal(isDailyGoalComplete(steps), false);
-  assert.deepEqual(
-    steps.map((step) => step.done),
-    [true, true, false, true, true]
-  );
+test("target is below the number of sections (achievable in one sitting)", () => {
+  assert.ok(DAILY_GOAL_TARGET < 5);
 });
 
-test("goal completes when every section has at least one task", () => {
+test("goal completes once TARGET sections are done, not all of them", () => {
+  // 3 real sections done, 2 not → still complete at target 3.
   const steps = computeDailyGoalSteps({
-    countsToday: { dailyTalk: 1, alltagssprache: 1, kollokationen: 1, vocabulary: 1, gespraech: 1 },
+    countsToday: { dailyTalk: 1, alltagssprache: 1, kollokationen: 1, vocabulary: 0, gespraech: 0 },
     vocabularyDueNow: 5
   });
+  assert.equal(countCompleted(steps), 3);
   assert.equal(isDailyGoalComplete(steps), true);
 });
 
-test("vocabulary counts as done when nothing is due, but not otherwise", () => {
-  const emptyQueue = computeDailyGoalSteps({
-    countsToday: { dailyTalk: 1, alltagssprache: 1, kollokationen: 1, vocabulary: 0, gespraech: 1 },
-    vocabularyDueNow: 0
+test("goal is incomplete below target", () => {
+  const steps = computeDailyGoalSteps({
+    countsToday: { dailyTalk: 1, alltagssprache: 0, kollokationen: 0, vocabulary: 0, gespraech: 0 },
+    vocabularyDueNow: 5
   });
-  assert.equal(isDailyGoalComplete(emptyQueue), true);
-
-  const pendingQueue = computeDailyGoalSteps({
-    countsToday: { dailyTalk: 1, alltagssprache: 1, kollokationen: 1, vocabulary: 0, gespraech: 1 },
-    vocabularyDueNow: 2
-  });
-  assert.equal(isDailyGoalComplete(pendingQueue), false);
+  // dailyTalk done (1) + vocabulary auto-done (queue... 5 due so NOT auto) = 1 done.
+  assert.equal(countCompleted(steps), 1);
+  assert.equal(isDailyGoalComplete(steps), false);
 });
 
-test("goal is incomplete when gespraech has no activity", () => {
+test("vocabulary counts as done when nothing is due (contributes toward target)", () => {
   const steps = computeDailyGoalSteps({
-    countsToday: { dailyTalk: 1, alltagssprache: 1, kollokationen: 1, vocabulary: 1, gespraech: 0 },
+    countsToday: { dailyTalk: 1, alltagssprache: 1, kollokationen: 0, vocabulary: 0, gespraech: 0 },
     vocabularyDueNow: 0
   });
-  assert.equal(isDailyGoalComplete(steps), false);
+  // dailyTalk + alltag + vocabulary(auto) = 3 → complete.
+  assert.equal(isDailyGoalComplete(steps), true);
 });

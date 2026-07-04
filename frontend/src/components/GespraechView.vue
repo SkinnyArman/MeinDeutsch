@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { useLanguage } from "@/libs/i18n";
-import { CheckCircle2, Loader2, MessagesSquare, Send, Sparkles, Tag, Trash2 } from "lucide-vue-next";
+import { ArrowRight, CheckCircle2, Loader2, MessagesSquare, Send, Sparkles, Tag, Trash2 } from "lucide-vue-next";
 import type {
   ConversationDebrief,
   ConversationMessageRecord,
@@ -70,12 +70,12 @@ const scrollToBottom = (): void => {
 
 watch(() => messages.value.length, scrollToBottom);
 
-const startScenario = async (scenarioId: string, label: string): Promise<void> => {
+const startScenario = async (scenarioId?: string): Promise<void> => {
   notice.value = null;
   try {
-    const data = await startMutation.mutateAsync({ scenarioId });
+    const data = await startMutation.mutateAsync(scenarioId ? { scenarioId } : {});
     conversationId.value = data.conversation.id;
-    scenarioLabel.value = label;
+    scenarioLabel.value = data.conversation.scenarioLabel;
     messages.value = data.messages;
     debrief.value = null;
     mode.value = "chat";
@@ -188,8 +188,25 @@ const reset = (): void => {
 
       <!-- PICKER -->
       <template v-if="mode === 'picker'">
+        <!-- Quick start: most of the time you just want to talk. -->
+        <button
+          class="card-hero card-hover flex w-full items-center justify-between gap-4 p-5 text-left"
+          :disabled="startMutation.isPending.value"
+          @click="startScenario()"
+        >
+          <span class="min-w-0">
+            <span class="flex items-center gap-2 font-serif text-lg font-semibold">
+              <MessagesSquare class="h-5 w-5 text-[var(--accent)]" />
+              {{ t.gespraech.quickStart() }}
+            </span>
+            <span class="mt-1 block text-sm text-[var(--muted)]">{{ t.gespraech.quickStartHint() }}</span>
+          </span>
+          <Loader2 v-if="startMutation.isPending.value" class="h-5 w-5 shrink-0 animate-spin text-[var(--accent)]" />
+          <ArrowRight v-else class="h-5 w-5 shrink-0 text-[var(--muted)]" />
+        </button>
+
         <div class="space-y-4">
-          <p class="eyebrow"><span class="eyebrow-icon"><MessagesSquare class="h-3 w-3" /></span>{{ t.gespraech.pickScenario() }}</p>
+          <p class="eyebrow"><span class="eyebrow-icon"><MessagesSquare class="h-3 w-3" /></span>{{ t.gespraech.orPickScene() }}</p>
           <div v-for="group in scenarioGroups" :key="group.category" class="space-y-2">
             <p class="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ group.category }}</p>
             <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
@@ -198,15 +215,12 @@ const reset = (): void => {
                 :key="s.id"
                 class="card card-hover p-3.5 text-left text-sm font-semibold"
                 :disabled="startMutation.isPending.value"
-                @click="startScenario(s.id, s.label)"
+                @click="startScenario(s.id)"
               >
                 {{ s.label }}
               </button>
             </div>
           </div>
-          <p v-if="startMutation.isPending.value" class="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
-            <Loader2 class="h-4 w-4 animate-spin" /> {{ t.gespraech.starting() }}
-          </p>
         </div>
 
         <div class="space-y-2.5">

@@ -49,7 +49,7 @@ const goNext = () => {
           <h2 class="page-title">{{ t.dailyTalk.title() }}</h2>
           <p class="page-subtitle">{{ t.dailyTalk.history() }}</p>
         </div>
-        <button class="btn-primary" @click="router.push('/daily-talk/new')">
+        <button class="btn-primary" @click="router.push('/writing/new')">
           <Plus class="h-4 w-4" />
           {{ t.dailyTalk.newQuestion() }}
         </button>
@@ -74,7 +74,7 @@ const goNext = () => {
           <button
             class="flex w-full flex-col gap-2 p-4 text-left sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             type="button"
-            @click="router.push(`/daily-talk/${item.id}`)"
+            @click="router.push(`/writing/${item.id}`)"
           >
             <div class="min-w-0">
               <p class="truncate text-[15px] font-semibold leading-snug">{{ item.questionText }}</p>

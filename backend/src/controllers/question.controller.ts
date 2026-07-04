@@ -10,7 +10,7 @@ const generateSchema = z.object({
 });
 
 const nextSchema = z.object({
-  topicId: z.coerce.number().int().positive()
+  topicId: z.coerce.number().int().positive().optional()
 });
 
 const querySchema = z.object({

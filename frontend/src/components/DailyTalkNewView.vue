@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch, watchEffect } from "vue";
+import { computed, onMounted, reactive, ref, watchEffect } from "vue";
 import { useLanguage } from "@/libs/i18n";
 import { Loader2, RefreshCw, Send, Sparkles, Tag } from "lucide-vue-next";
-import type { AnalysisError, AnswerLogRecord, QuestionRecord, TopicRecord } from "@/types/ApiTypes";
+import type { AnalysisError, AnswerLogRecord, QuestionRecord } from "@/types/ApiTypes";
 import { DEFAULT_CATEGORY } from "@/constants/app";
 import AppContainer from "./AppContainer.vue";
 import HighlightedText from "./HighlightedText.vue";
@@ -10,8 +10,7 @@ import {
   useDailyTalkNextQuestionMutation,
   useDailyTalkSavedVocabQuery,
   useDailyTalkSaveWordMutation,
-  useDailyTalkSubmitMutation,
-  useDailyTalkTopicsQuery
+  useDailyTalkSubmitMutation
 } from "@/queries/dailyTalk";
 
 type Notice = {
@@ -21,7 +20,6 @@ type Notice = {
 
 const { t } = useLanguage();
 
-const selectedTopicId = ref<string>("");
 const generatedQuestion = ref<QuestionRecord | null>(null);
 const result = ref<AnswerLogRecord | null>(null);
 const notice = ref<Notice | null>(null);
@@ -187,10 +185,6 @@ const correctedSegments = computed(() => {
   return buildCorrectedSegments(result.value.answerText, result.value.correctedText);
 });
 
-const topicsQuery = useDailyTalkTopicsQuery();
-const hasNoTopics = computed(
-  () => !topicsQuery.isFetching.value && (topicsQuery.data.value?.length ?? 0) === 0
-);
 const nextQuestionMutation = useDailyTalkNextQuestionMutation();
 const submitMutation = useDailyTalkSubmitMutation();
 const savedWordsQuery = useDailyTalkSavedVocabQuery({
@@ -199,15 +193,6 @@ const savedWordsQuery = useDailyTalkSavedVocabQuery({
 const saveWordMutation = useDailyTalkSaveWordMutation();
 
 watchEffect(() => {
-  if (!selectedTopicId.value && topicsQuery.data.value?.length) {
-    selectedTopicId.value = String(topicsQuery.data.value[0].id);
-  }
-});
-
-watchEffect(() => {
-  if (topicsQuery.error.value) {
-    notice.value = { type: "error", text: topicsQuery.error.value.message };
-  }
   if (nextQuestionMutation.error.value) {
     notice.value = { type: "error", text: nextQuestionMutation.error.value.message };
   }
@@ -222,26 +207,16 @@ watchEffect(() => {
   }
 });
 
+// The server rotates topics for us — no topic picker in the writing flow.
 const handleNextQuestion = async (): Promise<void> => {
-  if (!selectedTopicId.value) {
-    notice.value = { type: "error", text: t.dailyTalkNew.pickTopic() };
-    return;
-  }
-  const data = await nextQuestionMutation.mutateAsync({
-    topicId: Number(selectedTopicId.value)
-  });
+  const data = await nextQuestionMutation.mutateAsync({});
   generatedQuestion.value = data as QuestionRecord;
   result.value = null;
   form.answerText = "";
   notice.value = null;
 };
 
-// Mirror Alltagssprache: a question loads from the pool on page open (once
-// topics resolve) and a new one is drawn when the topic changes.
-watch(selectedTopicId, () => {
-  if (!selectedTopicId.value) {
-    return;
-  }
+onMounted(() => {
   void handleNextQuestion();
 });
 
@@ -289,37 +264,29 @@ const handleSaveWord = async (payload: { word: string; description: string; exam
         {{ notice.text }}
       </p>
 
-      <div class="grid gap-5 md:grid-cols-[240px_1fr]">
-        <aside class="card h-fit space-y-4 p-4 md:sticky md:top-20">
-          <div>
-            <label class="eyebrow">{{ t.dailyTalkNew.topic() }}</label>
-            <select v-model="selectedTopicId" class="input mt-2">
-              <option value="">{{ t.dailyTalkNew.pickTopic() }}</option>
-              <option v-for="topic in (topicsQuery.data.value as TopicRecord[] | undefined) ?? []" :key="topic.id" :value="String(topic.id)">
-                {{ topic.name }}
-              </option>
-            </select>
-          </div>
-
-          <button class="btn-soft w-full" :disabled="nextQuestionMutation.isPending.value || !selectedTopicId" @click="handleNextQuestion">
-            <Loader2 v-if="nextQuestionMutation.isPending.value" class="h-4 w-4 animate-spin" />
-            <RefreshCw v-else class="h-4 w-4" />
-            {{ nextQuestionMutation.isPending.value ? t.dailyTalkNew.generating() : t.common.next() }}
-          </button>
-        </aside>
-
+      <div class="space-y-4">
         <section class="space-y-4">
           <div class="card-hero p-5">
-            <span class="eyebrow">
-              <span class="eyebrow-icon">
-                <Loader2 v-if="nextQuestionMutation.isPending.value" class="h-3 w-3 animate-spin" />
-                <Sparkles v-else class="h-3 w-3" />
+            <div class="flex items-start justify-between gap-3">
+              <span class="eyebrow">
+                <span class="eyebrow-icon">
+                  <Loader2 v-if="nextQuestionMutation.isPending.value" class="h-3 w-3 animate-spin" />
+                  <Sparkles v-else class="h-3 w-3" />
+                </span>
+                {{ t.dailyTalkNew.question() }}
               </span>
-              {{ t.dailyTalkNew.question() }}
-            </span>
+              <button
+                class="btn-ghost h-8 px-3 text-xs"
+                :disabled="nextQuestionMutation.isPending.value"
+                :title="t.common.next()"
+                @click="handleNextQuestion"
+              >
+                <RefreshCw class="h-3.5 w-3.5" />
+                {{ t.common.next() }}
+              </button>
+            </div>
             <p class="mt-3 font-serif text-xl leading-relaxed sm:text-2xl">
               <template v-if="generatedQuestion?.questionText">{{ generatedQuestion.questionText }}</template>
-              <template v-else-if="hasNoTopics">{{ t.dailyTalkNew.needTopic() }}</template>
               <template v-else>{{ t.common.loading() }}</template>
             </p>
           </div>
@@ -331,7 +298,7 @@ const handleSaveWord = async (payload: { word: string; description: string; exam
             </div>
             <textarea
               v-model="form.answerText"
-              class="input mt-3 min-h-[140px] resize-y"
+              class="input mt-3 min-h-[220px] resize-y"
               :placeholder="t.dailyTalkNew.answerPlaceholder()"
             />
             <button

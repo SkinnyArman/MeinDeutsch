@@ -498,6 +498,14 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     requestFields: []
   },
   {
+    id: "get-progress",
+    method: "GET",
+    path: "/api/progress",
+    title: "Get Progress",
+    description: "Returns CEFR level, estimated readiness toward the next level, recent score trend, and top mistakes.",
+    requestFields: []
+  },
+  {
     id: "get-level",
     method: "GET",
     path: "/api/level",

@@ -30,6 +30,9 @@ export const API_MESSAGES = {
   dashboard: {
     fetched: "Dashboard overview fetched successfully"
   },
+  progress: {
+    fetched: "Progress fetched successfully"
+  },
   level: {
     fetched: "Level fetched successfully",
     examGenerated: "Level exam generated successfully",

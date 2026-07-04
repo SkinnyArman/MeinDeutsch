@@ -12,7 +12,8 @@ import {
   MessageCircle,
   MessagesSquare,
   Puzzle,
-  Target
+  Target,
+  TrendingUp
 } from "lucide-vue-next";
 import type { DailyGoalStepKey } from "@/types/ApiTypes";
 import AppContainer from "./AppContainer.vue";
@@ -35,7 +36,7 @@ interface StepMeta {
 }
 
 const stepMeta = computed<StepMeta[]>(() => [
-  { key: "dailyTalk", label: t.dailyTalk.title(), icon: MessageCircle, path: "/daily-talk/new" },
+  { key: "dailyTalk", label: t.dailyTalk.title(), icon: MessageCircle, path: "/writing/new" },
   { key: "alltagssprache", label: t.alltag.title(), icon: Languages, path: "/alltagssprache" },
   { key: "kollokationen", label: t.kollok.title(), icon: Puzzle, path: "/kollokationen" },
   { key: "gespraech", label: t.gespraech.title(), icon: MessagesSquare, path: "/gespraech" },
@@ -77,7 +78,7 @@ const featureCards = computed(() => {
       key: "dailyTalk",
       title: t.dailyTalk.title(),
       icon: MessageCircle,
-      path: "/daily-talk",
+      path: "/writing",
       stat: t.dashboard.sessions({ count: data?.totals.dailyTalks ?? 0 }),
       sub: data?.latestCefrLevel ? `${t.dashboard.latestCefr()} · ${data.latestCefrLevel}` : null,
       due: 0,
@@ -128,9 +129,15 @@ const activityLabels = computed(() => ({
 <template>
   <AppContainer>
     <section class="animate-fade-up space-y-6">
-      <header>
-        <h2 class="page-title">{{ t.dashboard.title() }}</h2>
-        <p class="page-subtitle">{{ t.dashboard.subtitle() }}</p>
+      <header class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="page-title">{{ t.dashboard.title() }}</h2>
+          <p class="page-subtitle">{{ t.dashboard.subtitle() }}</p>
+        </div>
+        <button class="btn-ghost" @click="router.push('/progress')">
+          <TrendingUp class="h-4 w-4" />
+          {{ t.progress.viewLink() }}
+        </button>
       </header>
 
       <p v-if="overviewQuery.error.value" class="notice-error">
@@ -148,7 +155,7 @@ const activityLabels = computed(() => ({
             <p class="mt-2.5 font-serif text-xl font-semibold sm:text-2xl">
               {{ goal?.allDone
                 ? t.dashboard.goalDone()
-                : t.dashboard.goalProgress({ done: goal?.completedCount ?? 0, total: goal?.totalSteps ?? 4 }) }}
+                : t.dashboard.goalProgress({ done: goal?.completedCount ?? 0, total: goal?.target ?? 3 }) }}
             </p>
             <p class="mt-1 text-xs text-[var(--muted)]">{{ t.dashboard.dailyGoalHint() }}</p>
 

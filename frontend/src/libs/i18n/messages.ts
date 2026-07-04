@@ -44,8 +44,8 @@ export const messages = {
       passwordSubmit: "Sign in with password"
     },
     dailyTalk: {
-      title: "Daily Talk",
-      newQuestion: "New question",
+      title: "Writing",
+      newQuestion: "New prompt",
       history: "History",
       startNew: "Start new",
       loadFailed: "Could not load submissions",
@@ -56,11 +56,11 @@ export const messages = {
       levelPlaceholder: "B1"
     },
     dailyTalkNew: {
-      title: "New Daily Talk",
-      subtitle: "Answer the question in German and review your feedback.",
+      title: "Writing",
+      subtitle: "Write a short text in German on the prompt, then review your corrections.",
       topic: "Topic",
       generating: "Loading...",
-      question: "Question",
+      question: "Writing prompt",
       questionPlaceholder: "Generate a question to start.",
       needTopic: "Add a topic in Settings to get a question.",
       answerPrompt: "Write your answer",
@@ -203,6 +203,9 @@ export const messages = {
       subtitle: "Practice a real German conversation. Pick a scene and start talking.",
       tab: "Gespräch",
       pickScenario: "Choose a scene",
+      quickStart: "Start a conversation",
+      quickStartHint: "Jump into a random everyday scene — no need to choose.",
+      orPickScene: "Or pick a scene",
       start: "Start conversation",
       starting: "Starting...",
       inputPlaceholder: "Schreib auf Deutsch...",
@@ -231,6 +234,26 @@ export const messages = {
       deleteConfirmTitle: "Delete this conversation?",
       deleteConfirmBody: "This permanently removes the conversation and its review."
     },
+    progress: {
+      title: "Progress",
+      subtitle: "How your German is trending — and how close you are to the next level.",
+      viewLink: "View progress",
+      currentLevel: "Current level",
+      readiness: "Readiness for {level}",
+      readinessMaxed: "You're at the top level — keep it sharp!",
+      readinessHint: "An estimate from your recent accuracy, writing level, and consistency. Not a formal test.",
+      readyTitle: "You look ready for {level}",
+      readyBody: "Consider retaking the placement exam or bumping your level in Settings.",
+      accuracy: "Accuracy",
+      production: "Writing level",
+      consistency: "Consistency",
+      scoreTrend: "Recent scores",
+      focusAreas: "Focus areas",
+      noMistakes: "No recurring mistakes tracked yet.",
+      activeDays: "{count} active days (last 14)",
+      streakLine: "Current streak {current} · best {best}",
+      notEnough: "Do a few more sessions to see your progress take shape."
+    },
     onboarding: {
       title: "Let's find your level",
       subtitle: "Answer a few short questions in German. Your answers set the difficulty across the app — there are no wrong answers, just write what you can.",
@@ -257,7 +280,7 @@ export const messages = {
     },
     tabs: {
       home: "Home",
-      dailyTalk: "Talk",
+      dailyTalk: "Write",
       alltag: "Alltag",
       vocab: "Vocab",
       gespraech: "Chat"
@@ -266,9 +289,9 @@ export const messages = {
       title: "Dashboard",
       subtitle: "Your German at a glance.",
       dailyGoal: "Daily Goal",
-      dailyGoalHint: "One task in every section keeps the streak alive.",
+      dailyGoalHint: "Finish any 3 sections to keep your streak alive.",
       goalDone: "Day complete — streak secured!",
-      goalProgress: "{done} of {total} sections done",
+      goalProgress: "{done} of {total} done today",
       activity: "Activity — last 14 days",
       scoreTrend: "Last {count} scores",
       longestStreak: "Longest: {count} days",

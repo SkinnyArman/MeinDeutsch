@@ -211,7 +211,7 @@ const handleSaveWord = async (payload: { word: string; description: string; exam
         <div>
           <button
             class="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--accent)]"
-            @click="router.push('/daily-talk')"
+            @click="router.push('/writing')"
           >
             <ArrowLeft class="h-3.5 w-3.5" />
             {{ t.common.back() }}

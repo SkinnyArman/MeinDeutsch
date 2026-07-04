@@ -63,6 +63,16 @@ that touches the DB, `logic/` is pure and unit-testable. Keep new code in this s
 
 ## 3. Commands
 
+One-command dev (run from repo root — starts backend + frontend together via `concurrently`):
+
+```bash
+npm run dev            # both apps, prefixed [backend]/[frontend] logs, Ctrl-C stops both
+npm run install:all    # install root + backend + frontend deps
+npm run check          # typecheck both
+npm test               # backend tests
+npm run migrate        # apply migrations
+```
+
 Backend (run from `backend/`):
 
 ```bash
@@ -221,6 +231,27 @@ on top. Format:
   strips articles/reflexives (`toDedupKey`) so "eine/die Entscheidung treffen" can't both
   enter the pool. NOTE: same English gloss with different German collocation (Entscheidung
   treffen vs Entschluss fassen) is allowed on purpose.
+
+### 2026-06-23 — Daily-driver pass: softer goal, progress view, Writing rework, quick chat (Claude Code)
+- DAILY GOAL softened: now `DAILY_GOAL_TARGET = 3` of 5 sections (not all). `logic/daily-goal.logic`
+  (`countCompleted`, threshold in `isDailyGoalComplete`), `DailyGoalState.target` in contract,
+  dashboard + streak-chip text use `target`. Achievable in one sitting.
+- NEW: Progress view. Pure `logic/progress.logic.ts` `computeReadiness` (transparent blend:
+  accuracy 45% / writing-level 35% / consistency 20%, documented + tested) + `nextLevelOf`.
+  `progress.repository` (recent scores, recent answer CEFR levels), `progress.service`,
+  `GET /api/progress`, `ProgressView` at `/progress` (CEFR ladder, readiness bar + breakdown,
+  score sparkline, focus areas, streak). Linked from the dashboard header. Readiness is an
+  honest heuristic ESTIMATE (labelled as such), not a test.
+- Daily Talk → WRITING: renamed labels + routes (/daily-talk → /writing; nav key stays
+  'daily-talk', streak feature key stays 'daily_talk' — internal ids unchanged). Prompts now
+  ask for a paragraph or two (opinion/description/narration, explicitly NO letters/emails).
+  Topic PICKER removed from the flow — server rotates a random topic (getNextQuestion topicId
+  optional). Green/red correction detail unchanged (the good part).
+- Gespräch QUICK START: `POST /api/conversations` scenarioId now optional/"random" → random
+  scene; big "Start a conversation" button on top, grouped scenes below.
+- Verified: both typechecks clean; 49 backend tests pass (progress logic + updated goal tests).
+- Open: consolidation (Writing vs Gespräch overlap) still deferred; deployment/one-command run
+  is the remaining blocker to true daily use.
 
 ### 2026-06-23 — Gespräch debrief fixes (Claude Code)
 - BUG (from profile injection): the debrief was echoing the learner's SAVED vocab as "suggestions"

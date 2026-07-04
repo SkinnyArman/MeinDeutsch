@@ -57,6 +57,7 @@ export const API_PATHS = {
   knowledge: "/api/knowledge",
   streakDailyTalk: "/api/streaks/daily-talk",
   dashboardOverview: "/api/dashboard/overview",
+  progress: "/api/progress",
   level: "/api/level",
   levelExam: "/api/level/exam",
   levelAssess: "/api/level/assess",

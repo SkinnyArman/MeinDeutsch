@@ -5,7 +5,7 @@ import { API_PATHS } from "@/config/api";
 
 export const useDailyTalkNextQuestionMutation = () => {
   return useMutation({
-    mutationFn: async (payload: { topicId: number }) => {
+    mutationFn: async (payload: { topicId?: number }) => {
       return (await fetchJson<QuestionRecord>(API_PATHS.questionsNext, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

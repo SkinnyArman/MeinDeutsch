@@ -32,7 +32,7 @@ export const useConversationHistoryQuery = () =>
 
 export const useStartConversationMutation = () =>
   useMutation({
-    mutationFn: async (payload: { scenarioId: string }) =>
+    mutationFn: async (payload: { scenarioId?: string }) =>
       (
         await fetchJson<{ conversation: ConversationRecord; messages: ConversationMessageRecord[] }>(
           API_PATHS.conversations,

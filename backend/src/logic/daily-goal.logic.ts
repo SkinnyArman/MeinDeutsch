@@ -19,6 +19,10 @@ export const DAILY_GOAL_STEP_KEYS: DailyGoalStepKey[] = [
   "gespraech"
 ];
 
+// How many sections count as "done for today". Kept well below the total so the
+// daily streak is achievable in one sitting (research: consistency > volume).
+export const DAILY_GOAL_TARGET = 3;
+
 /**
  * A day counts toward the streak when every section saw at least one task.
  * Vocabulary is also satisfied when the due queue is empty — you cannot review
@@ -39,5 +43,9 @@ export const computeDailyGoalSteps = (inputs: DailyGoalInputs): DailyGoalStepSta
   ];
 };
 
+export const countCompleted = (steps: DailyGoalStepState[]): number =>
+  steps.filter((step) => step.done).length;
+
+// The day counts toward the streak once TARGET sections are done (not all of them).
 export const isDailyGoalComplete = (steps: DailyGoalStepState[]): boolean =>
-  steps.every((step) => step.done);
+  countCompleted(steps) >= Math.min(DAILY_GOAL_TARGET, steps.length);

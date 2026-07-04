@@ -5,7 +5,8 @@ import { conversationService } from "../services/conversation.service.js";
 import { sendSuccess } from "../utils/http-response.js";
 
 const startSchema = z.object({
-  scenarioId: z.string().trim().min(1)
+  // Optional: omit (or send "random") to start a surprise scenario.
+  scenarioId: z.string().trim().min(1).optional()
 });
 
 const messageSchema = z.object({
@@ -26,7 +27,7 @@ export const listConversationScenariosController = async (_req: Request, res: Re
 };
 
 export const startConversationController = async (req: Request, res: Response): Promise<void> => {
-  const payload = startSchema.parse(req.body);
+  const payload = startSchema.parse(req.body ?? {});
   const data = await conversationService.start({ userId: req.auth.userId, scenarioId: payload.scenarioId });
   sendSuccess(res, 201, API_MESSAGES.conversation.started, data);
 };

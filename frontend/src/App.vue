@@ -46,7 +46,7 @@ const navItems = computed(() => [
     key: "daily-talk" as ViewKey,
     title: t.dailyTalk.title(),
     shortTitle: t.tabs.dailyTalk(),
-    path: "/daily-talk",
+    path: "/writing",
     icon: MessageCircle
   },
   {
@@ -137,7 +137,7 @@ const streakStatusText = computed(() => {
   if (goal.value) {
     return t.shell.streakProgress({
       done: goal.value.completedCount,
-      total: goal.value.totalSteps,
+      total: goal.value.target,
       time: formatRemaining(streakRemainingMs.value)
     });
   }
@@ -216,6 +216,9 @@ const activeNavKey = computed<ViewKey | "">(() => {
   }
   if (route.path.startsWith("/gespraech")) {
     return "gespraech";
+  }
+  if (route.path.startsWith("/writing")) {
+    return "daily-talk";
   }
   return "daily-talk";
 });

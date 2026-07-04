@@ -139,6 +139,20 @@ Build a personal German learning MVP where:
     feature into the rest of the app.
   - Counts as the 5th daily-goal step (≥1 message that day), making it the daily-habit pillar.
 
+- Daily goal & progress
+  - The daily streak requires completing any 3 of the 5 sections (achievable in one sitting;
+    consistency over volume), not all of them.
+  - Progress view: shows current CEFR, an estimated "readiness" toward the next level (a
+    transparent, labelled heuristic blending recent accuracy, writing level, and consistency —
+    not a formal test), recent score trend, and focus areas (recurring mistakes).
+
+- Writing (formerly Daily Talk)
+  - Reframed as writing practice: prompts elicit a paragraph or two (opinion/description/
+    narration; no letters or emails). Rich correction detail retained (red answer diff + green
+    corrected text, mistakes, tips, word suggestions).
+  - No topic picker in the flow — the server rotates topics automatically (topics remain
+    managed in Settings).
+
 ### Out of scope (post-MVP)
 - Any feature not required for this loop:
   topics -> AI questions -> answers -> mistakes + CEFR + tips -> knowledge base.

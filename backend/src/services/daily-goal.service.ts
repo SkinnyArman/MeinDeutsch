@@ -1,5 +1,5 @@
 import type { DailyGoalState } from "../contracts/api-types.js";
-import { computeDailyGoalSteps, isDailyGoalComplete } from "../logic/daily-goal.logic.js";
+import { DAILY_GOAL_TARGET, computeDailyGoalSteps, countCompleted, isDailyGoalComplete } from "../logic/daily-goal.logic.js";
 import { logger } from "../config/logger.js";
 import { dashboardRepository } from "../repositories/dashboard.repository.js";
 import { DAILY_GOAL_FEATURE_KEY, streakRepository } from "../repositories/streak.repository.js";
@@ -25,8 +25,9 @@ export const dailyGoalService = {
 
     return {
       steps,
-      completedCount: steps.filter((step) => step.done).length,
+      completedCount: countCompleted(steps),
       totalSteps: steps.length,
+      target: Math.min(DAILY_GOAL_TARGET, steps.length),
       allDone,
       streak
     };
