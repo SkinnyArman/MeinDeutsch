@@ -28,6 +28,22 @@ cp frontend/.env.example frontend/.env
 npm run dev
 ```
 
+## Mobile (PWA)
+
+The frontend is an installable PWA: manifest, icons, and a service worker are
+generated at build time (`vite-plugin-pwa`). Once deployed over **HTTPS**, open
+the site on your phone and use "Add to Home Screen" — it launches standalone
+with the app icon.
+
+- Updates: a "new version is ready" toast appears after deploys; the user
+  applies it (no forced mid-exercise reloads).
+- Caching: app shell + Google Fonts only. `/api` is never cached.
+- Icons: regenerate with `npm --prefix frontend run icons` after changing the
+  mark in `frontend/scripts/generate-icons.mjs`.
+- Deployment note: serve the SPA and the API over HTTPS; if the API is on the
+  same origin under `/api`, everything works out of the box (the service worker
+  explicitly excludes `/api` from the SPA fallback).
+
 ## Other root commands
 
 - `npm run check` — typecheck backend + frontend

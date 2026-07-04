@@ -11,6 +11,7 @@ backend/.env
 # Build / output directories
 frontend/dist/
 frontend/build/
+frontend/dev-dist/
 backend/dist/
 backend/build/
 

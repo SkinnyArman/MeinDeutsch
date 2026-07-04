@@ -278,6 +278,10 @@ export const messages = {
       retake: "Retake placement exam",
       saved: "Level updated."
     },
+    pwa: {
+      updateAvailable: "A new version is ready.",
+      reload: "Update"
+    },
     tabs: {
       home: "Home",
       dailyTalk: "Write",
