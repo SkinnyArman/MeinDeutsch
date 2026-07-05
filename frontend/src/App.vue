@@ -20,6 +20,7 @@ import { useDashboardOverviewQuery } from "@/queries/dashboard";
 import { clearSession, getAuthToken, getSessionUser } from "./utils/auth";
 import { examOpen, levelKnown, markLeveled, refreshLevel, resetLevel } from "./utils/level";
 import OnboardingExamModal from "./components/OnboardingExamModal.vue";
+import InstallPrompt from "./components/ui/InstallPrompt.vue";
 import ReloadPrompt from "./components/ui/ReloadPrompt.vue";
 
 type ViewKey = "dashboard" | "daily-talk" | "alltagssprache" | "kollokationen" | "gespraech" | "vocabulary" | "settings";
@@ -267,6 +268,7 @@ const logout = async (): Promise<void> => {
 
 <template>
   <ReloadPrompt />
+  <InstallPrompt />
   <OnboardingExamModal v-if="showExamModal" :dismissable="examDismissable" @done="markLeveled" @close="cancelExam" />
 
   <RouterView v-if="!showMainLayout" />
