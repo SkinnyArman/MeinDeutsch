@@ -21,8 +21,6 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
-      - key: GOOGLE_AUTHORIZED_EMAILS
-        value: armanwithamini@gmail.com
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL

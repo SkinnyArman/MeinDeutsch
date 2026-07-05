@@ -38,6 +38,9 @@ OPENAI_API_KEY=your-openai-api-key
 AUTH_PASSWORD=
 ```
 
+Allowed login emails live in `backend/src/config/authorized-emails.ts`.
+Edit that list, commit, and redeploy the backend to add or remove access.
+
 Frontend env values to fill:
 
 ```bash

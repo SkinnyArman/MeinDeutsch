@@ -22,7 +22,6 @@ const schema = z.object({
   APP_JWT_SECRET: z.string().min(16, "APP_JWT_SECRET must be at least 16 characters"),
   ALLOWED_ORIGINS: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
-  GOOGLE_AUTHORIZED_EMAILS: z.string().default("armanwithamini@gmail.com"),
   // Optional Google-free fallback login for whitelisted emails (useful when
   // Google endpoints are blocked by network/region). Empty = disabled.
   AUTH_PASSWORD: z

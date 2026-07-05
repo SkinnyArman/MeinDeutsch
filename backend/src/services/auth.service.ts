@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
+import { authorizedEmailSet } from "../config/authorized-emails.js";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
 import { createLoginThrottle } from "../logic/login-throttle.js";
@@ -11,15 +12,6 @@ import { AppError } from "../utils/app-error.js";
 import { API_MESSAGES } from "../constants/api-messages.js";
 
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
-
-const parseWhitelist = (): Set<string> => {
-  const emails = env.GOOGLE_AUTHORIZED_EMAILS.split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-  return new Set(emails);
-};
-
-const allowedEmails = parseWhitelist();
 
 const signToken = (user: UserRecord): string =>
   jwt.sign(
@@ -102,7 +94,7 @@ export const authService = {
       throw new AppError(429, "AUTH_TOO_MANY_ATTEMPTS", API_MESSAGES.errors.authTooManyAttempts);
     }
 
-    if (!allowedEmails.has(email) || !passwordsMatch(password, env.AUTH_PASSWORD)) {
+    if (!authorizedEmailSet.has(email) || !passwordsMatch(password, env.AUTH_PASSWORD)) {
       passwordThrottle.recordFailure(email);
       throw new AppError(401, "AUTH_INVALID_CREDENTIALS", API_MESSAGES.errors.authInvalidCredentials);
     }
@@ -135,7 +127,7 @@ export const authService = {
     }
 
     const email = payload.email.toLowerCase();
-    if (!allowedEmails.has(email)) {
+    if (!authorizedEmailSet.has(email)) {
       throw new AppError(403, "AUTH_EMAIL_NOT_ALLOWED", API_MESSAGES.errors.authEmailNotAllowed);
     }
 

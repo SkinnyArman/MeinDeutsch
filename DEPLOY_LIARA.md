@@ -29,7 +29,6 @@ DATABASE_URL=postgresql://...
 APP_JWT_SECRET=replace-with-a-long-random-secret
 ALLOWED_ORIGINS=https://YOUR_FRONTEND_URL
 GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_AUTHORIZED_EMAILS=armanwithamini@gmail.com
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_MODEL=gpt-4o-mini
 OPENAI_MODEL_SMART=gpt-4.1
@@ -44,6 +43,7 @@ liara deploy --path ./backend --app meindeutsch-api --platform node --port 4000
 ```
 
 Backend startup automatically runs the committed TypeORM migrations.
+Allowed login emails live in `backend/src/config/authorized-emails.ts`.
 
 ## 3. Deploy Frontend
 
