@@ -53,7 +53,7 @@ If creating the frontend manually as a Static Site, use:
 
 ```text
 Root Directory: frontend
-Build Command: npm install && npm run build
+Build Command: npm install --include=dev && npm run build
 Publish Directory: dist
 ```
 
@@ -61,10 +61,15 @@ If creating the backend manually as a Web Service, use:
 
 ```text
 Root Directory: backend
-Build Command: npm install && npm run build
+Build Command: npm install --include=dev && npm run build
 Start Command: npm run start
 Instance Type: Free
 ```
+
+The `--include=dev` part matters because TypeScript and packages like
+`@types/express` are build-time dependencies. Render may install production-only
+dependencies when `NODE_ENV=production`, which causes backend type errors during
+`npm run build`.
 
 ## Google OAuth
 
