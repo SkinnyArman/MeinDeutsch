@@ -38,6 +38,15 @@ OPENAI_API_KEY=your-openai-api-key
 AUTH_PASSWORD=
 ```
 
+For Neon, paste the actual connection string into the backend service env var
+named `DATABASE_URL`. It should look like:
+
+```text
+postgresql://USER:PASSWORD@HOST.neon.tech/DB?sslmode=require
+```
+
+Do not use `localhost`, and do not paste it into the frontend service.
+
 Allowed login emails live in `backend/src/config/authorized-emails.ts`.
 Edit that list, commit, and redeploy the backend to add or remove access.
 

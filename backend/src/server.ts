@@ -1,9 +1,15 @@
 import { app } from "./app.js";
+import { assertProductionDatabaseUrl, getSafeDatabaseUrlInfo } from "./config/database-url.js";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { appDataSource } from "./db/pool.js";
 
 const start = async (): Promise<void> => {
+  if (env.NODE_ENV === "production") {
+    assertProductionDatabaseUrl(env.DATABASE_URL);
+  }
+
+  logger.info("Connecting to database", getSafeDatabaseUrlInfo(env.DATABASE_URL));
   await appDataSource.initialize();
   logger.info("Database connection initialized and migrations applied");
 
