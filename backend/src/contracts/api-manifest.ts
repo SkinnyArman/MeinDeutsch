@@ -517,8 +517,8 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     id: "get-level-exam",
     method: "GET",
     path: "/api/level/exam",
-    title: "Generate Placement Exam",
-    description: "Generates a short rising-difficulty German placement exam (open questions).",
+    title: "Get Placement Exam",
+    description: "Returns a lightweight CEFR placement exam with self-assessment, multiple-choice questions, and one short writing prompt.",
     requestFields: []
   },
   {
@@ -526,13 +526,26 @@ export const API_ENDPOINTS: ApiEndpointDefinition[] = [
     method: "POST",
     path: "/api/level/assess",
     title: "Assess Placement Exam",
-    description: "Estimates CEFR from the learner's exam answers (smart model) and stores it.",
+    description: "Estimates CEFR from self-estimate, multiple-choice answers, and one short writing sample.",
     requestFields: [
       {
+        name: "selfEstimate",
+        label: "Self Estimate",
+        type: "text",
+        required: true,
+        placeholder: "B1"
+      },
+      {
         name: "answers",
-        label: "Answers (JSON array of {targetLevel, questionText, answerText})",
+        label: "Answers (JSON array of {questionId, selectedOptionId})",
         type: "textarea",
         required: true
+      },
+      {
+        name: "writingAnswer",
+        label: "Writing Answer",
+        type: "textarea",
+        required: false
       }
     ]
   },

@@ -329,12 +329,23 @@ export interface ProgressOverview {
 }
 
 export interface LevelExamQuestion {
+  id: string;
   targetLevel: string;
-  questionText: string;
+  skill: string;
+  prompt: string;
+  options: Array<{ id: string; text: string }>;
+}
+
+export interface LevelSelfAssessmentOption {
+  level: string;
+  label: string;
+  description: string;
 }
 
 export interface LevelExamPayload {
+  selfAssessmentOptions: LevelSelfAssessmentOption[];
   questions: LevelExamQuestion[];
+  writingPrompt: string;
 }
 
 export interface ConversationScenarioRecord {

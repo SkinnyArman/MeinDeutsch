@@ -19,7 +19,11 @@ export const useLevelExamQuery = () =>
 
 export const useAssessLevelMutation = () =>
   useMutation({
-    mutationFn: async (payload: { answers: Array<{ targetLevel: string; questionText: string; answerText: string }> }) =>
+    mutationFn: async (payload: {
+      selfEstimate: string;
+      answers: Array<{ questionId: string; selectedOptionId: string }>;
+      writingAnswer: string;
+    }) =>
       (
         await fetchJson<UserLevelState>(API_PATHS.levelAssess, {
           method: "POST",

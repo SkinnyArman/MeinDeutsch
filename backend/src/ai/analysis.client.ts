@@ -254,14 +254,6 @@ export const generateQuestion = async (input: {
 
 export const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
-// Rising-difficulty ladder for the placement exam.
-const LEVEL_EXAM_LADDER = ["A2", "A2", "B1", "B2", "B2", "C1"] as const;
-
-export interface LevelExamQuestion {
-  targetLevel: string;
-  questionText: string;
-}
-
 export interface LevelDimensionScores {
   range: string;
   accuracy: string;
@@ -275,53 +267,44 @@ export interface LevelAssessmentResult {
   rationale: string;
 }
 
-const LEVEL_EXAM_PROMPT = `You design a short German placement test (CEFR).
-Produce exactly one open German question per requested target level, in rising difficulty order.
+export interface LevelPlacementMcqSummary {
+  total: number;
+  correct: number;
+  byLevel: Array<{ level: string; total: number; correct: number }>;
+  bySkill: Array<{ skill: string; total: number; correct: number }>;
+}
+
+export interface LevelPlacementAssessmentInput {
+  selfEstimate: string;
+  mcqSummary: LevelPlacementMcqSummary;
+  writingPrompt: string;
+  writingAnswer: string;
+  preliminaryLevel: string;
+}
+
+const LEVEL_PLACEMENT_ASSESSMENT_PROMPT = `You are a certified CEFR examiner for German.
+You receive a lightweight placement result:
+- the learner's self-estimated level,
+- objective multiple-choice performance by CEFR level and skill,
+- one short German writing sample.
+
+Derive a practical app placement level, not a formal certificate.
 Rules:
-- Output strict JSON only.
-- Each question is answerable in 2-4 German sentences and naturally elicits language at its target level.
-- Phrase the question itself near its target level (simple wording for A2, richer for C1).
-- Cover varied everyday/abstract topics; no meta-questions about grammar.
-- Keep each question to one sentence.`;
-
-const LEVEL_ASSESSMENT_PROMPT = `You are a certified CEFR examiner for German, applying the official CEFR
-qualitative scale for written/spoken production. You receive placement questions (each tagged with a
-target level) and the learner's German answers. Rate the PRODUCED language on the five CEFR dimensions,
-then derive the overall level. Use these calibrated band descriptors:
-
-RANGE (vocabulary + structures):
-- A1: memorised words/phrases. A2: basic everyday vocab, simple structures. B1: enough for familiar
-  topics, some complex sentences. B2: broad range, varied structures, little obvious searching.
-  C1/C2: wide, precise, idiomatic; flexible reformulation.
-ACCURACY (grammar: cases, verb forms, word order, agreement):
-- A1/A2: frequent basic errors. B1: reasonable control of routine forms, errors when expressing complex
-  thought. B2: good control, no errors causing misunderstanding. C1/C2: consistently high/near-native.
-COHERENCE (connectors, structure, paragraphing):
-- A2: simple linking (und/aber/weil). B1: linear connected text. B2: clear organised text with varied
-  connectors. C1/C2: smooth, controlled cohesive devices.
-FLUENCY/COMPLEXITY (sentence length & subordination, depth of ideas):
-- A2: short isolated clauses. B1: 8-12 word sentences, some subordination. B2: 12-18 words, relative/
-  subordinate clauses, Konjunktiv. C1+: long, nuanced, abstract.
-TASK/CONTENT (did they actually address the question, and at what depth):
-- penalise off-topic or one-line answers; reward developed, relevant responses.
-
-Rules:
-- Weight the HIGHER-level items: handling B2/C1 questions well is required for a B2/C1 verdict; strong
-  A2/B1 answers but empty/weak high-level answers cap the level around B1.
-- Empty / "I don't know" / non-German answers are evidence of NOT reaching that item's level.
-- Be calibrated and slightly conservative; do not over-credit a single good sentence.
-- If answers are inconsistent across dimensions, the overall level is roughly the lowest dimension that
-  still holds across most answers (CEFR is criterion-referenced, not an average).
+- Multiple-choice results are evidence of recognition, grammar, vocabulary, reading, and word order.
+- The writing sample is evidence of production. Do not over-credit MCQ success if the writing is much weaker.
+- If MCQ and writing disagree, choose the lower sustainable level unless the writing sample is too short to judge.
+- Self-estimate is weak evidence only; use it mainly to break ties.
+- Be calibrated and slightly conservative. For this app, under-placement is better than overwhelming the learner.
+- C2 should be rare and only for near-native production; otherwise cap at C1.
 Return strict JSON only:
 {
   "cefrLevel": "A1|A2|B1|B2|C1|C2",
   "dimensions": { "range": "A1|A2|B1|B2|C1|C2", "accuracy": "A1|A2|B1|B2|C1|C2", "coherence": "A1|A2|B1|B2|C1|C2", "fluency": "A1|A2|B1|B2|C1|C2" },
   "rationale": "string"
 }
-- rationale: 2-3 sentences addressed to the learner ("you"), naming concretely what you can do and the
-  main thing holding you at this level (cite a dimension).`;
+- rationale: 2-3 friendly sentences addressed to the learner ("you"), naming what the result is based on and what to focus on next.`;
 
-export const generateLevelExam = async (): Promise<LevelExamQuestion[]> => {
+export const assessPlacementLevel = async (input: LevelPlacementAssessmentInput): Promise<LevelAssessmentResult> => {
   if (!openai) {
     throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
       provider: "openai",
@@ -330,86 +313,26 @@ export const generateLevelExam = async (): Promise<LevelExamQuestion[]> => {
   }
 
   try {
-    const completion = await openai.responses.create({
-      model: modelFor("default"),
-      instructions: LEVEL_EXAM_PROMPT,
-      input: `Target levels in order: ${LEVEL_EXAM_LADDER.join(", ")}. Generate one German question for each.`,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "level_exam",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            required: ["questions"],
-            properties: {
-              questions: {
-                type: "array",
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  required: ["targetLevel", "questionText"],
-                  properties: {
-                    targetLevel: { type: "string", enum: [...CEFR_LEVELS] },
-                    questionText: { type: "string", minLength: 1 }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-    const parsed = JSON.parse(completion.output_text) as { questions: LevelExamQuestion[] };
-    return parsed.questions;
-  } catch (error) {
-    logger.error("OpenAI level exam generation failed", error);
-    if (env.AI_FALLBACK_ENABLED) {
-      return [
-        { targetLevel: "A2", questionText: "Was machst du normalerweise am Wochenende?" },
-        { targetLevel: "A2", questionText: "Beschreibe deinen letzten Einkauf im Supermarkt." },
-        { targetLevel: "B1", questionText: "Welche Vor- und Nachteile hat das Leben in einer Großstadt?" },
-        { targetLevel: "B2", questionText: "Wie hat sich die Arbeitswelt durch das Homeoffice verändert?" },
-        { targetLevel: "B2", questionText: "Sollte man soziale Medien stärker regulieren? Begründe deine Meinung." },
-        { targetLevel: "C1", questionText: "Inwiefern prägt Sprache unser Denken und unsere Wahrnehmung der Welt?" }
-      ];
-    }
-    const status =
-      error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
-        ? ((error as { status: number }).status >= 400 && (error as { status: number }).status <= 599
-            ? (error as { status: number }).status
-            : 502)
-        : 502;
-    throw new AppError(status, "AI_LEVEL_EXAM_FAILED", API_MESSAGES.errors.aiLevelExamFailed);
-  }
-};
-
-export const assessLevel = async (
-  answers: Array<{ targetLevel: string; questionText: string; answerText: string }>
-): Promise<LevelAssessmentResult> => {
-  if (!openai) {
-    throw new AppError(503, "AI_CONFIGURATION_MISSING", API_MESSAGES.errors.aiConfigurationMissing, {
-      provider: "openai",
-      reason: "OPENAI_API_KEY is missing"
-    });
-  }
-
-  try {
-    const transcript = answers
-      .map(
-        (a, i) =>
-          `Q${i + 1} (target ${a.targetLevel}): ${a.questionText}\nA${i + 1}: ${a.answerText.trim() || "(no answer)"}`
-      )
-      .join("\n\n");
     const completion = await openai.responses.create({
       model: modelFor("levelAssessment"),
-      instructions: LEVEL_ASSESSMENT_PROMPT,
-      input: transcript,
+      instructions: LEVEL_PLACEMENT_ASSESSMENT_PROMPT,
+      input: JSON.stringify(
+        {
+          selfEstimate: input.selfEstimate,
+          preliminaryLevel: input.preliminaryLevel,
+          mcqSummary: input.mcqSummary,
+          writing: {
+            prompt: input.writingPrompt,
+            answer: input.writingAnswer.trim() || "(no answer)"
+          }
+        },
+        null,
+        2
+      ),
       text: {
         format: {
           type: "json_schema",
-          name: "level_assessment",
+          name: "level_placement_assessment",
           strict: true,
           schema: {
             type: "object",
@@ -417,8 +340,6 @@ export const assessLevel = async (
             required: ["cefrLevel", "dimensions", "rationale"],
             properties: {
               cefrLevel: { type: "string", enum: [...CEFR_LEVELS] },
-              // Forces the model to rate each CEFR dimension before the overall
-              // verdict (improves calibration). Stored on the result for audit.
               dimensions: {
                 type: "object",
                 additionalProperties: false,
@@ -438,9 +359,12 @@ export const assessLevel = async (
     });
     return JSON.parse(completion.output_text) as LevelAssessmentResult;
   } catch (error) {
-    logger.error("OpenAI level assessment failed", error);
+    logger.error("OpenAI level placement assessment failed", error);
     if (env.AI_FALLBACK_ENABLED) {
-      return { cefrLevel: "B1", rationale: "Fallback estimate: AI assessment unavailable." };
+      return {
+        cefrLevel: input.preliminaryLevel,
+        rationale: "Fallback estimate: based on your multiple-choice placement score."
+      };
     }
     const status =
       error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number"
