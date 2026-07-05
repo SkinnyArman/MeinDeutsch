@@ -2,6 +2,9 @@
   "name": "meindeutsch-backend",
   "version": "1.0.0",
   "main": "index.js",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "test": "tsx --test src/tests/**/*.test.ts",
     "dev": "tsx watch src/server.ts",
