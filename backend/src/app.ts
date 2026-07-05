@@ -12,16 +12,18 @@ import { requestId } from "./middleware/request-id.middleware.js";
 
 export const app = express();
 
-const allowedOrigins = env.ALLOWED_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [];
+const normalizeOrigin = (origin: string): string => origin.trim().replace(/\/+$/, "");
+
+const allowedOrigins = env.ALLOWED_ORIGINS?.split(",").map(normalizeOrigin).filter(Boolean) ?? [];
 const corsOptions: CorsOptions = allowedOrigins.length
   ? {
       origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.includes(normalizeOrigin(origin))) {
           callback(null, true);
           return;
         }
 
-        callback(new Error("Not allowed by CORS"));
+        callback(new Error(`Not allowed by CORS: ${origin}`));
       }
     }
   : {};
