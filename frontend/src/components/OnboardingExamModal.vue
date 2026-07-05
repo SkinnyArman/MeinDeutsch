@@ -219,7 +219,7 @@ const finish = (): void => {
           <textarea
             v-model="writingAnswer"
             class="input mt-4 min-h-[112px] resize-y"
-            placeholder="3-5 kurze Saetze reichen."
+            placeholder="3-5 kurze Sätze reichen."
           />
         </section>
 

@@ -34,7 +34,7 @@ export const LEVEL_SELF_ASSESSMENT_OPTIONS: LevelSelfAssessmentOption[] = [
 ];
 
 export const LEVEL_PLACEMENT_WRITING_PROMPT =
-  "Schreib 3-5 Saetze auf Deutsch: Was moechtest du in den naechsten Monaten lernen oder verbessern, und warum?";
+  "Schreib 3-5 Sätze auf Deutsch: Was möchtest du in den nächsten Monaten lernen oder verbessern, und warum?";
 
 export const LEVEL_PLACEMENT_QUESTIONS: LevelPlacementQuestion[] = [
   {
@@ -136,7 +136,7 @@ export const LEVEL_PLACEMENT_QUESTIONS: LevelPlacementQuestion[] = [
     options: [
       { id: "a", text: "werde" },
       { id: "b", text: "wurde" },
-      { id: "c", text: "wuerde" },
+      { id: "c", text: "würde" },
       { id: "d", text: "war" }
     ],
     correctOptionId: "c"
@@ -171,7 +171,7 @@ export const LEVEL_PLACEMENT_QUESTIONS: LevelPlacementQuestion[] = [
     id: "b1-reading-appointment",
     targetLevel: "B1",
     skill: "reading",
-    prompt: "Text: 'Falls Sie den Termin nicht wahrnehmen koennen, sagen Sie bitte spaetestens 24 Stunden vorher ab.' What should you do?",
+    prompt: "Text: 'Falls Sie den Termin nicht wahrnehmen können, sagen Sie bitte spätestens 24 Stunden vorher ab.' What should you do?",
     options: [
       { id: "a", text: "Cancel at least 24 hours in advance if you cannot come" },
       { id: "b", text: "Arrive 24 hours early" },
@@ -223,7 +223,7 @@ export const LEVEL_PLACEMENT_QUESTIONS: LevelPlacementQuestion[] = [
     id: "b2-subjective-claim",
     targetLevel: "B2",
     skill: "reading",
-    prompt: "Text: 'Die Massnahme duerfte langfristig zu einer Entlastung fuehren.' What does 'duerfte' express here?",
+    prompt: "Text: 'Die Maßnahme dürfte langfristig zu einer Entlastung führen.' What does 'dürfte' express here?",
     options: [
       { id: "a", text: "a strict obligation" },
       { id: "b", text: "a cautious assumption" },
@@ -238,10 +238,10 @@ export const LEVEL_PLACEMENT_QUESTIONS: LevelPlacementQuestion[] = [
     skill: "word_order",
     prompt: "Choose the best sentence.",
     options: [
-      { id: "a", text: "Ich halte es fuer wichtig, dass man regelmaessig Feedback bekommt." },
-      { id: "b", text: "Ich halte es fuer wichtig, dass bekommt man regelmaessig Feedback." },
-      { id: "c", text: "Ich halte wichtig es, dass man bekommt Feedback regelmaessig." },
-      { id: "d", text: "Ich halte es wichtig fuer, dass man regelmaessig bekommt Feedback." }
+      { id: "a", text: "Ich halte es für wichtig, dass man regelmäßig Feedback bekommt." },
+      { id: "b", text: "Ich halte es für wichtig, dass bekommt man regelmäßig Feedback." },
+      { id: "c", text: "Ich halte wichtig es, dass man bekommt Feedback regelmäßig." },
+      { id: "d", text: "Ich halte es wichtig für, dass man regelmäßig bekommt Feedback." }
     ],
     correctOptionId: "a"
   },
@@ -253,8 +253,8 @@ export const LEVEL_PLACEMENT_QUESTIONS: LevelPlacementQuestion[] = [
     options: [
       { id: "a", text: "mit" },
       { id: "b", text: "auf" },
-      { id: "c", text: "ueber" },
-      { id: "d", text: "fuer" }
+      { id: "c", text: "über" },
+      { id: "d", text: "für" }
     ],
     correctOptionId: "c"
   },
@@ -266,8 +266,8 @@ export const LEVEL_PLACEMENT_QUESTIONS: LevelPlacementQuestion[] = [
     options: [
       { id: "a", text: "hat" },
       { id: "b", text: "habe" },
-      { id: "c", text: "haette gehabt haben" },
-      { id: "d", text: "haben wuerde" }
+      { id: "c", text: "hätte gehabt haben" },
+      { id: "d", text: "haben würde" }
     ],
     correctOptionId: "b"
   },
@@ -288,7 +288,7 @@ export const LEVEL_PLACEMENT_QUESTIONS: LevelPlacementQuestion[] = [
     id: "c1-reading-implicit",
     targetLevel: "C1",
     skill: "reading",
-    prompt: "Text: 'Die Reform ist weniger ein grosser Wurf als ein vorsichtiger Schritt in die richtige Richtung.' What is the author's view?",
+    prompt: "Text: 'Die Reform ist weniger ein großer Wurf als ein vorsichtiger Schritt in die richtige Richtung.' What is the author's view?",
     options: [
       { id: "a", text: "The reform is completely useless" },
       { id: "b", text: "The reform is ambitious and radical" },
