@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { API_MESSAGES } from "../constants/api-messages.js";
+import { COLLOCATION_GENERATION_CATEGORIES, type CollocationGenerationCategory } from "../constants/collocation-generation.config.js";
 import { collocationService } from "../services/collocation.service.js";
 import { sendSuccess } from "../utils/http-response.js";
 
@@ -26,11 +27,13 @@ const reviewParamsSchema = z.object({
   id: z.coerce.number().int().positive()
 });
 
-const resolveCategory = (category?: string): string => {
-  if (category && collocationService.isKnownCategory(category)) {
+const concreteCollocationCategories = COLLOCATION_GENERATION_CATEGORIES.filter((category) => category !== "random");
+const resolveCategory = (category?: string): CollocationGenerationCategory => {
+  if (category && category !== "random" && collocationService.isKnownCategory(category)) {
     return category;
   }
-  return "random";
+
+  return concreteCollocationCategories[Math.floor(Math.random() * concreteCollocationCategories.length)] as CollocationGenerationCategory;
 };
 
 export const listCollocationCategoriesController = async (_req: Request, res: Response): Promise<void> => {

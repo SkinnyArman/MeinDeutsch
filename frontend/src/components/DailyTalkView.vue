@@ -2,7 +2,7 @@
 import { computed, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useLanguage } from "@/libs/i18n";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-vue-next";
+import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-vue-next";
 import AppContainer from "./AppContainer.vue";
 import { useDailyTalkHistoryQuery } from "@/queries/dailyTalk";
 import { DEFAULT_PAGE_SIZE } from "@/constants/app";
@@ -51,7 +51,7 @@ const goNext = () => {
         </div>
         <button class="btn-primary" @click="router.push('/writing/new')">
           <Plus class="h-4 w-4" />
-          {{ t.dailyTalk.newQuestion() }}
+          {{ t.dailyTalk.newWriting() }}
         </button>
       </header>
 
@@ -60,7 +60,15 @@ const goNext = () => {
       </p>
 
       <div
-        v-if="!history.length && !historyQuery.isFetching.value"
+        v-if="historyQuery.isFetching.value && !historyQuery.data.value"
+        class="card flex items-center justify-center gap-2 px-6 py-12 text-center text-sm text-[var(--muted)]"
+      >
+        <Loader2 class="h-4 w-4 animate-spin text-[var(--accent)]" />
+        {{ t.common.loading() }}
+      </div>
+
+      <div
+        v-else-if="!history.length"
         class="card flex flex-col items-center gap-3 border-dashed px-6 py-12 text-center"
       >
         <span class="eyebrow-icon h-10 w-10 rounded-xl">

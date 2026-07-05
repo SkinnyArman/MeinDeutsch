@@ -46,6 +46,7 @@ export const messages = {
     dailyTalk: {
       title: "Writing",
       newQuestion: "New prompt",
+      newWriting: "New writing",
       history: "History",
       startNew: "Start new",
       loadFailed: "Could not load submissions",

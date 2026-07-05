@@ -93,11 +93,29 @@ const summarizePlacement = (answers: LevelPlacementAnswer[]) => {
   return {
     total: LEVEL_PLACEMENT_QUESTIONS.length,
     correct,
+    correctRatio: LEVEL_PLACEMENT_QUESTIONS.length > 0 ? correct / LEVEL_PLACEMENT_QUESTIONS.length : 0,
     weightedRatio,
     preliminaryLevel,
     byLevel: Array.from(byLevel.values()),
     bySkill: Array.from(bySkill.values())
   };
+};
+
+const placementFloorForScore = (summary: ReturnType<typeof summarizePlacement>): string | null => {
+  if (summary.correctRatio >= 0.8) {
+    return "B2";
+  }
+  if (summary.correctRatio >= 0.6) {
+    return "B1";
+  }
+  return null;
+};
+
+const applyScoreFloor = (cefrLevel: string, floor: string | null): string => {
+  if (!floor || levelIndex(cefrLevel) >= levelIndex(floor)) {
+    return cefrLevel;
+  }
+  return floor;
 };
 
 export const levelService = {
@@ -136,10 +154,15 @@ export const levelService = {
         bySkill: summary.bySkill
       }
     });
+    const scoreFloor = placementFloorForScore(summary);
+    const finalLevel = applyScoreFloor(result.cefrLevel, scoreFloor);
+    const floorNote = finalLevel !== result.cefrLevel
+      ? ` Your multiple-choice score supports at least ${finalLevel}, so the app placed you there despite a more conservative writing estimate.`
+      : "";
     const updated = await userRepository.setCefrLevel({
       userId: input.userId,
-      cefrLevel: result.cefrLevel,
-      cefrRationale: `${result.rationale} Multiple-choice score: ${summary.correct}/${summary.total}.`
+      cefrLevel: finalLevel,
+      cefrRationale: `${result.rationale}${floorNote} Multiple-choice score: ${summary.correct}/${summary.total}.`
     });
     if (!updated) {
       throw new AppError(401, "AUTH_INVALID_SESSION", API_MESSAGES.errors.authInvalidSession);

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter } from "vue-router";
-import { ArrowLeft, Flame, GraduationCap, Sparkles, TrendingUp } from "lucide-vue-next";
+import { ArrowLeft, Flame, GraduationCap, Loader2, Sparkles, TrendingUp } from "lucide-vue-next";
 import { useLanguage } from "@/libs/i18n";
 import { useProgressQuery } from "@/queries/progress";
 import AppContainer from "./AppContainer.vue";
@@ -98,10 +98,10 @@ const dimensions = computed(() => {
         </div>
 
         <!-- Breakdown -->
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-3 gap-2.5 sm:gap-3">
           <div v-for="d in dimensions" :key="d.key" class="card p-4">
             <p class="font-serif text-2xl font-semibold sm:text-3xl">{{ d.value }}<span class="text-base text-[var(--muted)]">%</span></p>
-            <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{{ d.label }}</p>
+            <p class="mt-1 break-words text-[10px] font-semibold uppercase leading-tight text-[var(--muted)] sm:text-[11px] sm:tracking-wide">{{ d.label }}</p>
           </div>
         </div>
 
@@ -132,7 +132,8 @@ const dimensions = computed(() => {
         </div>
       </div>
 
-      <div v-else-if="query.isFetching.value" class="card p-10 text-center text-sm text-[var(--muted)]">
+      <div v-else-if="query.isFetching.value" class="card flex items-center justify-center gap-2 p-10 text-sm text-[var(--muted)]">
+        <Loader2 class="h-4 w-4 animate-spin text-[var(--accent)]" />
         {{ t.common.loading() }}
       </div>
     </section>

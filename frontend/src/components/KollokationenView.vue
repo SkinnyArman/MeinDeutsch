@@ -261,7 +261,10 @@ watch(selectedCategory, async (nextCategory) => {
               class="mx-1 inline-block min-w-[90px] rounded-lg border-b-2 border-dashed border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] px-3 text-center align-baseline text-[var(--accent-strong)]"
             >&nbsp;?&nbsp;</span>{{ clozeParts.after }}
           </template>
-          <template v-else>{{ t.common.loading() }}</template>
+          <span v-else class="inline-flex items-center gap-2 text-sm font-sans text-[var(--muted)]">
+            <Loader2 class="h-4 w-4 animate-spin text-[var(--accent)]" />
+            {{ t.common.loading() }}
+          </span>
         </p>
 
         <div v-if="prompt && !isPromptLoading" class="mt-4 flex items-center gap-2">
@@ -349,7 +352,11 @@ watch(selectedCategory, async (nextCategory) => {
           <span class="eyebrow-icon"><History class="h-3 w-3" /></span>
           {{ t.alltag.history() }}
         </div>
-        <div v-if="!historyItems.length && !historyQuery.isFetching.value" class="card border-dashed p-4 text-xs text-[var(--muted)]">
+        <div v-if="historyQuery.isFetching.value && !historyQuery.data.value" class="card flex items-center gap-2 p-4 text-xs text-[var(--muted)]">
+          <Loader2 class="h-3.5 w-3.5 animate-spin text-[var(--accent)]" />
+          {{ t.common.loading() }}
+        </div>
+        <div v-else-if="!historyItems.length" class="card border-dashed p-4 text-xs text-[var(--muted)]">
           {{ t.dailyTalk.noHistory() }}
         </div>
         <div class="space-y-2">

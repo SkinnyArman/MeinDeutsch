@@ -3,6 +3,7 @@ import { z } from "zod";
 import { API_MESSAGES } from "../constants/api-messages.js";
 import { EXPRESSION_GENERATION_CATEGORIES } from "../ai/analysis.client.js";
 import { EXPRESSION_CATEGORIES } from "../constants/expression-generation.config.js";
+import type { ExpressionGenerationCategory } from "../constants/expression-generation.config.js";
 import { expressionService } from "../services/expression.service.js";
 import { sendSuccess } from "../utils/http-response.js";
 
@@ -49,11 +50,20 @@ const generateExpressionPoolSchema = z.object({
   countPerCategory: z.coerce.number().int().min(1).max(10).default(5)
 });
 
+const concreteExpressionCategories = EXPRESSION_GENERATION_CATEGORIES.filter((category) => category !== "random");
+const resolveCategory = (category: string): ExpressionGenerationCategory => {
+  if (category !== "random") {
+    return category as ExpressionGenerationCategory;
+  }
+
+  return concreteExpressionCategories[Math.floor(Math.random() * concreteExpressionCategories.length)] as ExpressionGenerationCategory;
+};
+
 export const generateExpressionController = async (req: Request, res: Response): Promise<void> => {
   const payload = generateExpressionSchema.parse(req.body ?? {});
   const prompt = await expressionService.generatePrompt(
     req.auth.userId,
-    payload.category as (typeof EXPRESSION_GENERATION_CATEGORIES)[number]
+    resolveCategory(payload.category)
   );
   sendSuccess(res, 201, API_MESSAGES.expression.generated, prompt);
 };
@@ -62,7 +72,7 @@ export const nextExpressionController = async (req: Request, res: Response): Pro
   const payload = generateExpressionSchema.parse(req.body ?? {});
   const prompt = await expressionService.getNextPrompt({
     userId: req.auth.userId,
-    category: payload.category as (typeof EXPRESSION_GENERATION_CATEGORIES)[number]
+    category: resolveCategory(payload.category)
   });
   sendSuccess(res, 200, API_MESSAGES.expression.generated, prompt);
 };

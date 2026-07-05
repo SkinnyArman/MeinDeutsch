@@ -325,13 +325,16 @@ watch(selectedCategory, async (nextCategory) => {
             >
               {{ isRecognition ? t.alltag.modeRecognize() : t.alltag.modeProduce() }}
             </span>
-            <span v-if="prompt?.generationCategory" class="chip hidden sm:inline-flex">{{ prompt.generationCategory }}</span>
+            <span v-if="prompt?.generationCategory && prompt.generationCategory !== 'random'" class="chip hidden sm:inline-flex">{{ prompt.generationCategory }}</span>
           </span>
         </div>
 
         <!-- Situational prompt leads; older prompts without a situation fall back to the English expression. -->
         <p class="mt-4 font-serif text-2xl leading-snug sm:text-3xl">
-          <template v-if="isPromptLoading">{{ t.common.loading() }}</template>
+          <span v-if="isPromptLoading" class="inline-flex items-center gap-2 text-sm font-sans text-[var(--muted)]">
+            <Loader2 class="h-4 w-4 animate-spin text-[var(--accent)]" />
+            {{ t.common.loading() }}
+          </span>
           <template v-else-if="prompt?.situationText">{{ prompt.situationText }}</template>
           <template v-else>{{ prompt?.englishText ? `“${prompt.englishText}”` : t.common.loading() }}</template>
         </p>
@@ -476,7 +479,11 @@ watch(selectedCategory, async (nextCategory) => {
           <span class="eyebrow-icon"><History class="h-3 w-3" /></span>
           {{ t.alltag.history() }}
         </div>
-        <div v-if="!historyItems.length && !historyQuery.isFetching.value" class="card border-dashed p-4 text-xs text-[var(--muted)]">
+        <div v-if="historyQuery.isFetching.value && !historyQuery.data.value" class="card flex items-center gap-2 p-4 text-xs text-[var(--muted)]">
+          <Loader2 class="h-3.5 w-3.5 animate-spin text-[var(--accent)]" />
+          {{ t.common.loading() }}
+        </div>
+        <div v-else-if="!historyItems.length" class="card border-dashed p-4 text-xs text-[var(--muted)]">
           {{ t.dailyTalk.noHistory() }}
         </div>
         <div class="space-y-2">
